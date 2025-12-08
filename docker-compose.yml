@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: drf_friending_backend
+    restart: always
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs  # 로그 파일 영구 저장
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    networks:
+      - my_network
+    command: sh /app/start.sh
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: drf_friending_frontend
+    ports:
+      - "3000:3000"
+    restart: always
+#    volumes:
+#      - ./frontend:/app
+#      - /app/node_modules
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge

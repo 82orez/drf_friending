@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# 가상환경
+.venv
+env
+venv
+*.egg-info
+
+# Python 캐시/컴파일 파일
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 환경 변수
+.env
+
+# 로그/임시 파일
+*.log
+*.sqlite3
+tmp/
+*.tmp
+
+# 에디터/OS 관련
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# static / media (운영에서는 보통 볼륨/스토리지로 관리)
+staticfiles/
+media/
