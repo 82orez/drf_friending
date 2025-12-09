@@ -10,6 +10,7 @@ interface User {
   is_email_verified: boolean;
   date_joined: string;
   profile_image: string | null;
+  role: string;
 }
 
 interface AuthContextType {
