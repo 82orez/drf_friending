@@ -29,14 +29,5 @@ export default function Home() {
     return null;
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-md rounded-lg bg-white p-8 shadow-md">
-        <div className="text-center">
-          <h1 className="mb-8 text-3xl font-bold text-gray-900">Friending</h1>
-          {user && user.role == "teacher" ? <MyProfile /> : <MainPage />}
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="">{user && user.role == "teacher" ? <MyProfile /> : <MainPage />}</div>;
 }
