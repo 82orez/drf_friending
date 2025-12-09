@@ -7,7 +7,7 @@ import MyProfile from "@/components/MyProfile";
 import MainPage from "@/components/MainPage";
 
 export default function Home() {
-  const { user, loading, logout, updateProfile } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {

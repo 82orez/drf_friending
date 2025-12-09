@@ -39,7 +39,7 @@ def register(request):
             user = serializer.save()
             logger.info(f"User registered successfully: {user.email}")
 
-            # Create email verification token
+            # Create an email verification token
             token = EmailVerificationToken.objects.create(user=user)
 
             # Send verification email
@@ -167,7 +167,7 @@ def resend_verification(request):
                 is_used=True
             )
 
-            # Create new token
+            # Create a new token
             token = EmailVerificationToken.objects.create(user=user)
 
             # Send verification email
@@ -265,7 +265,7 @@ def password_reset_request(request):
                 is_used=True
             )
 
-            # Create new token
+            # Create a new token
             token = PasswordResetToken.objects.create(user=user)
 
             # Send password reset email

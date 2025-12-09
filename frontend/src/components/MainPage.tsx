@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function MainPage() {
