@@ -38,6 +38,9 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
             "is_visa_expiring_soon",
         )
 
+    # -------------------------------
+    # 읽기 전용 필드 계산 메서드들
+    # -------------------------------
     def get_age(self, obj):
         """생년월일로부터 나이 계산"""
         if obj.date_of_birth:
@@ -59,6 +62,9 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
             return days_until_expiry <= 90
         return None
 
+    # -------------------------------
+    # 필드 단위 검증
+    # -------------------------------
     def validate_email(self, value):
         """이메일 중복 검증 (같은 이메일로 중복 지원 방지)"""
         if self.instance is None:  # 생성할 때만
@@ -90,7 +96,7 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
                 )
             if age > 80:
                 raise serializers.ValidationError(
-                    "Please check the date of birth. " "생년월일을 다시 확인해 주세요."
+                    "Please check the date of birth. 생년월일을 다시 확인해 주세요."
                 )
         return value
 
@@ -106,11 +112,28 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
             )
         return value
 
-    # 동의 항목들 & 기본 필수 체크 커스텀 검증
+    # -------------------------------
+    # 전체 레벨 검증
+    # -------------------------------
     def validate(self, attrs):
         errors = {}
 
-        # 필수 동의 항목 강제
+        # === 1. 유저당 1개 이력서만 허용 (1:1 관계 검증) ===
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+
+        # 생성(create) 시에만 검증 (수정(update)은 허용)
+        if self.instance is None:
+            # 로그인 기반으로 운영한다면: 로그인 여부도 체크 가능
+            if user and user.is_authenticated:
+                # 이미 이 유저에게 TeacherApplication 이 연결되어 있다면 생성 불가
+                if hasattr(user, "teacher_application"):
+                    errors["non_field_errors"] = (
+                        "You have already submitted an application. "
+                        "이미 이력서가 등록되어 있습니다. 기존 이력서만 수정할 수 있습니다."
+                    )
+
+        # === 2. 필수 동의 항목 강제 ===
         required_true_fields = [
             "consent_personal_data",
             "consent_data_retention",
@@ -123,7 +146,7 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
                     "해당 동의는 지원서를 제출하기 위해 반드시 필요합니다."
                 )
 
-        # 기본 이미지 필수 확인
+        # === 3. 기본 이미지 필수 확인 ===
         if self.instance is None:  # create일 때만
             if not attrs.get("profile_image"):
                 errors["profile_image"] = (
@@ -132,7 +155,7 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
             if not attrs.get("visa_scan"):
                 errors["visa_scan"] = "Visa copy is required. 비자 사본은 필수입니다."
 
-        # 비자 만료일 검증
+        # === 4. 비자 만료일 검증 ===
         if attrs.get("visa_expiry_date"):
             if attrs["visa_expiry_date"] <= date.today():
                 errors["visa_expiry_date"] = (
@@ -140,7 +163,7 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
                     "비자 만료일은 미래 날짜여야 합니다."
                 )
 
-        # 근무 경력 검증
+        # === 5. 근무 경력 검증 ===
         total_exp = attrs.get("total_teaching_experience_years", 0) or 0
         korea_exp = attrs.get("korea_teaching_experience_years", 0) or 0
         if korea_exp > total_exp:
@@ -153,3 +176,29 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return attrs
+
+    # -------------------------------
+    # 생성 로직 오버라이드
+    # -------------------------------
+    def create(self, validated_data):
+        """
+        생성 시 현재 요청의 user 를 TeacherApplication.user 로 설정.
+        이미 이력서가 있는 경우 방어적으로 한 번 더 체크.
+        """
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+
+        if user and user.is_authenticated:
+            # 이미 이력서가 있다면 생성 불가
+            if hasattr(user, "teacher_application"):
+                raise serializers.ValidationError(
+                    {
+                        "non_field_errors": [
+                            "You have already submitted an application. "
+                            "이미 이력서가 등록되어 있습니다. 기존 이력서만 수정할 수 있습니다."
+                        ]
+                    }
+                )
+            validated_data["user"] = user
+
+        return super().create(validated_data)
