@@ -1,18 +1,12 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function MyProfile() {
   const { user, loading, logout, updateProfile } = useAuth();
-  const router = useRouter();
-
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [navigatingTo, setNavigatingTo] = useState<string>("");
 
   // 프로필 이미지 관련 상태
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -49,11 +43,6 @@ export default function MyProfile() {
     } catch (error) {
       console.error("Logout failed:", error);
     }
-  };
-
-  const handleNavigation = (path: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
-    setIsNavigating(true);
-    setNavigatingTo(path);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,10 +144,10 @@ export default function MyProfile() {
     <div className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-md rounded-lg bg-white p-8 shadow-md">
         <div className="text-center">
-          <h1 className="mb-8 text-3xl font-bold text-gray-900">DRF Auth App</h1>
+          <h1 className="mb-8 text-3xl font-bold text-gray-900">My Profile</h1>
 
           <div className="space-y-4">
-            <div className="text-lg text-gray-700">Welcome!</div>
+            <div className="text-lg text-gray-700">Welcome to Friending!</div>
             <div className="text-sm text-gray-500">Email: {user?.email}</div>
             <div className="text-sm text-gray-500">Email Verified: {user?.is_email_verified ? "✅" : "❌"}</div>
 
