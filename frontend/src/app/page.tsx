@@ -34,7 +34,7 @@ export default function Home() {
       <div className="mx-auto max-w-md rounded-lg bg-white p-8 shadow-md">
         <div className="text-center">
           <h1 className="mb-8 text-3xl font-bold text-gray-900">Friending</h1>
-          {user ? <MyProfile /> : <MainPage />}
+          {user && user.role == "teacher" ? <MyProfile /> : <MainPage />}
         </div>
       </div>
     </div>
