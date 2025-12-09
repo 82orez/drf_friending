@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts",
     "storages",
+    "teacher_applications",
 ]
 
 MIDDLEWARE = [
