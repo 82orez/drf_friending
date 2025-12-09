@@ -7,19 +7,26 @@ from .models import User, EmailVerificationToken, PasswordResetToken
 class UserAdmin(BaseUserAdmin):
     list_display = [
         "email",
+        "role",  # role 필드 추가
         "is_email_verified",
         "is_active",
         "is_staff",
         "date_joined",
     ]
-    list_filter = ["is_email_verified", "is_active", "is_staff", "is_superuser"]
+    list_filter = [
+        "role",  # role 필터 추가
+        "is_email_verified",
+        "is_active",
+        "is_staff",
+        "is_superuser",
+    ]
     search_fields = ["email"]
     ordering = ["-date_joined"]
 
     # BaseUserAdmin의 fieldsets을 오버라이드하여 username 관련 필드 제거
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        # ("Personal info", {"fields": ("first_name", "last_name")}),
+        ("Profile", {"fields": ("role", "profile_image")}),  # Role 섹션 추가
         (
             "Permissions",
             {
@@ -42,7 +49,7 @@ class UserAdmin(BaseUserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("email", "password1", "password2"),
+                "fields": ("email", "password1", "password2", "role"),  # role 필드 추가
             },
         ),
     )

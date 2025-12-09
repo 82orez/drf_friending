@@ -39,6 +39,11 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    class Role(models.TextChoices):
+        TEACHER = "teacher", "Teacher"
+        MANAGER = "manager", "Manager"
+        ADMIN = "admin", "Admin"
+
     email = models.EmailField(
         unique=True,
         error_messages={
@@ -53,6 +58,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         upload_to="profile_images/",
         blank=True,
         null=True,
+    )
+    # 새로 추가된 role 필드
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.TEACHER,  # 기본값은 teacher
     )
 
     objects = UserManager()
