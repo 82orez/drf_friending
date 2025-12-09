@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.core.mail import send_mail
@@ -22,7 +23,21 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def perform_create(self, serializer):
-        user = self.request.user if self.request.user.is_authenticated else None
+        user = self.request.user
+
+        # === 핵심: 유저당 1개의 이력서만 허용 ===
+        if TeacherApplication.objects.filter(user=user).exists():
+            # DRF ValidationError 로 던지면 400 + 에러 내용이 JSON 으로 반환됨
+            raise DRFValidationError(
+                {
+                    "non_field_errors": [
+                        "You have already submitted a teacher application. "
+                        "이미 이력서가 등록되어 있습니다. 기존 이력서만 수정할 수 있습니다."
+                    ]
+                }
+            )
+
+        # 여기까지 왔다는 것은 아직 이력서가 없다는 뜻
         instance = serializer.save(user=user)
 
         # 지원서 제출 완료 이메일 발송 (선택사항)
@@ -34,15 +49,15 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
             subject = "Teacher Application Submitted / 강사 지원서 제출 완료"
             message = f"""
             Dear {instance.first_name} {instance.last_name},
-            
+
             Your teacher application has been successfully submitted.
             We will review your application and contact you soon.
-            
+
             안녕하세요 {instance.first_name} {instance.last_name}님,
-            
+
             강사 지원서가 성공적으로 제출되었습니다.
             지원서를 검토한 후 곧 연락드리겠습니다.
-            
+
             Best regards,
             Friending Team
             """
@@ -68,6 +83,19 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
                 "data": response.data,
             }
             return response
+
+        # serializer / perform_create 에서 발생한 ValidationError 처리
+        except DRFValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Failed to submit application. / 지원서 제출에 실패했습니다.",
+                    "errors": e.detail,  # str(e) 대신 detail 을 그대로 내려주면 구조가 유지됨
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 그 외 예상치 못한 예외
         except Exception as e:
             return Response(
                 {
