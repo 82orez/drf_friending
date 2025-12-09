@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
+from datetime import date
 
 
 # === 공통 유효성 검사기 ===
@@ -51,12 +52,12 @@ class TeacherApplication(models.Model):
     """
 
     # 로그인 기반으로 운영하고 싶다면: 유저와 연결 (없어도 동작 가능)
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="teacher_applications",
+        on_delete=models.CASCADE,
+        null=False,  # 로그인 안 한 이력서를 허용하지 않으려면 False 로 바꿔도 됨
+        blank=False,
+        related_name="teacher_application",  # 단수형으로 변경 (옵션)
         verbose_name="User / 사용자",
     )
 
@@ -282,6 +283,35 @@ class TeacherApplication(models.Model):
         auto_now=True,
         verbose_name="Updated at / 수정 일시",
     )
+
+    def clean(self):
+        """모델 레벨 유효성 검증"""
+        super().clean()
+        errors = {}
+
+        # 생년월일 검증 - 미래 날짜 불가, 너무 오래된 날짜 불가
+        if self.date_of_birth:
+            today = date.today()
+            if self.date_of_birth > today:
+                errors["date_of_birth"] = "생년월일은 미래 날짜일 수 없습니다."
+            elif self.date_of_birth < date(1920, 1, 1):
+                errors["date_of_birth"] = "유효하지 않은 생년월일입니다."
+
+        # 비자 만료일 검증 - 과거 날짜면 경고
+        if self.visa_expiry_date:
+            if self.visa_expiry_date <= date.today():
+                errors["visa_expiry_date"] = "비자가 만료되었거나 만료 예정입니다."
+
+        # 근무 시작 가능일 검증
+        if self.available_from_date:
+            # 너무 과거 날짜는 불허
+            if self.available_from_date < date.today():
+                errors["available_from_date"] = (
+                    "근무 시작 가능일은 오늘 이후 날짜여야 합니다."
+                )
+
+        if errors:
+            raise ValidationError(errors)
 
     class Meta:
         verbose_name = "Teacher application / 강사 이력서 지원"
