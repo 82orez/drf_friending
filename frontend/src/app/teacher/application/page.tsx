@@ -2,9 +2,9 @@
 
 import { FormEvent, useState, ChangeEvent, useEffect } from "react";
 import { teacherApplicationAPI } from "@/lib/api";
+import { Toaster, toast } from "react-hot-toast";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const API_ENDPOINT = `${API_BASE_URL}/api/teacher-applications/`;
 
 type Gender = "" | "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT";
 type VisaType = "" | "E-2" | "F-2" | "F-4" | "F-5" | "D-10" | "OTHER";
@@ -128,9 +128,12 @@ export default function TeacherApplicationPage() {
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
-        setSubmitError("로그인이 필요합니다. Please log in first.");
+        const msg = "로그인이 필요합니다. Please log in first.";
+        setSubmitError(msg);
+        toast.error(msg);
       } else {
         console.error("기존 이력서 확인 중 오류:", error);
+        toast.error("기존 이력서를 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요.");
       }
     } finally {
       setIsLoading(false);
@@ -237,6 +240,7 @@ export default function TeacherApplicationPage() {
         setProfilePreviewUrl(null);
       }
       setErrors((prev) => ({ ...prev, profile_image: error }));
+      toast.error(error);
       return;
     }
     setProfileImageFile(file);
@@ -261,6 +265,7 @@ export default function TeacherApplicationPage() {
         setVisaPreviewUrl(null);
       }
       setErrors((prev) => ({ ...prev, visa_scan: error }));
+      toast.error(error);
       return;
     }
     setVisaScanFile(file);
@@ -309,7 +314,15 @@ export default function TeacherApplicationPage() {
     if (!form.confirmationInfoTrue) newErrors.confirmationInfoTrue = "This confirmation is required. / 필수 확인 항목입니다.";
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    const hasErrors = Object.keys(newErrors).length > 0;
+    if (hasErrors) {
+      const firstKey = Object.keys(newErrors)[0];
+      const firstMessage = newErrors[firstKey] || "Please check the required fields. / 필수 항목을 확인해 주세요.";
+      toast.error(firstMessage);
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -378,11 +391,14 @@ export default function TeacherApplicationPage() {
       const data = response.data;
 
       if (data.success !== false) {
-        setSubmitSuccess(
-          data?.message || hasExistingApplication
+        const successMessage =
+          data?.message ||
+          (hasExistingApplication
             ? "이력서가 성공적으로 수정되었습니다."
-            : "Application submitted successfully. / 지원서가 성공적으로 제출되었습니다.",
-        );
+            : "Application submitted successfully. / 지원서가 성공적으로 제출되었습니다.");
+
+        setSubmitSuccess(successMessage);
+        toast.success(successMessage);
 
         // 새로 등록된 경우 상태 업데이트
         if (!hasExistingApplication) {
@@ -411,15 +427,32 @@ export default function TeacherApplicationPage() {
           }
         }
         setErrors((prev) => ({ ...prev, ...backendErrors }));
-        setSubmitError(
-          errorData.message || hasExistingApplication ? "이력서 수정에 실패했습니다." : "Failed to submit application. / 지원서 제출에 실패했습니다.",
-        );
+
+        const fallbackMessage = hasExistingApplication
+          ? "이력서 수정에 실패했습니다."
+          : "Failed to submit application. / 지원서 제출에 실패했습니다.";
+        const message = errorData.message || fallbackMessage;
+
+        setSubmitError(message);
+        // 필드 에러가 있으면 그중 하나를 보여주고, 없으면 message를 보여줌
+        const firstBackendKey = Object.keys(backendErrors)[0];
+        if (firstBackendKey) {
+          toast.error(backendErrors[firstBackendKey]);
+        } else {
+          toast.error(message);
+        }
       } else if (err.response?.status === 401) {
-        setSubmitError("로그인이 필요합니다. Please log in first.");
+        const msg = "로그인이 필요합니다. Please log in first.";
+        setSubmitError(msg);
+        toast.error(msg);
       } else if (err.response?.status === 400) {
-        setSubmitError("입력된 정보를 다시 확인해주세요. Please check your input data.");
+        const msg = "입력된 정보를 다시 확인해주세요. Please check your input data.";
+        setSubmitError(msg);
+        toast.error(msg);
       } else {
-        setSubmitError("An unexpected error occurred. / 예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        const msg = "An unexpected error occurred. / 예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        setSubmitError(msg);
+        toast.error(msg);
       }
     } finally {
       setIsSubmitting(false);
@@ -431,6 +464,7 @@ export default function TeacherApplicationPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
+        <Toaster position="top-center" />
         <div className="text-xl">로딩 중...</div>
       </div>
     );
@@ -438,6 +472,9 @@ export default function TeacherApplicationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-10">
+      {/* react-hot-toast 렌더링 */}
+      <Toaster position="top-center" />
+
       <div className="mx-auto max-w-5xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-semibold text-slate-900">
@@ -794,7 +831,7 @@ export default function TeacherApplicationPage() {
                     name="total_teaching_experience_years"
                     value={form.total_teaching_experience_years}
                     onChange={handleInputChange}
-                    placeholder="e.g. 3.5"
+                    placeholder="e.g. 3.5 (Only Numbers)"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("total_teaching_experience_years")}
@@ -805,7 +842,7 @@ export default function TeacherApplicationPage() {
                     name="korea_teaching_experience_years"
                     value={form.korea_teaching_experience_years}
                     onChange={handleInputChange}
-                    placeholder="e.g. 1.0"
+                    placeholder="e.g. 1.0 (Only Numbers)"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("korea_teaching_experience_years")}
