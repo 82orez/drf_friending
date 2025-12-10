@@ -2,11 +2,13 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function MyProfile() {
   const { user, loading, logout, updateProfile } = useAuth();
+  const router = useRouter();
 
   // 프로필 이미지 관련 상태
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -196,6 +198,15 @@ export default function MyProfile() {
               </div>
             </div>
             {/* === 프로필 이미지 영역 끝 === */}
+
+            <div className="space-y-3">
+              <div className="text-lg font-semibold text-gray-900">이력서 등록/조회</div>
+              <button
+                onClick={() => router.push("/teacher/application")}
+                className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
+                강사 지원서 작성하기
+              </button>
+            </div>
 
             <button
               onClick={handleLogout}
