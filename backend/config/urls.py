@@ -11,7 +11,7 @@ admin.site.site_title = "Friending Admin"  # 브라우저 탭 제목(<title>)
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("accounts.urls")),
-    path("api/teacher_applications/", include("teacher_applications.urls")),
+    path("api/teacher-applications/", include("teacher_applications.urls")),
 ]
 
 # 배포 환경에서는 AWS S3 에 연결 설정

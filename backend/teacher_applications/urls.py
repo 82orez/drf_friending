@@ -1,7 +1,7 @@
 from django.urls import path
-from . import views
 from .views import (
     TeacherApplicationCreateView,
+    TeacherApplicationUpdateView,
     TeacherApplicationListView,
     TeacherApplicationDetailView,
 )
@@ -14,6 +14,12 @@ urlpatterns = [
         "",
         TeacherApplicationCreateView.as_view(),
         name="teacher-application-create",
+    ),
+    # 사용자가 자신의 이력서를 조회/수정하는 엔드포인트
+    path(
+        "my/",
+        TeacherApplicationUpdateView.as_view(),
+        name="teacher-application-update",
     ),
     # 관리자용 지원서 목록 조회
     path(

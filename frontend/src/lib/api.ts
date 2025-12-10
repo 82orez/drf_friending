@@ -57,11 +57,27 @@ export const authAPI = {
 };
 
 export const teacherApplicationAPI = {
-  submit: (data: FormData) => {
-    return api.post("/teacher_applications/", data, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+  // 기존 이력서 확인 및 새 이력서 제출
+  submit: async (formData: FormData) => {
+    return await api.post("/teacher-applications/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
+  },
+
+  // 기존 이력서 조회
+  checkExisting: async () => {
+    return await api.get("/teacher-applications/");
+  },
+
+  // 이력서 수정
+  update: async (formData: FormData) => {
+    return await api.patch("/teacher-applications/my/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  // 이력서 조회 (수정용)
+  getMyApplication: async () => {
+    return await api.get("/teacher-applications/my/");
   },
 };

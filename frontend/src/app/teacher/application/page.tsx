@@ -105,12 +105,95 @@ export default function TeacherApplicationPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasExistingApplication, setHasExistingApplication] = useState(false);
+  const [existingApplicationData, setExistingApplicationData] = useState<any>(null);
+
+  // 기존 이력서 확인
+  useEffect(() => {
+    checkExistingApplication();
+  }, []);
+
+  const checkExistingApplication = async () => {
+    setIsLoading(true);
+    try {
+      const response = await teacherApplicationAPI.checkExisting();
+      if (response.data.exists && response.data.data) {
+        setHasExistingApplication(true);
+        setExistingApplicationData(response.data.data);
+        // 기존 데이터로 폼 채우기
+        populateFormWithExistingData(response.data.data);
+      } else {
+        setHasExistingApplication(false);
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        setSubmitError("로그인이 필요합니다. Please log in first.");
+      } else {
+        console.error("기존 이력서 확인 중 오류:", error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const populateFormWithExistingData = (data: any) => {
+    setForm({
+      first_name: data.first_name || "",
+      last_name: data.last_name || "",
+      korean_name: data.korean_name || "",
+      gender: data.gender || "",
+      date_of_birth: data.date_of_birth || "",
+      nationality: data.nationality || "",
+      native_language: data.native_language || "",
+      email: data.email || "",
+      phone_number: data.phone_number || "",
+      address_line1: data.address_line1 || "",
+      city: data.city || "",
+      district: data.district || "",
+      postal_code: data.postal_code || "",
+      visa_type: data.visa_type || "",
+      visa_expiry_date: data.visa_expiry_date || "",
+      teaching_languages: data.teaching_languages || "",
+      preferred_subjects: data.preferred_subjects || "",
+      total_teaching_experience_years: data.total_teaching_experience_years?.toString() || "",
+      korea_teaching_experience_years: data.korea_teaching_experience_years?.toString() || "",
+      self_introduction: data.self_introduction || "",
+      education_history: data.education_history || "",
+      experience_history: data.experience_history || "",
+      certifications: data.certifications || "",
+      teaching_style: data.teaching_style || "",
+      additional_info: data.additional_info || "",
+      employment_type: data.employment_type || "",
+      preferred_locations: data.preferred_locations || "",
+      available_time_slots: data.available_time_slots || "",
+      available_from_date: data.available_from_date || "",
+      consentPersonalData: data.consent_personal_data || false,
+      consentDataRetention: data.consent_data_retention || false,
+      consentThirdParty: data.consent_third_party_sharing || false,
+      confirmationInfoTrue: data.confirmation_info_true || false,
+    });
+
+    // 기존 이미지 URL 설정
+    if (data.profile_image) {
+      const imageUrl = data.profile_image.startsWith("/media/") ? `${API_BASE_URL}${data.profile_image}` : data.profile_image;
+      setProfilePreviewUrl(imageUrl);
+    }
+    if (data.visa_scan) {
+      const visaUrl = data.visa_scan.startsWith("/media/") ? `${API_BASE_URL}${data.visa_scan}` : data.visa_scan;
+      setVisaPreviewUrl(visaUrl);
+    }
+  };
 
   // revoke object URLs on unmount
   useEffect(() => {
     return () => {
-      if (profilePreviewUrl) URL.revokeObjectURL(profilePreviewUrl);
-      if (visaPreviewUrl) URL.revokeObjectURL(visaPreviewUrl);
+      if (profilePreviewUrl && profilePreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(profilePreviewUrl);
+      }
+      if (visaPreviewUrl && visaPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(visaPreviewUrl);
+      }
     };
   }, [profilePreviewUrl, visaPreviewUrl]);
 
@@ -124,7 +207,8 @@ export default function TeacherApplicationPage() {
   };
 
   const validateFile = (file: File | null, fieldName: string): string | null => {
-    if (!file) return "This file is required. / 파일은 필수입니다.";
+    if (!file && !hasExistingApplication) return "This file is required. / 파일은 필수입니다.";
+    if (!file) return null; // 기존 이력서가 있고 새 파일이 없으면 OK
 
     const allowedTypes = ["image/jpeg", "image/png"];
     const maxSize = 2 * 1024 * 1024; // 2MB
@@ -143,12 +227,22 @@ export default function TeacherApplicationPage() {
     const error = validateFile(file, "profile_image");
     if (error) {
       setProfileImageFile(null);
-      setProfilePreviewUrl(null);
+      // 기존 이미지 유지
+      if (existingApplicationData?.profile_image) {
+        const imageUrl = existingApplicationData.profile_image.startsWith("/media/")
+          ? `${API_BASE_URL}${existingApplicationData.profile_image}`
+          : existingApplicationData.profile_image;
+        setProfilePreviewUrl(imageUrl);
+      } else {
+        setProfilePreviewUrl(null);
+      }
       setErrors((prev) => ({ ...prev, profile_image: error }));
       return;
     }
     setProfileImageFile(file);
-    setProfilePreviewUrl(file ? URL.createObjectURL(file) : null);
+    if (file) {
+      setProfilePreviewUrl(URL.createObjectURL(file));
+    }
     setErrors((prev) => ({ ...prev, profile_image: "" }));
   };
 
@@ -157,26 +251,39 @@ export default function TeacherApplicationPage() {
     const error = validateFile(file, "visa_scan");
     if (error) {
       setVisaScanFile(null);
-      setVisaPreviewUrl(null);
+      // 기존 이미지 유지
+      if (existingApplicationData?.visa_scan) {
+        const visaUrl = existingApplicationData.visa_scan.startsWith("/media/")
+          ? `${API_BASE_URL}${existingApplicationData.visa_scan}`
+          : existingApplicationData.visa_scan;
+        setVisaPreviewUrl(visaUrl);
+      } else {
+        setVisaPreviewUrl(null);
+      }
       setErrors((prev) => ({ ...prev, visa_scan: error }));
       return;
     }
     setVisaScanFile(file);
-    setVisaPreviewUrl(file ? URL.createObjectURL(file) : null);
+    if (file) {
+      setVisaPreviewUrl(URL.createObjectURL(file));
+    }
     setErrors((prev) => ({ ...prev, visa_scan: "" }));
   };
 
   const validateForm = (): boolean => {
     const newErrors: ErrorMap = {};
 
-    // 최소 필수 필드들
-    if (!profileImageFile) {
-      newErrors.profile_image = "Profile image is required. / 프로필 이미지는 필수입니다.";
-    }
-    if (!visaScanFile) {
-      newErrors.visa_scan = "Visa copy is required. / 비자 사본은 필수입니다.";
+    // 이미지 파일 검증 (기존 이력서가 없는 경우만)
+    if (!hasExistingApplication) {
+      if (!profileImageFile) {
+        newErrors.profile_image = "Profile image is required. / 프로필 이미지는 필수입니다.";
+      }
+      if (!visaScanFile) {
+        newErrors.visa_scan = "Visa copy is required. / 비자 사본은 필수입니다.";
+      }
     }
 
+    // 최소 필수 필드들
     if (!form.first_name.trim()) newErrors.first_name = "First name is required. / 이름(First Name)은 필수입니다.";
     if (!form.last_name.trim()) newErrors.last_name = "Last name is required. / 성(Last Name)은 필수입니다.";
     if (!form.nationality.trim()) newErrors.nationality = "Nationality is required. / 국적은 필수입니다.";
@@ -216,6 +323,7 @@ export default function TeacherApplicationPage() {
     try {
       const formData = new FormData();
 
+      // 파일 추가 (새 파일이 있을 때만)
       if (profileImageFile) {
         formData.append("profile_image", profileImageFile);
       }
@@ -264,22 +372,23 @@ export default function TeacherApplicationPage() {
       formData.append("consent_third_party_sharing", form.consentThirdParty ? "true" : "false");
       formData.append("confirmation_info_true", form.confirmationInfoTrue ? "true" : "false");
 
-      // teacherApplicationAPI 사용으로 변경
-      const response = await teacherApplicationAPI.submit(formData);
+      // 기존 이력서가 있으면 수정, 없으면 새로 생성
+      const response = hasExistingApplication ? await teacherApplicationAPI.update(formData) : await teacherApplicationAPI.submit(formData);
+
       const data = response.data;
 
       if (data.success !== false) {
-        setSubmitSuccess(data?.message || "Application submitted successfully. / 지원서가 성공적으로 제출되었습니다.");
-        // 폼 초기화 (원하면 파일도 초기화)
-        setForm((prev) => ({
-          ...prev,
-          self_introduction: "",
-          education_history: "",
-          experience_history: "",
-          certifications: "",
-          teaching_style: "",
-          additional_info: "",
-        }));
+        setSubmitSuccess(
+          data?.message || hasExistingApplication
+            ? "이력서가 성공적으로 수정되었습니다."
+            : "Application submitted successfully. / 지원서가 성공적으로 제출되었습니다.",
+        );
+
+        // 새로 등록된 경우 상태 업데이트
+        if (!hasExistingApplication) {
+          setHasExistingApplication(true);
+          setExistingApplicationData(data.data);
+        }
       }
     } catch (err: any) {
       console.error("Submit error:", err);
@@ -302,7 +411,9 @@ export default function TeacherApplicationPage() {
           }
         }
         setErrors((prev) => ({ ...prev, ...backendErrors }));
-        setSubmitError(errorData.message || "Failed to submit application. / 지원서 제출에 실패했습니다.");
+        setSubmitError(
+          errorData.message || hasExistingApplication ? "이력서 수정에 실패했습니다." : "Failed to submit application. / 지원서 제출에 실패했습니다.",
+        );
       } else if (err.response?.status === 401) {
         setSubmitError("로그인이 필요합니다. Please log in first.");
       } else if (err.response?.status === 400) {
@@ -317,12 +428,29 @@ export default function TeacherApplicationPage() {
 
   const renderError = (field: string) => (errors[field] ? <p className="mt-1 text-xs text-red-500">{errors[field]}</p> : null);
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-xl">로딩 중...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-semibold text-slate-900">Teacher Application</h1>
-          <p className="mt-2 text-sm text-slate-600">강사 이력서 제출 페이지입니다.</p>
+          <h1 className="text-3xl font-semibold text-slate-900">
+            {hasExistingApplication ? "Teacher Application - Edit / 강사 이력서 수정" : "Teacher Application / 강사 이력서 등록"}
+          </h1>
+          <p className="mt-2 text-sm text-slate-600">
+            {hasExistingApplication ? "등록된 이력서를 수정할 수 있습니다." : "강사 이력서 제출 페이지입니다."}
+          </p>
+          {hasExistingApplication && (
+            <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+              기존에 등록된 이력서가 있습니다. 필요한 부분을 수정하고 저장하세요.
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl bg-white p-8 shadow-xl shadow-slate-200">
@@ -344,7 +472,7 @@ export default function TeacherApplicationPage() {
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Profile Image (2MB max, JPG/PNG) / 프로필 이미지
-                    <span className="text-rose-500"> *</span>
+                    {!hasExistingApplication && <span className="text-rose-500"> *</span>}
                   </label>
                   <div className="mt-2 flex items-center gap-4">
                     <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-100">
@@ -361,7 +489,10 @@ export default function TeacherApplicationPage() {
                         onChange={handleProfileImageChange}
                         className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800"
                       />
-                      <p className="mt-1 text-xs text-slate-500">JPEG or PNG, up to 2MB. / JPEG 또는 PNG, 최대 2MB.</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        JPEG or PNG, up to 2MB. / JPEG 또는 PNG, 최대 2MB.
+                        {hasExistingApplication && " (기존 이미지 유지하려면 선택하지 마세요)"}
+                      </p>
                       {renderError("profile_image")}
                     </div>
                   </div>
@@ -371,7 +502,7 @@ export default function TeacherApplicationPage() {
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Visa Copy (2MB max, JPG/PNG) / 비자 사본
-                    <span className="text-rose-500"> *</span>
+                    {!hasExistingApplication && <span className="text-rose-500"> *</span>}
                   </label>
                   <div className="mt-2 flex items-center gap-4">
                     <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl bg-slate-100">
@@ -388,7 +519,10 @@ export default function TeacherApplicationPage() {
                         onChange={handleVisaScanChange}
                         className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800"
                       />
-                      <p className="mt-1 text-xs text-slate-500">JPEG or PNG, up to 2MB. / JPEG 또는 PNG, 최대 2MB.</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        JPEG or PNG, up to 2MB. / JPEG 또는 PNG, 최대 2MB.
+                        {hasExistingApplication && " (기존 이미지 유지하려면 선택하지 마세요)"}
+                      </p>
                       {renderError("visa_scan")}
                     </div>
                   </div>
@@ -464,6 +598,7 @@ export default function TeacherApplicationPage() {
                 </div>
               </div>
 
+              {/* ... 나머지 필드들은 기존과 동일 ... */}
               {/* Nationality / native language / contact */}
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
@@ -906,7 +1041,13 @@ export default function TeacherApplicationPage() {
                 type="submit"
                 disabled={isSubmitting}
                 className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
-                {isSubmitting ? "Submitting... / 제출 중..." : "Submit Application / 이력서 제출"}
+                {isSubmitting
+                  ? hasExistingApplication
+                    ? "Updating... / 수정 중..."
+                    : "Submitting... / 제출 중..."
+                  : hasExistingApplication
+                    ? "Update Application / 이력서 수정"
+                    : "Submit Application / 이력서 제출"}
               </button>
             </div>
           </form>

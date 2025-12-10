@@ -22,6 +22,30 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]  # 로그인 필수
     parser_classes = [MultiPartParser, FormParser]
 
+    def get(self, request, *args, **kwargs):
+        """기존 이력서 조회"""
+        user = request.user
+        try:
+            application = TeacherApplication.objects.get(user=user)
+            serializer = self.get_serializer(application)
+            return Response(
+                {
+                    "success": True,
+                    "message": "이력서를 조회했습니다.",
+                    "data": serializer.data,
+                    "exists": True,
+                }
+            )
+        except TeacherApplication.DoesNotExist:
+            return Response(
+                {
+                    "success": True,
+                    "message": "등록된 이력서가 없습니다.",
+                    "data": None,
+                    "exists": False,
+                }
+            )
+
     def perform_create(self, serializer):
         user = self.request.user
 
@@ -101,6 +125,57 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
                 {
                     "success": False,
                     "message": "Failed to submit application. / 지원서 제출에 실패했습니다.",
+                    "errors": str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class TeacherApplicationUpdateView(generics.RetrieveUpdateAPIView):
+    """
+    사용자가 자신의 이력서를 조회/수정하는 엔드포인트
+    """
+
+    serializer_class = TeacherApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_object(self):
+        """현재 로그인한 사용자의 이력서 조회"""
+        try:
+            return TeacherApplication.objects.get(user=self.request.user)
+        except TeacherApplication.DoesNotExist:
+            return Response(
+                {
+                    "success": False,
+                    "message": "등록된 이력서가 없습니다.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    def update(self, request, *args, **kwargs):
+        """이력서 수정"""
+        try:
+            partial = kwargs.pop("partial", False)
+            instance = self.get_object()
+            serializer = self.get_serializer(
+                instance, data=request.data, partial=partial
+            )
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "이력서가 성공적으로 수정되었습니다.",
+                    "data": serializer.data,
+                }
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": "이력서 수정에 실패했습니다.",
                     "errors": str(e),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
