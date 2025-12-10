@@ -55,3 +55,13 @@ export const authAPI = {
     });
   },
 };
+
+export const teacherApplicationAPI = {
+  submit: (data: FormData) => {
+    return api.post("/teacher_applications/", data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+};

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState, ChangeEvent, useEffect } from "react";
+import { teacherApplicationAPI } from "@/lib/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const API_ENDPOINT = `${API_BASE_URL}/api/teacher-applications/`;
@@ -263,31 +264,11 @@ export default function TeacherApplicationPage() {
       formData.append("consent_third_party_sharing", form.consentThirdParty ? "true" : "false");
       formData.append("confirmation_info_true", form.confirmationInfoTrue ? "true" : "false");
 
-      const res = await fetch(API_ENDPOINT, {
-        method: "POST",
-        body: formData,
-        credentials: "include", // 세션 기반 인증 사용 시 필요
-      });
+      // teacherApplicationAPI 사용으로 변경
+      const response = await teacherApplicationAPI.submit(formData);
+      const data = response.data;
 
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        // 백엔드 에러 구조 반영
-        const backendErrors: ErrorMap = {};
-        if (data?.errors && typeof data.errors === "object") {
-          for (const [field, messages] of Object.entries(data.errors)) {
-            if (Array.isArray(messages)) {
-              backendErrors[field] = messages.join(" ");
-            } else if (typeof messages === "string") {
-              backendErrors[field] = messages;
-            } else {
-              backendErrors[field] = JSON.stringify(messages);
-            }
-          }
-        }
-        setErrors((prev) => ({ ...prev, ...backendErrors }));
-        setSubmitError(data?.message || "Failed to submit application. / 지원서 제출에 실패했습니다.");
-      } else {
+      if (data.success !== false) {
         setSubmitSuccess(data?.message || "Application submitted successfully. / 지원서가 성공적으로 제출되었습니다.");
         // 폼 초기화 (원하면 파일도 초기화)
         setForm((prev) => ({
@@ -301,8 +282,34 @@ export default function TeacherApplicationPage() {
         }));
       }
     } catch (err: any) {
-      console.error(err);
-      setSubmitError("An unexpected error occurred. / 예기치 못한 오류가 발생했습니다.");
+      console.error("Submit error:", err);
+
+      // 더 구체적인 에러 처리
+      if (err.response?.data) {
+        const errorData = err.response.data;
+
+        // 백엔드 에러 구조 반영
+        const backendErrors: ErrorMap = {};
+        if (errorData.errors && typeof errorData.errors === "object") {
+          for (const [field, messages] of Object.entries(errorData.errors)) {
+            if (Array.isArray(messages)) {
+              backendErrors[field] = messages.join(" ");
+            } else if (typeof messages === "string") {
+              backendErrors[field] = messages;
+            } else {
+              backendErrors[field] = JSON.stringify(messages);
+            }
+          }
+        }
+        setErrors((prev) => ({ ...prev, ...backendErrors }));
+        setSubmitError(errorData.message || "Failed to submit application. / 지원서 제출에 실패했습니다.");
+      } else if (err.response?.status === 401) {
+        setSubmitError("로그인이 필요합니다. Please log in first.");
+      } else if (err.response?.status === 400) {
+        setSubmitError("입력된 정보를 다시 확인해주세요. Please check your input data.");
+      } else {
+        setSubmitError("An unexpected error occurred. / 예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      }
     } finally {
       setIsSubmitting(false);
     }
