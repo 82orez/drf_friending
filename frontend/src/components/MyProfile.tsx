@@ -3,6 +3,8 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import clsx from "clsx";
+import { teacherApplicationAPI } from "@/lib/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -18,6 +20,10 @@ export default function MyProfile() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
+  // 이력서 관련 상태 추가
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
+  const [loadingApplication, setLoadingApplication] = useState(false);
+
   useEffect(() => {
     // user 정보에 profile_image가 포함되어 있다면 초기값으로 사용
     if (user && (user as any).profile_image) {
@@ -29,7 +35,59 @@ export default function MyProfile() {
         setProfileImageUrl(imageUrl);
       }
     }
+
+    // 이력서 상태 조회 추가
+    if (user) {
+      fetchApplicationStatus();
+    }
   }, [user]);
+
+  // 이력서 상태 조회 함수
+  const fetchApplicationStatus = async () => {
+    setLoadingApplication(true);
+    try {
+      const response = await teacherApplicationAPI.getMyApplication();
+      if (response.data.success && response.data.data) {
+        setApplicationStatus(response.data.data.status);
+      }
+    } catch (error: any) {
+      // 이력서가 없는 경우 (404 에러)는 정상적인 상황
+      if (error.response?.status !== 404) {
+        console.error("Failed to fetch application status:", error);
+      }
+      setApplicationStatus(null);
+    } finally {
+      setLoadingApplication(false);
+    }
+  };
+
+  // 상태 값을 한국어로 변환하는 함수
+  const getStatusDisplay = (status: string | null) => {
+    if (!status) return "등록된 이력서가 없습니다";
+
+    const statusMap: { [key: string]: string } = {
+      NEW: "신규",
+      IN_REVIEW: "검토 중",
+      ACCEPTED: "채용 확정",
+      REJECTED: "불합격",
+    };
+
+    return statusMap[status] || status;
+  };
+
+  // 상태에 따른 색상 클래스 반환
+  const getStatusColorClass = (status: string | null) => {
+    if (!status) return "text-gray-500";
+
+    const colorMap: { [key: string]: string } = {
+      NEW: "text-blue-600",
+      IN_REVIEW: "text-yellow-600",
+      ACCEPTED: "text-green-600",
+      REJECTED: "text-red-600",
+    };
+
+    return colorMap[status] || "text-gray-600";
+  };
 
   if (loading) {
     return (
@@ -206,6 +264,20 @@ export default function MyProfile() {
                 className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
                 강사 지원서 작성하기
               </button>
+            </div>
+
+            <div className={clsx("space-y-2")}>
+              <div className="text-lg font-semibold text-gray-900">내 이력서 상태</div>
+              {loadingApplication ? (
+                <div className="text-sm text-gray-400">상태 확인 중...</div>
+              ) : (
+                <div className={`text-sm font-medium ${getStatusColorClass(applicationStatus)}`}>{getStatusDisplay(applicationStatus)}</div>
+              )}
+              {applicationStatus && (
+                <button onClick={fetchApplicationStatus} className="text-xs text-indigo-600 underline hover:text-indigo-800">
+                  상태 새로고침
+                </button>
+              )}
             </div>
 
             <button

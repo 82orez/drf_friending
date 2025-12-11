@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError, NotFound
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.core.mail import send_mail
@@ -145,11 +145,28 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateAPIView):
         try:
             return TeacherApplication.objects.get(user=self.request.user)
         except TeacherApplication.DoesNotExist:
-            return Response(
-                {
+            raise NotFound(
+                detail={
                     "success": False,
                     "message": "등록된 이력서가 없습니다.",
-                },
+                }
+            )
+
+    def retrieve(self, request, *args, **kwargs):
+        """이력서 조회 응답 커스터마이징"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response(
+                {
+                    "success": True,
+                    "message": "이력서를 조회했습니다.",
+                    "data": serializer.data,
+                }
+            )
+        except NotFound as e:
+            return Response(
+                e.detail,
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -170,6 +187,11 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateAPIView):
                     "message": "이력서가 성공적으로 수정되었습니다.",
                     "data": serializer.data,
                 }
+            )
+        except NotFound as e:
+            return Response(
+                e.detail,
+                status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
             return Response(
