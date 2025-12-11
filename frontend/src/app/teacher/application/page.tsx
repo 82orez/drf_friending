@@ -203,8 +203,50 @@ export default function TeacherApplicationPage() {
     };
   }, [profilePreviewUrl, visaPreviewUrl]);
 
+  // 전화번호 포맷터 (숫자만 -> 010-1234-5678 / 011-123-1234 등)
+  const formatKoreanPhoneNumber = (value: string): string => {
+    // 1) 숫자만 남기기
+    const digits = value.replace(/\D/g, "");
+
+    if (!digits) return "";
+
+    // 2) 길이에 따라 형식 적용
+    if (digits.length <= 3) {
+      // 010
+      return digits;
+    }
+
+    if (digits.length <= 7) {
+      // 010-1234 (입력 중간 단계)
+      return digits.replace(/(\d{3})(\d{1,4})/, "$1-$2");
+    }
+
+    if (digits.length === 10) {
+      // 10자리: 011-123-1234, 010-123-1234
+      return digits.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+    }
+
+    // 11자리 이상은 앞의 11자리만 사용: 010-1234-5678
+    const trimmed = digits.slice(0, 11);
+    return trimmed.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+  };
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target as HTMLInputElement;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type, checked } = target;
+
+    // ✅ 전화번호는 별도 처리 (숫자만 입력해도 자동 포맷)
+    if (name === "phone_number") {
+      const formatted = formatKoreanPhoneNumber(value);
+      setForm((prev) => ({
+        ...prev,
+        phone_number: formatted,
+      }));
+      setErrors((prev) => ({ ...prev, phone_number: "" }));
+      return;
+    }
+
+    // 그 외 일반 필드 처리
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value /* checkbox는 boolean, 나머지는 string */,
@@ -692,14 +734,14 @@ export default function TeacherApplicationPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
-                    Phone Number / 전화번호
+                    Phone Number / 전화번호 (Only numbers)
                     <span className="text-rose-500"> *</span>
                   </label>
                   <input
                     name="phone_number"
                     value={form.phone_number}
                     onChange={handleInputChange}
-                    placeholder="010-1234-5678"
+                    placeholder="010 1234 5678"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("phone_number")}
