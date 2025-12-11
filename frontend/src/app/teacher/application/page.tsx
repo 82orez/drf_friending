@@ -375,6 +375,13 @@ export default function TeacherApplicationPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    // Confirm 창 표시
+    const confirmed = window.confirm("Are you sure you want to submit or update your application?");
+    if (!confirmed) {
+      return; // 사용자가 취소한 경우 함수 종료
+    }
+
     setSubmitError(null);
     setSubmitSuccess(null);
 
