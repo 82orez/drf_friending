@@ -2,7 +2,8 @@
 
 import { FormEvent, useState, ChangeEvent, useEffect } from "react";
 import { teacherApplicationAPI } from "@/lib/api";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -60,6 +61,8 @@ interface TeacherApplicationForm {
 type ErrorMap = Record<string, string>;
 
 export default function TeacherApplicationPage() {
+  const router = useRouter();
+
   const [form, setForm] = useState<TeacherApplicationForm>({
     first_name: "",
     last_name: "",
@@ -405,6 +408,9 @@ export default function TeacherApplicationPage() {
           setHasExistingApplication(true);
           setExistingApplicationData(data.data);
         }
+
+        // ✅ 성공 시 루트 페이지로 이동
+        router.push("/");
       }
     } catch (err: any) {
       console.error("Submit error:", err);
@@ -464,7 +470,6 @@ export default function TeacherApplicationPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Toaster position="top-center" />
         <div className="text-xl">로딩 중...</div>
       </div>
     );
@@ -472,9 +477,6 @@ export default function TeacherApplicationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-10">
-      {/* react-hot-toast 렌더링 */}
-      <Toaster position="top-center" />
-
       <div className="mx-auto max-w-5xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-semibold text-slate-900">
