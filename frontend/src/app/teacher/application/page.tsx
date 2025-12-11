@@ -874,13 +874,17 @@ export default function TeacherApplicationPage() {
                     Languages You Can Teach / 가르칠 수 있는 언어
                     <span className="text-rose-500"> *</span>
                   </label>
-                  <input
+                  <select
                     name="teaching_languages"
                     value={form.teaching_languages}
                     onChange={handleInputChange}
-                    placeholder="e.g. English, Chinese / 예: English, Chinese"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
-                  />
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2">
+                    <option value="">Select / 선택</option>
+                    <option value="English">English</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Spanish">Spanish</option>
+                  </select>
                   {renderError("teaching_languages")}
                 </div>
                 <div>

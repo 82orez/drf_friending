@@ -31,6 +31,13 @@ class VisaTypeChoices(models.TextChoices):
     OTHER = "OTHER", "Other / 기타"
 
 
+class TeachingLanguageChoices(models.TextChoices):
+    ENGLISH = "English", "English"
+    JAPANESE = "Japanese", "Japanese"
+    CHINESE = "Chinese", "Chinese"
+    SPANISH = "Spanish", "Spanish"
+
+
 class EmploymentTypeChoices(models.TextChoices):
     FULL_TIME = "FULL_TIME", "Full-time / 풀타임"
     PART_TIME = "PART_TIME", "Part-time / 파트타임"
@@ -159,9 +166,10 @@ class TeacherApplication(models.Model):
     # --- 3. 강의 관련 정보 (Teaching Profile / 강의 프로필) ---
 
     teaching_languages = models.CharField(
-        max_length=255,
+        max_length=20,
+        choices=TeachingLanguageChoices.choices,
         verbose_name="Languages you can teach / 가르칠 수 있는 언어",
-        help_text="e.g. English, Chinese / 예: English, Chinese",
+        help_text="Please select one language. / 한 가지만 선택해 주세요.",
     )
 
     preferred_subjects = models.CharField(
