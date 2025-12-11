@@ -316,6 +316,7 @@ export default function TeacherApplicationPage() {
     // 동의 항목
     if (!form.consentPersonalData) newErrors.consentPersonalData = "This consent is required. / 필수 동의 항목입니다.";
     if (!form.consentDataRetention) newErrors.consentDataRetention = "This consent is required. / 필수 동의 항목입니다.";
+    if (!form.consentThirdParty) newErrors.consentThirdParty = "This consent is required. / 필수 동의 항목입니다.";
     if (!form.confirmationInfoTrue) newErrors.confirmationInfoTrue = "This confirmation is required. / 필수 확인 항목입니다.";
 
     setErrors(newErrors);
@@ -1053,9 +1054,11 @@ export default function TeacherApplicationPage() {
                     className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                   />
                   <span>
-                    <span className="font-medium">Consent to share with partner institutes / 제3자 제공 동의 (선택)</span>
+                    <span className="font-medium">
+                      Consent to share with partner institutes / 제3자 제공 동의<span className="text-rose-500"> *</span>
+                    </span>
                     <br />I agree that my profile may be shared with partner schools or academies for recruitment. / 제휴 학원/학교에 이력서를
-                    제공하는 것에 동의합니다. (선택)
+                    제공하는 것에 동의합니다.
                   </span>
                 </label>
                 {renderError("consentThirdParty")}
