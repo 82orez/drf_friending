@@ -292,6 +292,21 @@ class TeacherApplication(models.Model):
         verbose_name="Updated at / 수정 일시",
     )
 
+    # --- 8. 관리자 전용 필드 (Admin Only Fields / 관리자 전용) ---
+
+    memo = models.TextField(
+        blank=True,
+        verbose_name="Memo / 메모",
+        help_text="특이 사항 등 간단한 메모 (관리자 전용) / Brief notes for special remarks (Admin only)",
+    )
+
+    evaluation_result = models.TextField(
+        max_length=1000,
+        blank=True,
+        verbose_name="Evaluation Result / 평가 결과",
+        help_text="전체적인 이력서 평가 결과 (1000자 이내, 관리자 전용) / Overall resume evaluation result (max 1000 chars, Admin only)",
+    )
+
     def clean(self):
         """모델 레벨 유효성 검증"""
         super().clean()

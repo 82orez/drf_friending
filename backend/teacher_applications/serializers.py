@@ -36,6 +36,8 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
             "updated_at",
             "age",
             "is_visa_expiring_soon",
+            "memo",  # 관리자 전용 필드
+            "evaluation_result",  # 관리자 전용 필드
         )
 
     # -------------------------------
