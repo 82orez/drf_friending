@@ -294,6 +294,8 @@ export default function TeacherApplicationPage() {
     // 최소 필수 필드들
     if (!form.first_name.trim()) newErrors.first_name = "First name is required. / 이름(First Name)은 필수입니다.";
     if (!form.last_name.trim()) newErrors.last_name = "Last name is required. / 성(Last Name)은 필수입니다.";
+    if (!form.gender.trim()) newErrors.gender = "Gender is required. / 성별(Gender)은 필수입니다.";
+    if (!form.date_of_birth.trim()) newErrors.date_of_birth = "Date of Birth is required. / 생년월일(Gender)은 필수입니다.";
     if (!form.nationality.trim()) newErrors.nationality = "Nationality is required. / 국적은 필수입니다.";
     if (!form.native_language.trim()) newErrors.native_language = "Native language is required. / 모국어는 필수입니다.";
     if (!form.email.trim()) newErrors.email = "Email is required. / 이메일 주소는 필수입니다.";
@@ -610,7 +612,9 @@ export default function TeacherApplicationPage() {
 
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-800">Gender / 성별</label>
+                  <label className="block text-sm font-medium text-slate-800">
+                    Gender / 성별 <span className="text-rose-500"> *</span>
+                  </label>
                   <select
                     name="gender"
                     value={form.gender}
@@ -625,7 +629,9 @@ export default function TeacherApplicationPage() {
                   {renderError("gender")}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-800">Date of Birth / 생년월일</label>
+                  <label className="block text-sm font-medium text-slate-800">
+                    Date of Birth / 생년월일 <span className="text-rose-500"> *</span>
+                  </label>
                   <input
                     type="date"
                     name="date_of_birth"
