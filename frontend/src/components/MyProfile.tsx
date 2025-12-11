@@ -61,15 +61,15 @@ export default function MyProfile() {
     }
   };
 
-  // 상태 값을 한국어로 변환하는 함수
+  // 상태 값을 변환하는 함수
   const getStatusDisplay = (status: string | null) => {
-    if (!status) return "등록된 이력서가 없습니다";
+    if (!status) return "No Application.";
 
     const statusMap: { [key: string]: string } = {
-      NEW: "신규",
-      IN_REVIEW: "검토 중",
-      ACCEPTED: "채용 확정",
-      REJECTED: "불합격",
+      NEW: "Submitted successfully",
+      IN_REVIEW: "Under review",
+      ACCEPTED: "Accepted!",
+      REJECTED: "Rejected.",
     };
 
     return statusMap[status] || status;
@@ -211,6 +211,12 @@ export default function MyProfile() {
             <div className="text-sm text-gray-500">Email: {user?.email}</div>
             <div className="text-sm text-gray-500">Email Verified: {user?.is_email_verified ? "✅" : "❌"}</div>
 
+            <button
+              onClick={handleLogout}
+              className="mt-6 flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none">
+              Logout
+            </button>
+
             {/* === 프로필 이미지 영역 시작 === */}
             <div className="mt-6 border-t pt-6 text-left">
               <h2 className="mb-4 text-lg font-semibold text-gray-900">Profile Image</h2>
@@ -257,21 +263,14 @@ export default function MyProfile() {
             </div>
             {/* === 프로필 이미지 영역 끝 === */}
 
-            <div className="space-y-3">
-              <div className="text-lg font-semibold text-gray-900">이력서 등록/조회</div>
-              <button
-                onClick={() => router.push("/teacher/application")}
-                className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
-                강사 지원서 작성하기
-              </button>
-            </div>
-
             <div className={clsx("space-y-2")}>
-              <div className="text-lg font-semibold text-gray-900">내 이력서 상태</div>
+              <div className="text-lg font-semibold text-gray-900">My Application Status</div>
               {loadingApplication ? (
                 <div className="text-sm text-gray-400">상태 확인 중...</div>
               ) : (
-                <div className={`text-sm font-medium ${getStatusColorClass(applicationStatus)}`}>{getStatusDisplay(applicationStatus)}</div>
+                <div className={`rounded border p-2 font-medium ${getStatusColorClass(applicationStatus)}`}>
+                  {getStatusDisplay(applicationStatus)}
+                </div>
               )}
               {applicationStatus && (
                 <button onClick={fetchApplicationStatus} className="text-xs text-indigo-600 underline hover:text-indigo-800">
@@ -280,11 +279,13 @@ export default function MyProfile() {
               )}
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="mt-6 flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none">
-              Logout
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push("/teacher/application")}
+                className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
+                Fill out teacher application
+              </button>
+            </div>
           </div>
         </div>
       </div>
