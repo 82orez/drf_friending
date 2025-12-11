@@ -4,6 +4,7 @@ import { FormEvent, useState, ChangeEvent, useEffect } from "react";
 import { teacherApplicationAPI } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -62,6 +63,17 @@ type ErrorMap = Record<string, string>;
 
 export default function TeacherApplicationPage() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // 사용자 이메일로 자동 설정
+  useEffect(() => {
+    if (user?.email) {
+      setForm((prevForm) => ({
+        ...prevForm,
+        email: user.email,
+      }));
+    }
+  }, [user]);
 
   const [form, setForm] = useState<TeacherApplicationForm>({
     first_name: "",
@@ -152,7 +164,7 @@ export default function TeacherApplicationPage() {
       date_of_birth: data.date_of_birth || "",
       nationality: data.nationality || "",
       native_language: data.native_language || "",
-      email: data.email || "",
+      email: user?.email || data.email || "", // 로그인한 사용자의 이메일 우선 사용
       phone_number: data.phone_number || "",
       address_line1: data.address_line1 || "",
       city: data.city || "",
@@ -735,8 +747,10 @@ export default function TeacherApplicationPage() {
                     name="email"
                     value={form.email}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={true} // 수정 불가하도록 비활성화
+                    className="mt-1 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500" // 비활성화된 스타일 적용
                   />
+                  <p className="mt-1 text-xs text-slate-500">이메일 주소는 로그인한 계정의 이메일이 자동으로 설정됩니다.</p>
                   {renderError("email")}
                 </div>
                 <div>
