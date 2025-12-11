@@ -66,10 +66,10 @@ export default function MyProfile() {
     if (!status) return "No Application.";
 
     const statusMap: { [key: string]: string } = {
-      NEW: "Submitted successfully",
-      IN_REVIEW: "Under review",
+      NEW: "Submitted successfully!",
+      IN_REVIEW: "Under Review!",
       ACCEPTED: "Accepted!",
-      REJECTED: "Rejected.",
+      REJECTED: "Rejected!",
     };
 
     return statusMap[status] || status;
