@@ -1,7 +1,11 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError as DRFValidationError, NotFound
+from rest_framework.exceptions import (
+    ValidationError as DRFValidationError,
+    NotFound,
+    PermissionDenied,
+)
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.core.mail import send_mail
@@ -175,6 +179,17 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateAPIView):
         try:
             partial = kwargs.pop("partial", False)
             instance = self.get_object()
+
+            # ✅ status가 NEW일 때만 수정 허용
+            if instance.status != "NEW":
+                raise PermissionDenied(
+                    detail={
+                        "success": False,
+                        "message": "현재 상태에서는 이력서를 수정할 수 없습니다. (Only editable when status is NEW)",
+                        "status": instance.status,
+                    }
+                )
+
             serializer = self.get_serializer(
                 instance, data=request.data, partial=partial
             )
@@ -192,6 +207,11 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateAPIView):
             return Response(
                 e.detail,
                 status=status.HTTP_404_NOT_FOUND,
+            )
+        except PermissionDenied as e:
+            return Response(
+                e.detail,
+                status=status.HTTP_403_FORBIDDEN,
             )
         except Exception as e:
             return Response(
