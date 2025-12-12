@@ -299,49 +299,53 @@ export default function MyProfile() {
             </div>
             {/* === 프로필 이미지 영역 끝 === */}
 
-            <div className={clsx("space-y-2")}>
-              <div className="text-lg font-semibold text-gray-900">My Application Status</div>
-              {loadingApplication ? (
-                <div className="text-sm text-gray-400">상태 확인 중...</div>
-              ) : (
-                <div className={`rounded border p-2 font-medium ${getStatusColorClass(applicationStatus)}`}>
-                  {getStatusDisplay(applicationStatus)}
+            <div className={"rounded border px-4 py-6"}>
+              <div className="mb-4 text-lg font-semibold text-gray-900">My Application Status</div>
+
+              <div className={clsx("space-y-4", { "opacity-50": loadingApplication })}>
+                <div className={clsx("space-y-2")}>
+                  {loadingApplication ? (
+                    <div className="text-sm text-gray-400">상태 확인 중...</div>
+                  ) : (
+                    <div className={`rounded border p-2 font-medium ${getStatusColorClass(applicationStatus)}`}>
+                      {getStatusDisplay(applicationStatus)}
+                    </div>
+                  )}
+
+                  {applicationStatus && (
+                    <button onClick={fetchApplicationStatus} className="text-xs text-indigo-600 underline hover:text-indigo-800">
+                      Refresh
+                    </button>
+                  )}
                 </div>
-              )}
-              {applicationStatus && (
-                <button onClick={fetchApplicationStatus} className="text-xs text-indigo-600 underline hover:text-indigo-800">
-                  Refresh
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => router.push("/teacher/application")}
-                className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
-                Fill out teacher application
-              </button>
-            </div>
-
-            {/* === REJECTED 일 때만: 이력서 삭제 버튼 === */}
-            {canShowDeleteButton && (
-              <div className="mt-6 border-t pt-6 text-left">
-                <div className="text-sm text-gray-600">불합격 처리된 이력서는 삭제 후 다시 새로 제출할 수 있습니다.</div>
 
                 <button
-                  type="button"
-                  onClick={handleDeleteApplication}
-                  disabled={deletingApplication}
-                  className={`mt-3 w-full rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none ${
-                    deletingApplication ? "cursor-not-allowed bg-red-300" : "bg-red-600 hover:bg-red-700"
-                  }`}>
-                  {deletingApplication ? "삭제 중..." : "이력서 삭제"}
+                  onClick={() => router.push("/teacher/application")}
+                  className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
+                  Fill out teacher application
                 </button>
 
-                {deleteError && <p className="mt-2 text-sm text-red-500">{deleteError}</p>}
-                {deleteSuccess && <p className="mt-2 text-sm text-green-600">{deleteSuccess}</p>}
+                {/* === REJECTED 일 때만: 이력서 삭제 버튼 === */}
+                {canShowDeleteButton && (
+                  <div className="mt-6 border-t pt-6 text-left">
+                    <div className="text-sm text-gray-600">불합격 처리된 이력서는 삭제 후 다시 새로 제출할 수 있습니다.</div>
+
+                    <button
+                      type="button"
+                      onClick={handleDeleteApplication}
+                      disabled={deletingApplication}
+                      className={`mt-3 w-full rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none ${
+                        deletingApplication ? "cursor-not-allowed bg-red-300" : "bg-red-600 hover:bg-red-700"
+                      }`}>
+                      {deletingApplication ? "삭제 중..." : "이력서 삭제"}
+                    </button>
+
+                    {deleteError && <p className="mt-2 text-sm text-red-500">{deleteError}</p>}
+                    {deleteSuccess && <p className="mt-2 text-sm text-green-600">{deleteSuccess}</p>}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
