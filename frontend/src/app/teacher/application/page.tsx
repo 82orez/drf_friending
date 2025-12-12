@@ -420,7 +420,9 @@ export default function TeacherApplicationPage() {
     }
 
     // Confirm 창 표시
-    const confirmed = window.confirm("Are you sure you want to submit or update your application?");
+    const confirmed = window.confirm(
+      "Are you sure you want to submit your application? Once your application is under review, you can no longer edit it.",
+    );
     if (!confirmed) {
       return; // 사용자가 취소한 경우 함수 종료
     }
@@ -817,6 +819,7 @@ export default function TeacherApplicationPage() {
                     name="address_line1"
                     value={form.address_line1}
                     onChange={handleInputChange}
+                    placeholder={"한글로 작성해주세요."}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("address_line1")}
@@ -842,6 +845,7 @@ export default function TeacherApplicationPage() {
                     name="city"
                     value={form.city}
                     onChange={handleInputChange}
+                    placeholder={"한글로 작성해주세요."}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("city")}
@@ -855,6 +859,7 @@ export default function TeacherApplicationPage() {
                     name="district"
                     value={form.district}
                     onChange={handleInputChange}
+                    placeholder={"한글로 작성해주세요."}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("district")}
@@ -965,7 +970,7 @@ export default function TeacherApplicationPage() {
 
             {/* 4. Resume details (text) */}
             <section className="border-t border-slate-100 pt-6">
-              <h2 className="text-lg font-semibold text-slate-900">4. Resume Details / 이력 정보 (웹에서 직접 작성)</h2>
+              <h2 className="text-lg font-semibold text-slate-900">4. Resume Details / 이력 정보</h2>
 
               <div className="mt-4 space-y-4">
                 <div>
@@ -1199,7 +1204,7 @@ export default function TeacherApplicationPage() {
                     : "Submitting... / 제출 중..."
                   : hasExistingApplication
                     ? applicationStatus === "NEW"
-                      ? "Update Application / 이력서 수정"
+                      ? "Update & Submit Application / 이력서 수정 및 제출"
                       : "Update Locked / 수정 불가"
                     : "Submit Application / 이력서 제출"}
               </button>
