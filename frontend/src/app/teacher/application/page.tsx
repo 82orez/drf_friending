@@ -248,6 +248,12 @@ export default function TeacherApplicationPage() {
     return trimmed.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
   };
 
+  const keepKoreanDigitsSpacesHyphenOnly = (value: string) => {
+    // 한글(자모/음절) + 숫자 + 공백 + 하이픈(-)만 허용
+    // 주소/도시/구군에 필요한 최소 범위
+    return value.replace(/[^ㄱ-ㅎㅏ-ㅣ가-힣0-9\s-]/g, "");
+  };
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement;
     const { name, value, type, checked } = target;
@@ -260,6 +266,17 @@ export default function TeacherApplicationPage() {
         phone_number: formatted,
       }));
       setErrors((prev) => ({ ...prev, phone_number: "" }));
+      return;
+    }
+
+    // ✅ 주소/도시/구·군: 한글+숫자+공백+하이픈만 허용
+    if (name === "address_line1" || name === "city" || name === "district") {
+      const sanitized = keepKoreanDigitsSpacesHyphenOnly(value);
+      setForm((prev) => ({
+        ...prev,
+        [name]: sanitized,
+      }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
       return;
     }
 
@@ -818,7 +835,7 @@ export default function TeacherApplicationPage() {
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
-                    City / 도시
+                    City / 시·도
                     <span className="text-rose-500"> *</span>
                   </label>
                   <input
