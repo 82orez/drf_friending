@@ -80,4 +80,9 @@ export const teacherApplicationAPI = {
   getMyApplication: async () => {
     return await api.get("/teacher-applications/my/");
   },
+
+  // 이력서 삭제 (REJECTED일 때만 서버에서 허용)
+  deleteMyApplication: async () => {
+    return await api.delete("/teacher-applications/my/");
+  },
 };

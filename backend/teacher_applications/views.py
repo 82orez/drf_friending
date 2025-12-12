@@ -135,9 +135,10 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
             )
 
 
-class TeacherApplicationUpdateView(generics.RetrieveUpdateAPIView):
+class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
     """
-    사용자가 자신의 이력서를 조회/수정하는 엔드포인트
+    사용자가 자신의 이력서를 조회/수정/삭제하는 엔드포인트
+    - 삭제는 status=REJECTED 일 때만 허용
     """
 
     serializer_class = TeacherApplicationSerializer
@@ -222,6 +223,42 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        이력서 삭제
+        - status가 REJECTED(불합격)일 때만 삭제 허용
+        """
+        instance = self.get_object()
+
+        if instance.status != "REJECTED":
+            return Response(
+                {
+                    "success": False,
+                    "message": "현재 상태에서는 이력서를 삭제할 수 없습니다.",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 파일 필드도 스토리지에서 삭제 (DB delete만으로는 파일이 남을 수 있음)
+        try:
+            if instance.profile_image:
+                instance.profile_image.delete(save=False)
+            if instance.visa_scan:
+                instance.visa_scan.delete(save=False)
+        except Exception:
+            # 파일 삭제 실패해도 DB 삭제는 진행 (정책에 따라 바꿔도 됨)
+            pass
+
+        instance.delete()
+
+        return Response(
+            {
+                "success": True,
+                "message": "이력서가 삭제되었습니다.",
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class TeacherApplicationListView(generics.ListAPIView):

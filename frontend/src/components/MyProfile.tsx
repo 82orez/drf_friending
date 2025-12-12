@@ -24,6 +24,11 @@ export default function MyProfile() {
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
 
+  // 이력서 삭제 관련 상태
+  const [deletingApplication, setDeletingApplication] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     // user 정보에 profile_image가 포함되어 있다면 초기값으로 사용
     if (user && (user as any).profile_image) {
@@ -58,6 +63,31 @@ export default function MyProfile() {
       setApplicationStatus(null);
     } finally {
       setLoadingApplication(false);
+    }
+  };
+
+  const handleDeleteApplication = async () => {
+    setDeleteError(null);
+    setDeleteSuccess(null);
+
+    const confirmed = window.confirm("불합격 처리된 이력서를 삭제하시겠습니까? (삭제 후 복구할 수 없습니다)");
+    if (!confirmed) return;
+
+    setDeletingApplication(true);
+    try {
+      const response = await teacherApplicationAPI.deleteMyApplication();
+      const message = response.data?.message || "이력서가 삭제되었습니다.";
+
+      setDeleteSuccess(message);
+      setApplicationStatus(null);
+
+      // 상태 다시 조회(혹시 서버에서 다른 응답이면 동기화)
+      await fetchApplicationStatus();
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.response?.data?.detail || "이력서 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.";
+      setDeleteError(msg);
+    } finally {
+      setDeletingApplication(false);
     }
   };
 
@@ -200,6 +230,8 @@ export default function MyProfile() {
     }
   };
 
+  const canShowDeleteButton = applicationStatus === "REJECTED" || applicationStatus === "REJECT";
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-md rounded-lg bg-white p-8 shadow-md">
@@ -286,6 +318,26 @@ export default function MyProfile() {
                 Fill out teacher application
               </button>
             </div>
+
+            {/* === REJECTED 일 때만: 이력서 삭제 버튼 === */}
+            {canShowDeleteButton && (
+              <div className="mt-6 border-t pt-6 text-left">
+                <div className="text-sm text-gray-600">불합격 처리된 이력서는 삭제 후 다시 새로 제출할 수 있습니다.</div>
+
+                <button
+                  type="button"
+                  onClick={handleDeleteApplication}
+                  disabled={deletingApplication}
+                  className={`mt-3 w-full rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none ${
+                    deletingApplication ? "cursor-not-allowed bg-red-300" : "bg-red-600 hover:bg-red-700"
+                  }`}>
+                  {deletingApplication ? "삭제 중..." : "이력서 삭제"}
+                </button>
+
+                {deleteError && <p className="mt-2 text-sm text-red-500">{deleteError}</p>}
+                {deleteSuccess && <p className="mt-2 text-sm text-green-600">{deleteSuccess}</p>}
+              </div>
+            )}
           </div>
         </div>
       </div>
