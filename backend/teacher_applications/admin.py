@@ -14,9 +14,21 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
         "visa_status",
         "created_at",
     ]
-    list_filter = ["status", "visa_type", "nationality", "created_at"]
-    search_fields = ["first_name", "last_name", "email", "phone_number"]
-    readonly_fields = ["created_at", "updated_at"]
+    list_filter = [
+        "status",
+        "visa_type",
+        "nationality",
+        "teaching_languages",
+        "created_at",
+    ]
+    search_fields = [
+        "first_name",
+        "last_name",
+        "email",
+        "phone_number",
+        "nationality",
+    ]
+    readonly_fields = ["user", "created_at", "updated_at"]
 
     fieldsets = (
         (
