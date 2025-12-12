@@ -105,6 +105,16 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                 )
             },
         ),
+        (
+            "관리자 전용 / Admin Only",
+            {
+                "fields": (
+                    "memo",
+                    "evaluation_result",
+                ),
+                "classes": ("collapse",),  # 접을 수 있도록
+            },
+        ),
         ("관리 정보", {"fields": ("status", "created_at", "updated_at")}),
     )
 

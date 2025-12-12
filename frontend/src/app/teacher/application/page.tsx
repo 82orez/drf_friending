@@ -124,6 +124,11 @@ export default function TeacherApplicationPage() {
   const [hasExistingApplication, setHasExistingApplication] = useState(false);
   const [existingApplicationData, setExistingApplicationData] = useState<any>(null);
 
+  // ✅ status가 NEW일 때만 "수정" 가능하게 제한
+  const applicationStatus: string | null = existingApplicationData?.status ?? null;
+  const canEditOrSubmit = !hasExistingApplication || applicationStatus === "NEW"; // 새 제출은 허용, 기존은 NEW일 때만 허용
+  const isEditLocked = hasExistingApplication && applicationStatus !== "NEW";
+
   // 기존 이력서 확인
   useEffect(() => {
     checkExistingApplication();
@@ -388,6 +393,15 @@ export default function TeacherApplicationPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
+    // ✅ 서버 요청 전에 프론트에서 한 번 더 차단
+    if (isEditLocked) {
+      const msg =
+        "담당자가 이력서 검토를 시작한 이후에는 이를 수정할 수 없습니다. (Once your application is under review, you can no longer edit it.)";
+      setSubmitError(msg);
+      toast.error(msg);
+      return;
+    }
+
     // Confirm 창 표시
     const confirmed = window.confirm("Are you sure you want to submit or update your application?");
     if (!confirmed) {
@@ -552,6 +566,12 @@ export default function TeacherApplicationPage() {
           {hasExistingApplication && (
             <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
               기존에 등록된 이력서가 있습니다. 필요한 부분을 수정하고 저장하세요.
+            </div>
+          )}
+          {/* ✅ 상태가 NEW가 아니면 수정 불가 안내 */}
+          {isEditLocked && (
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+              담당자가 이력서 검토를 시작한 이후에는 이를 수정할 수 없습니다. (Once your application is under review, you can no longer edit it.
             </div>
           )}
         </div>
@@ -1154,16 +1174,21 @@ export default function TeacherApplicationPage() {
             <div className="border-t border-slate-100 pt-6">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !canEditOrSubmit}
                 className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
                 {isSubmitting
                   ? hasExistingApplication
                     ? "Updating... / 수정 중..."
                     : "Submitting... / 제출 중..."
                   : hasExistingApplication
-                    ? "Update Application / 이력서 수정"
+                    ? applicationStatus === "NEW"
+                      ? "Update Application / 이력서 수정"
+                      : "Update Locked / 수정 불가"
                     : "Submit Application / 이력서 제출"}
               </button>
+
+              {/* ✅ 버튼 비활성화 사유를 바로 아래에 표시 */}
+              {isEditLocked && <p className="mt-2 text-sm text-slate-600">이력서 수정은 담당자가 검토를 시작하기 전에만 가능합니다.</p>}
             </div>
           </form>
         </div>
