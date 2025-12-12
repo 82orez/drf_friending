@@ -99,7 +99,7 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
     def full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
 
-    full_name.short_description = "이름"
+    full_name.short_description = "Name"
 
     def visa_status(self, obj):
         if obj.visa_expiry_date:

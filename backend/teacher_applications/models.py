@@ -109,7 +109,7 @@ class TeacherApplication(models.Model):
 
     nationality = models.CharField(
         max_length=100,
-        verbose_name="Nationality / 국적",
+        verbose_name="Nationality",
     )
     native_language = models.CharField(
         max_length=100,
@@ -117,7 +117,7 @@ class TeacherApplication(models.Model):
     )
 
     email = models.EmailField(
-        verbose_name="Email address / 이메일 주소",
+        verbose_name="Email address",
     )
     phone_number = models.CharField(
         max_length=30,
@@ -147,7 +147,7 @@ class TeacherApplication(models.Model):
     visa_type = models.CharField(
         max_length=20,
         choices=VisaTypeChoices.choices,
-        verbose_name="Visa type / 비자 종류",
+        verbose_name="Visa type",
     )
     visa_expiry_date = models.DateField(
         blank=True,
@@ -281,15 +281,15 @@ class TeacherApplication(models.Model):
         max_length=20,
         choices=ApplicationStatusChoices.choices,
         default=ApplicationStatusChoices.NEW,
-        verbose_name="Application status / 지원 상태",
+        verbose_name="지원 상태",
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
-        verbose_name="Created at / 신청 일시",
+        verbose_name="신청 일시",
     )
     updated_at = models.DateTimeField(
         auto_now=True,
-        verbose_name="Updated at / 수정 일시",
+        verbose_name="수정 일시",
     )
 
     # --- 8. 관리자 전용 필드 (Admin Only Fields / 관리자 전용) ---
@@ -337,8 +337,8 @@ class TeacherApplication(models.Model):
             raise ValidationError(errors)
 
     class Meta:
-        verbose_name = "Teacher application / 강사 이력서 지원"
-        verbose_name_plural = "Teacher applications / 강사 이력서 지원 목록"
+        verbose_name = "Teacher application"
+        verbose_name_plural = "Teacher applications"
         ordering = ["-created_at"]
 
     def __str__(self):
