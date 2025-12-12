@@ -1194,20 +1194,30 @@ export default function TeacherApplicationPage() {
 
             {/* Submit */}
             <div className="border-t border-slate-100 pt-6">
-              <button
-                type="submit"
-                disabled={isSubmitting || !canEditOrSubmit}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
-                {isSubmitting
-                  ? hasExistingApplication
-                    ? "Updating... / 수정 중..."
-                    : "Submitting... / 제출 중..."
-                  : hasExistingApplication
-                    ? applicationStatus === "NEW"
-                      ? "Update & Submit Application / 이력서 수정 및 제출"
-                      : "Update Locked / 수정 불가"
-                    : "Submit Application / 이력서 제출"}
-              </button>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => router.push("/")}
+                  disabled={isSubmitting}
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm shadow-slate-200 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
+                  Cancel / 취소하기
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !canEditOrSubmit}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
+                  {isSubmitting
+                    ? hasExistingApplication
+                      ? "Updating... / 수정 중..."
+                      : "Submitting... / 제출 중..."
+                    : hasExistingApplication
+                      ? applicationStatus === "NEW"
+                        ? "Update & Submit Application / 이력서 수정 및 제출"
+                        : "Update Locked / 수정 불가"
+                      : "Submit Application / 이력서 제출"}
+                </button>
+              </div>
 
               {/* ✅ 버튼 비활성화 사유를 바로 아래에 표시 */}
               {isEditLocked && <p className="mt-2 text-sm text-slate-600">이력서 수정은 담당자가 검토를 시작하기 전에만 가능합니다.</p>}
