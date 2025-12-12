@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { teacherApplicationAPI } from "@/lib/api";
+import { PiSignOut } from "react-icons/pi";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -243,11 +244,14 @@ export default function MyProfile() {
             <div className="text-sm text-gray-500">Email: {user?.email}</div>
             <div className="text-sm text-gray-500">Email Verified: {user?.is_email_verified ? "✅" : "❌"}</div>
 
-            <button
-              onClick={handleLogout}
-              className="mt-6 flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none">
-              Logout
-            </button>
+            <div className={"flex items-center justify-center gap-4"}>
+              <button
+                onClick={handleLogout}
+                className="mt-2 flex w-36 items-center justify-center gap-1 rounded border px-4 py-2 text-sm font-medium text-gray-500 hover:cursor-pointer">
+                <div>Logout</div>
+                <PiSignOut size={18} />
+              </button>
+            </div>
 
             {/* === 프로필 이미지 영역 시작 === */}
             <div className="mt-6 border-t pt-6 text-left">
