@@ -81,11 +81,11 @@ class TeacherApplication(models.Model):
 
     first_name = models.CharField(
         max_length=50,
-        verbose_name="First name / 이름 (First Name)",
+        verbose_name="First name / 이름",
     )
     last_name = models.CharField(
         max_length=50,
-        verbose_name="Last name / 성 (Last Name)",
+        verbose_name="Last name / 성",
     )
     korean_name = models.CharField(
         max_length=50,
@@ -121,7 +121,7 @@ class TeacherApplication(models.Model):
     )
     phone_number = models.CharField(
         max_length=30,
-        verbose_name="Phone number / 전화번호",
+        verbose_name="Phone number",
     )
 
     address_line1 = models.CharField(
