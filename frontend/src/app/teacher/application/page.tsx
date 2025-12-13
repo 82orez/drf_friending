@@ -575,22 +575,14 @@ export default function TeacherApplicationPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-10">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-semibold text-slate-900">
-            {hasExistingApplication ? "Teacher Application - Edit / 강사 이력서 수정" : "Teacher Application / 강사 이력서 등록"}
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            {hasExistingApplication ? "등록된 이력서를 수정할 수 있습니다." : "강사 이력서 제출 페이지입니다."}
-          </p>
-          {hasExistingApplication && (
-            <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
-              기존에 등록된 이력서가 있습니다. 필요한 부분을 수정하고 저장하세요.
-            </div>
-          )}
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-semibold text-slate-900">Teacher Application / 강사 이력서 등록</h1>
+          <p className="mt-4 text-sm text-slate-600">이력서를 작성하고 제출하는 페이지입니다.</p>
+
           {/* ✅ 상태가 NEW가 아니면 수정 불가 안내 */}
           {isEditLocked && (
             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-              담당자가 이력서 검토를 시작한 이후에는 이를 수정할 수 없습니다. (Once your application is under review, you can no longer edit it.
+              주의) 담당자가 이력서를 검토하기 시작하면 더이상 수정할 수 없습니다! (Once your application is under review, you can no longer edit it!
             </div>
           )}
         </div>
