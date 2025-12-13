@@ -232,11 +232,11 @@ if DEBUG:
 # 이메일 설정 (개발 환경에서는 콘솔로 출력)
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    DEFAULT_FROM_EMAIL = "noreply@dj-issue-vote.com"
+    DEFAULT_FROM_EMAIL = "Admin <noreply@friending.ac>"
 
 else:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    DEFAULT_FROM_EMAIL = "Django Allauth <noreply@friending.ac>"
+    DEFAULT_FROM_EMAIL = "Admin <noreply@friending.ac>"
     EMAIL_HOST = "smtp.resend.com"
     EMAIL_USE_TLS = True
     EMAIL_PORT = 587

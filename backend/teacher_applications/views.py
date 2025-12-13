@@ -11,6 +11,9 @@ from django.views.decorators.cache import cache_page
 from django.core.mail import send_mail
 from django.conf import settings
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+
 from .models import TeacherApplication
 from .serializers import TeacherApplicationSerializer
 
@@ -68,27 +71,30 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
         # 여기까지 왔다는 것은 아직 이력서가 없다는 뜻
         instance = serializer.save(user=user)
 
-        # 지원서 제출 완료 이메일 발송 (선택사항)
+        # 1) 지원자에게 이력서 등록 완료 이메일 발송
         self.send_confirmation_email(instance)
 
+        # 2) superuser + Reviewers 그룹에게 새 이력서 등록 알림 메일
+        self.send_new_application_notification_email(instance)
+
     def send_confirmation_email(self, instance):
-        """지원서 제출 확인 이메일 발송"""
+        """지원서 제출 확인 이메일 발송 (지원자)"""
         try:
             subject = "Teacher Application Submitted / 강사 지원서 제출 완료"
             message = f"""
-            Dear {instance.first_name} {instance.last_name},
+Dear {instance.first_name} {instance.last_name},
 
-            Your teacher application has been successfully submitted.
-            We will review your application and contact you soon.
+Your teacher application has been successfully submitted.
+We will review your application and contact you soon.
 
-            안녕하세요 {instance.first_name} {instance.last_name}님,
+안녕하세요 {instance.first_name} {instance.last_name}님,
 
-            강사 지원서가 성공적으로 제출되었습니다.
-            지원서를 검토한 후 곧 연락드리겠습니다.
+강사 지원서가 성공적으로 제출되었습니다.
+지원서를 검토한 후 곧 연락드리겠습니다.
 
-            Best regards,
-            Friending Team
-            """
+Best regards,
+Friending Team
+""".strip()
 
             send_mail(
                 subject=subject,
@@ -96,6 +102,75 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[instance.email],
                 fail_silently=True,  # 이메일 발송 실패해도 API는 성공 처리
+            )
+        except Exception:
+            pass
+
+    def send_new_application_notification_email(self, instance):
+        """
+        새 이력서 등록 알림 이메일 발송 (superuser + Reviewers 그룹)
+        """
+        try:
+            User = get_user_model()
+
+            recipients = set()
+
+            # (A) superuser들
+            superuser_emails = (
+                User.objects.filter(is_superuser=True, is_active=True)
+                .exclude(email__isnull=True)
+                .exclude(email__exact="")
+                .values_list("email", flat=True)
+            )
+            recipients.update(superuser_emails)
+
+            # (B) Reviewers 그룹 유저들
+            try:
+                reviewers_group = Group.objects.get(name="Reviewers")
+                reviewer_emails = (
+                    reviewers_group.user_set.filter(is_active=True)
+                    .exclude(email__isnull=True)
+                    .exclude(email__exact="")
+                    .values_list("email", flat=True)
+                )
+                recipients.update(reviewer_emails)
+            except Group.DoesNotExist:
+                # 그룹이 없으면 스킵
+                pass
+
+            # 지원자 본인에게 중복 발송 방지
+            if instance.email:
+                recipients.discard(instance.email)
+
+            if not recipients:
+                return
+
+            subject = "New Teacher Application Submitted / 새 이력서(지원서) 등록 알림"
+            message = f"""
+A new teacher application has been submitted.
+
+- Name: {instance.first_name} {instance.last_name}
+- Email: {instance.email}
+- Nationality: {getattr(instance, "nationality", "")}
+- Visa Type: {getattr(instance, "visa_type", "")}
+
+새 강사 이력서(지원서)가 등록되었습니다.
+
+- 이름: {instance.first_name} {instance.last_name}
+- 이메일: {instance.email}
+- 국적: {getattr(instance, "nationality", "")}
+- 비자 종류: {getattr(instance, "visa_type", "")}
+
+Please review it in the admin/reviewer page.
+관리자/검토 페이지에서 확인해주세요.
+""".strip()
+
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=list(recipients),
+                fail_silently=True,
             )
         except Exception:
             # 이메일 발송 실패해도 지원서 제출은 성공으로 처리
