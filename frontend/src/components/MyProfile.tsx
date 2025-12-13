@@ -322,7 +322,7 @@ export default function MyProfile() {
                 <button
                   onClick={() => router.push("/teacher/application")}
                   className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
-                  Fill out teacher application
+                  Fill out/View teacher application
                 </button>
 
                 {/* === REJECTED 일 때만: 이력서 삭제 버튼 === */}

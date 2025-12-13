@@ -744,7 +744,6 @@ export default function TeacherApplicationPage() {
                 </div>
               </div>
 
-              {/* ... 나머지 필드들은 기존과 동일 ... */}
               {/* Nationality / native language / contact */}
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
@@ -1220,7 +1219,7 @@ export default function TeacherApplicationPage() {
               </div>
 
               {/* ✅ 버튼 비활성화 사유를 바로 아래에 표시 */}
-              {isEditLocked && <p className="mt-2 text-sm text-slate-600">이력서 수정은 담당자가 검토를 시작하기 전에만 가능합니다.</p>}
+              {isEditLocked && <p className="mt-4 text-center text-sm text-slate-600">이력서 수정은 담당자가 검토를 시작하기 전에만 가능합니다.</p>}
             </div>
           </form>
         </div>
