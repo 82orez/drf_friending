@@ -138,7 +138,7 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
 class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
     """
     사용자가 자신의 이력서를 조회/수정/삭제하는 엔드포인트
-    - 삭제는 status=REJECTED 일 때만 허용
+    - status가 REJECTED(불합격) 또는 NEW(신규)일 때만 삭제 허용
     """
 
     serializer_class = TeacherApplicationSerializer
@@ -227,11 +227,12 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         """
         이력서 삭제
-        - status가 REJECTED(불합격)일 때만 삭제 허용
+        - status가 REJECTED(불합격) 또는 NEW(신규)일 때만 삭제 허용
         """
         instance = self.get_object()
 
-        if instance.status != "REJECTED":
+        allowed_statuses = {"REJECTED", "NEW"}
+        if instance.status not in allowed_statuses:
             return Response(
                 {
                     "success": False,

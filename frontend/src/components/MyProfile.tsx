@@ -71,7 +71,7 @@ export default function MyProfile() {
     setDeleteError(null);
     setDeleteSuccess(null);
 
-    const confirmed = window.confirm("불합격 처리된 이력서를 삭제하시겠습니까? (삭제 후 복구할 수 없습니다)");
+    const confirmed = window.confirm("Are you sure you want to delete your application? This action cannot be undone.");
     if (!confirmed) return;
 
     setDeletingApplication(true);
@@ -231,7 +231,7 @@ export default function MyProfile() {
     }
   };
 
-  const canShowDeleteButton = applicationStatus === "REJECTED" || applicationStatus === "REJECT";
+  const canShowDeleteButton = applicationStatus === "REJECTED" || applicationStatus === "REJECT" || applicationStatus === "NEW";
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -327,17 +327,15 @@ export default function MyProfile() {
 
                 {/* === REJECTED 일 때만: 이력서 삭제 버튼 === */}
                 {canShowDeleteButton && (
-                  <div className="mt-6 border-t pt-6 text-left">
-                    <div className="text-sm text-gray-600">불합격 처리된 이력서는 삭제 후 다시 새로 제출할 수 있습니다.</div>
-
+                  <div className="mt-2 border-t text-left">
                     <button
                       type="button"
                       onClick={handleDeleteApplication}
                       disabled={deletingApplication}
-                      className={`mt-3 w-full rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none ${
+                      className={`mt-6 w-full rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none ${
                         deletingApplication ? "cursor-not-allowed bg-red-300" : "bg-red-600 hover:bg-red-700"
                       }`}>
-                      {deletingApplication ? "삭제 중..." : "이력서 삭제"}
+                      {deletingApplication ? "Deleting..." : "Delete my application"}
                     </button>
 
                     {deleteError && <p className="mt-2 text-sm text-red-500">{deleteError}</p>}
