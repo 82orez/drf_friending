@@ -9,6 +9,9 @@ from PIL import Image, ImageOps
 import io
 import os
 
+from django.db.models.signals import post_delete, pre_save
+from django.dispatch import receiver
+
 
 # === 공통 유효성 검사기 ===
 def validate_image_size_under_2mb(value):
@@ -471,3 +474,62 @@ class TeacherApplication(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"
+
+
+def _safe_delete_file_field(file_field) -> None:
+    """
+    FileField/ImageField가 가리키는 스토리지 파일을 안전하게 삭제.
+    - save=False 로 DB 재저장 방지
+    - storage.delete(name)로 실제 파일 제거
+    """
+    if not file_field:
+        return
+    name = getattr(file_field, "name", None)
+    if not name:
+        return
+    storage = getattr(file_field, "storage", None)
+    try:
+        if storage:
+            storage.delete(name)
+        else:
+            file_field.delete(save=False)
+    except Exception:
+        # 정책에 따라 로깅만 하고 무시(원하시면 로깅 추가 가능)
+        pass
+
+
+@receiver(post_delete, sender=TeacherApplication)
+def teacher_application_delete_files(sender, instance: TeacherApplication, **kwargs):
+    """
+    TeacherApplication 레코드가 삭제될 때 연결된 파일도 스토리지에서 함께 삭제.
+    (Admin 삭제 / queryset.delete / cascade 등 모든 삭제 경로에 적용)
+    """
+    _safe_delete_file_field(instance.profile_image_thumbnail)
+    _safe_delete_file_field(instance.profile_image)
+    _safe_delete_file_field(instance.visa_scan)
+
+
+@receiver(pre_save, sender=TeacherApplication)
+def teacher_application_delete_replaced_files(
+    sender, instance: TeacherApplication, **kwargs
+):
+    """
+    수정 시 파일이 '교체'되는 경우, 예전 파일이 스토리지에 남지 않도록 삭제.
+    - profile_image는 기존 save()에서 old_profile_name 삭제 로직이 있으니
+      여기서는 visa_scan 교체 케이스만 보완(필요 시 확장 가능).
+    """
+    if not instance.pk:
+        return
+
+    try:
+        old = TeacherApplication.objects.get(pk=instance.pk)
+    except TeacherApplication.DoesNotExist:
+        return
+
+    old_visa = getattr(old.visa_scan, "name", None)
+    new_visa = getattr(instance.visa_scan, "name", None)
+    if old_visa and old_visa != new_visa:
+        try:
+            old.visa_scan.storage.delete(old_visa)
+        except Exception:
+            pass

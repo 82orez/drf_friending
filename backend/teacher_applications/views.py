@@ -303,6 +303,8 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
         """
         이력서 삭제
         - status가 REJECTED(불합격) 또는 NEW(신규)일 때만 삭제 허용
+
+        파일(profile_image / thumbnail / visa_scan) 삭제는 모델 post_delete 시그널에서 처리.
         """
         instance = self.get_object()
 
@@ -315,18 +317,6 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
-
-        # 파일 필드도 스토리지에서 삭제 (DB delete만으로는 파일이 남을 수 있음)
-        try:
-            if instance.profile_image_thumbnail:
-                instance.profile_image_thumbnail.delete(save=False)
-            if instance.profile_image:
-                instance.profile_image.delete(save=False)
-            if instance.visa_scan:
-                instance.visa_scan.delete(save=False)
-        except Exception:
-            # 파일 삭제 실패해도 DB 삭제는 진행 (정책에 따라 바꿔도 됨)
-            pass
 
         instance.delete()
 
