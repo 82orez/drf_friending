@@ -318,6 +318,8 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
 
         # 파일 필드도 스토리지에서 삭제 (DB delete만으로는 파일이 남을 수 있음)
         try:
+            if instance.profile_image_thumbnail:
+                instance.profile_image_thumbnail.delete(save=False)
             if instance.profile_image:
                 instance.profile_image.delete(save=False)
             if instance.visa_scan:

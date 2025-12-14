@@ -9,12 +9,16 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
     외국인 어학 강사 이력서 지원서 Serializer
     """
 
-    # 파일 필드는 명시적으로 적어주는 게 가독성에 좋음
     profile_image = serializers.ImageField(
         write_only=False,
         required=True,
         help_text="Profile image (max 2MB, JPG/PNG) / 프로필 이미지 (최대 2MB, JPG/PNG)",
     )
+    profile_image_thumbnail = serializers.ImageField(
+        read_only=True,
+        help_text="Profile image thumbnail / 프로필 썸네일",
+    )
+
     visa_scan = serializers.ImageField(
         write_only=False,
         required=True,
@@ -36,8 +40,13 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
             "updated_at",
             "age",
             "is_visa_expiring_soon",
-            "memo",  # 관리자 전용 필드
-            "evaluation_result",  # 관리자 전용 필드
+            "memo",
+            "evaluation_result",
+            "profile_image_thumbnail",
+            "profile_image_width",
+            "profile_image_height",
+            "profile_image_format",
+            "profile_image_filesize",
         )
 
     # -------------------------------

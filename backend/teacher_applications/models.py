@@ -4,6 +4,11 @@ from django.core.validators import FileExtensionValidator
 from django.db import models
 from datetime import date
 
+from django.core.files.base import ContentFile
+from PIL import Image, ImageOps
+import io
+import os
+
 
 # === 공통 유효성 검사기 ===
 def validate_image_size_under_2mb(value):
@@ -58,13 +63,12 @@ class TeacherApplication(models.Model):
     한국에서 일하는(또는 일하고 싶은) 외국인 어학 강사의 이력서를 접수하는 모델.
     """
 
-    # 로그인 기반으로 운영하고 싶다면: 유저와 연결 (없어도 동작 가능)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        null=False,  # 로그인 안 한 이력서를 허용하지 않으려면 False 로 바꿔도 됨
+        null=False,
         blank=False,
-        related_name="teacher_application",  # 단수형으로 변경 (옵션)
+        related_name="teacher_application",
         verbose_name="User / 사용자",
     )
 
@@ -77,6 +81,39 @@ class TeacherApplication(models.Model):
             FileExtensionValidator(["jpg", "jpeg", "png"]),
         ],
         verbose_name="Profile image (2MB max, JPG/PNG) / 프로필 이미지 (최대 2MB, JPG/PNG)",
+    )
+
+    profile_image_thumbnail = models.ImageField(
+        upload_to="teacher_applications/profile_images/thumbnails/",
+        blank=True,
+        null=True,
+        editable=False,
+        verbose_name="Profile image thumbnail / 프로필 썸네일",
+    )
+
+    profile_image_width = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        editable=False,
+        verbose_name="Profile image width",
+    )
+    profile_image_height = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        editable=False,
+        verbose_name="Profile image height",
+    )
+    profile_image_format = models.CharField(
+        max_length=10,
+        blank=True,
+        editable=False,
+        verbose_name="Profile image format",
+    )
+    profile_image_filesize = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        editable=False,
+        verbose_name="Profile image file size (bytes)",
     )
 
     first_name = models.CharField(
@@ -306,6 +343,88 @@ class TeacherApplication(models.Model):
         verbose_name="Evaluation Result / 평가 결과",
         help_text="전체적인 이력서 평가 결과 (1000자 이내, 관리자 전용) / Overall resume evaluation result (max 1000 chars, Admin only)",
     )
+
+    def _generate_profile_thumbnail_and_meta(self):
+        """
+        - 썸네일: 256x256 (비율 유지, 긴 변 기준 thumbnail)
+        - 포맷: JPEG로 통일 (프론트에서 다루기 쉬움)
+        """
+        if not self.profile_image:
+            return
+
+        # 원본 파일명 기반으로 썸네일 파일명 생성
+        base, _ext = os.path.splitext(os.path.basename(self.profile_image.name))
+        thumb_name = f"{base}_thumb.jpg"
+
+        # Pillow로 열기
+        self.profile_image.open("rb")
+        with Image.open(self.profile_image) as img:
+            img = ImageOps.exif_transpose(img)  # 회전 EXIF 보정
+            self.profile_image_format = (img.format or "").upper()
+
+            # 메타 저장(원본 기준)
+            self.profile_image_width, self.profile_image_height = img.size
+
+            # 썸네일 생성
+            img = img.convert("RGB")
+            img.thumbnail((256, 256), Image.Resampling.LANCZOS)
+
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=85, optimize=True)
+            buffer.seek(0)
+
+        # filesize 저장(원본)
+        try:
+            self.profile_image_filesize = self.profile_image.size
+        except Exception:
+            # 스토리지/환경에 따라 size 접근이 실패할 수 있어 방어적으로 처리
+            self.profile_image_filesize = None
+
+        # 기존 썸네일이 있으면 삭제(파일 교체 시 찌꺼기 방지)
+        if self.profile_image_thumbnail and self.profile_image_thumbnail.name:
+            try:
+                self.profile_image_thumbnail.delete(save=False)
+            except Exception:
+                pass
+
+        self.profile_image_thumbnail.save(
+            thumb_name,
+            ContentFile(buffer.getvalue()),
+            save=False,
+        )
+
+    def save(self, *args, **kwargs):
+        # profile_image 변경 여부 확인(기존 레코드가 있을 때만)
+        old_profile_name = None
+        if self.pk:
+            try:
+                old_profile_name = (
+                    TeacherApplication.objects.filter(pk=self.pk)
+                    .values_list("profile_image", flat=True)
+                    .first()
+                )
+            except Exception:
+                old_profile_name = None
+
+        super().save(*args, **kwargs)
+
+        # 새 업로드/변경 시에만 생성 (또는 썸네일이 없으면 생성)
+        new_profile_name = self.profile_image.name if self.profile_image else None
+        should_regenerate = new_profile_name and (
+            old_profile_name != new_profile_name or not self.profile_image_thumbnail
+        )
+
+        if should_regenerate:
+            self._generate_profile_thumbnail_and_meta()
+            super().save(
+                update_fields=[
+                    "profile_image_thumbnail",
+                    "profile_image_width",
+                    "profile_image_height",
+                    "profile_image_format",
+                    "profile_image_filesize",
+                ]
+            )
 
     def clean(self):
         """모델 레벨 유효성 검증"""
