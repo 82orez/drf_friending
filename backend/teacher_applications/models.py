@@ -426,6 +426,15 @@ class TeacherApplication(models.Model):
                 ]
             )
 
+        # ✅ profile_image가 새 파일로 교체된 경우: 기존 원본 파일도 스토리지에서 삭제
+        # (주의) self.profile_image.delete()를 호출하면 "현재" 파일(새 파일)을 지울 수 있어
+        #        old 파일명으로 스토리지에서 직접 삭제합니다.
+        if old_profile_name and old_profile_name != new_profile_name:
+            try:
+                self.profile_image.storage.delete(old_profile_name)
+            except Exception:
+                pass
+
     def clean(self):
         """모델 레벨 유효성 검증"""
         super().clean()
