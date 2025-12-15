@@ -107,6 +107,72 @@ def make_dummy_visa_scan_png(text: str) -> bytes:
     return buf.getvalue()
 
 
+def _make_long_evaluation_result(fake_en: Faker, status: str) -> str:
+    """
+    evaluation_result를 좀 더 '다양하고 긴' 텍스트로 생성합니다.
+    - NEW 상태면 빈 문자열 유지
+    - 모델 제약(1000자 이내)에 맞춰 자동으로 길이를 제한
+    """
+    if status == ApplicationStatusChoices.NEW:
+        return ""
+
+    score = random.randint(62, 97)
+    strengths = random.sample(
+        [
+            "Strong rapport-building and clear classroom communication.",
+            "Well-structured lesson planning with measurable outcomes.",
+            "Positive feedback culture; encourages student speaking time.",
+            "Experience with mixed-level classes and adaptive pacing.",
+            "Professional demeanor and reliable scheduling.",
+            "Comfortable using digital tools (LMS, Zoom, shared docs).",
+            "Good pronunciation modeling and error correction timing.",
+            "Solid understanding of communicative activities and drills balance.",
+        ],
+        k=random.randint(3, 5),
+    )
+    concerns = random.sample(
+        [
+            "Provide more concrete evidence of student outcomes (scores, retention, etc.).",
+            "Clarify visa timeline and availability window.",
+            "Consider adding age-group specialization (kids/adults/test prep) with examples.",
+            "Add references or supervisor contacts if available.",
+            "Tighten the resume wording; remove repeated phrasing.",
+            "Include a brief demo-lesson outline to show teaching flow.",
+            "Explain any employment gaps succinctly.",
+        ],
+        k=random.randint(2, 4),
+    )
+
+    decision_note = {
+        ApplicationStatusChoices.IN_REVIEW: "Recommended next step: schedule a 20–30 minute interview and request a short demo plan.",
+        ApplicationStatusChoices.ACCEPTED: "Decision: Accept. Proceed with contract discussion, document verification, and onboarding steps.",
+        ApplicationStatusChoices.REJECTED: "Decision: Reject at this time. Encourage re-application after strengthening portfolio and adding references.",
+    }.get(status, "Recommended next step: additional screening.")
+
+    # Faker로 문장을 늘려 '긴' 텍스트를 만듭니다(다만 1000자 이내로 컷)
+    extra_context = (
+        " ".join(fake_en.sentences(nb=random.randint(3, 6)))
+        + "\n\n"
+        + fake_en.paragraph(nb_sentences=random.randint(4, 7))
+    )
+
+    text = (
+        f"[Internal Review Summary]\n"
+        f"- Overall score: {score}/100\n"
+        f"- Snapshot: Candidate appears {random.choice(['prepared', 'motivated', 'experienced', 'well-aligned'])} for the role and communicates clearly.\n\n"
+        f"[Strengths]\n" + "\n".join(f"- {s}" for s in strengths) + "\n\n"
+        f"[Concerns / Follow-ups]\n" + "\n".join(f"- {c}" for c in concerns) + "\n\n"
+        f"[Notes]\n"
+        f"- Preferred class types mentioned: {random.choice(['Conversation', 'Business English', 'Kids', 'Test Prep'])}\n"
+        f"- Suggested interview focus: {random.choice(['classroom management', 'error correction strategy', 'lesson structure', 'student engagement techniques'])}\n"
+        f"- {decision_note}\n\n"
+        f"{extra_context}"
+    )
+
+    # 모델 max_length=1000 준수(너무 길면 안전하게 자르기)
+    return text[:1000].rstrip()
+
+
 class Command(BaseCommand):
     help = "Generate fake TeacherApplication records with DiceBear profile images."
 
@@ -294,10 +360,8 @@ class Command(BaseCommand):
                 confirmation_info_true=True,
                 status=status,
                 memo="(DEV) Auto-generated dummy data",
-                evaluation_result=(
-                    ""
-                    if status == ApplicationStatusChoices.NEW
-                    else "Looks good overall. (DEV dummy)"
+                evaluation_result=_make_long_evaluation_result(
+                    fake_en=fake_en, status=status
                 ),
             )
 
