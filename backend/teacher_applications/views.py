@@ -14,7 +14,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
-from .models import TeacherApplication
+from .models import TeacherApplication, ApplicationStatusChoices
 from .serializers import TeacherApplicationSerializer
 
 
@@ -359,13 +359,9 @@ class TeacherApplicationListView(generics.ListAPIView):
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
-        """필터링 옵션 추가"""
+        """ACCEPTED 상태의 이력서만 조회되도록 제한"""
         queryset = super().get_queryset()
-
-        # 상태별 필터링
-        status_filter = self.request.query_params.get("status")
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
+        queryset = queryset.filter(status=ApplicationStatusChoices.ACCEPTED)
 
         # 비자 종류별 필터링
         visa_type = self.request.query_params.get("visa_type")
@@ -381,7 +377,9 @@ class TeacherApplicationDetailView(generics.RetrieveUpdateAPIView):
     관리자용 개별 지원서 상세 조회/수정 엔드포인트
     """
 
-    queryset = TeacherApplication.objects.all()
+    queryset = TeacherApplication.objects.filter(
+        status=ApplicationStatusChoices.ACCEPTED
+    )
     serializer_class = TeacherApplicationSerializer
     permission_classes = [permissions.IsAdminUser]
 
