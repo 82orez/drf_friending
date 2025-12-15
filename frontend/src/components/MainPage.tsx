@@ -580,9 +580,9 @@ export default function MainPage() {
                         <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
                           Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
                         </span>
-                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                          Status: {teacherDetail?.status || "-"}
-                        </span>
+                        {/*<span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">*/}
+                        {/*  Status: {teacherDetail?.status || "-"}*/}
+                        {/*</span>*/}
                       </div>
                     </div>
                   </div>
@@ -611,7 +611,7 @@ export default function MainPage() {
                     <div className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600">상세 정보를 불러오는 중입니다...</div>
                   ) : (
                     <>
-                      <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="mb-10 grid gap-4 lg:grid-cols-2">
                         <Section title="Basic Info">
                           <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
                           <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
@@ -621,27 +621,29 @@ export default function MainPage() {
                           <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
                         </Section>
 
-                        <Section title="Location & Contact">
+                        <Section title="Location & Experience">
                           <Field label="City / District" value={[teacherDetail?.city, teacherDetail?.district].filter(Boolean).join(" · ") || "-"} />
-                          <Field label="Address" value={teacherDetail?.address_line1 || "-"} />
-                          <Field label="Email" value={teacherDetail?.email || "-"} mono />
-                          <Field label="Phone" value={teacherDetail?.phone_number || "-"} mono />
-                        </Section>
-                      </div>
-
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        <Section title="Experience">
+                          {/*<Field label="Address" value={teacherDetail?.address_line1 || "-"} />*/}
+                          {/*<Field label="Email" value={teacherDetail?.email || "-"} mono />*/}
+                          {/*<Field label="Phone" value={teacherDetail?.phone_number || "-"} mono />*/}
                           <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />
                           <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
                         </Section>
-
-                        <Section title="Visa & Meta">
-                          <Field label="Visa type" value={teacherDetail?.visa_type || "-"} />
-                          <Field label="Visa expiry date" value={formatDate(teacherDetail?.visa_expiry_date)} />
-                          <Field label="Created" value={formatDate(teacherDetail?.created_at)} />
-                          <Field label="Updated" value={formatDate(teacherDetail?.updated_at)} />
-                        </Section>
                       </div>
+
+                      {/*<div className="grid gap-4 lg:grid-cols-2">*/}
+                      {/*  <Section title="Experience">*/}
+                      {/*    <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />*/}
+                      {/*    <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />*/}
+                      {/*  </Section>*/}
+
+                      {/*  <Section title="Visa & Meta">*/}
+                      {/*    <Field label="Visa type" value={teacherDetail?.visa_type || "-"} />*/}
+                      {/*    <Field label="Visa expiry date" value={formatDate(teacherDetail?.visa_expiry_date)} />*/}
+                      {/*    <Field label="Created" value={formatDate(teacherDetail?.created_at)} />*/}
+                      {/*    <Field label="Updated" value={formatDate(teacherDetail?.updated_at)} />*/}
+                      {/*  </Section>*/}
+                      {/*</div>*/}
 
                       <Section title="Self Introduction">
                         <TextBlock text={teacherDetail?.self_introduction} />
@@ -673,11 +675,11 @@ export default function MainPage() {
                         <TextBlock text={teacherDetail?.evaluation_result} />
                       </Section>
 
-                      {teacherDetail?.memo?.trim() ? (
-                        <Section title="Admin Memo">
-                          <TextBlock text={teacherDetail?.memo} />
-                        </Section>
-                      ) : null}
+                      {/*{teacherDetail?.memo?.trim() ? (*/}
+                      {/*  <Section title="Admin Memo">*/}
+                      {/*    <TextBlock text={teacherDetail?.memo} />*/}
+                      {/*  </Section>*/}
+                      {/*) : null}*/}
                     </>
                   )}
                 </div>
@@ -686,12 +688,12 @@ export default function MainPage() {
                 <div className="flex items-center justify-end gap-2 rounded-b-3xl border-t border-gray-200 bg-white px-5 py-4 sm:px-6">
                   <button
                     onClick={() => openTeacherDetail(selectedTeacherId)}
-                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:cursor-pointer hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
                     Refresh Detail
                   </button>
                   <button
                     onClick={closeTeacherDetail}
-                    className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
+                    className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
                     Done
                   </button>
                 </div>
