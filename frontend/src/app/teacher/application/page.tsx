@@ -5,6 +5,7 @@ import { teacherApplicationAPI } from "@/lib/api";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import RegionSelectKR from "@/components/RegionSelectKR";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -826,36 +827,22 @@ export default function TeacherApplicationPage() {
                   {renderError("postal_code")}
                 </div>
               </div>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-slate-800">
-                    City / 시·도
-                    <span className="text-rose-500"> *</span>
-                  </label>
-                  <input
-                    name="city"
-                    value={form.city}
-                    onChange={handleInputChange}
-                    placeholder={"한글로 작성해주세요."}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
-                  />
-                  {renderError("city")}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-800">
-                    District / 구·군
-                    <span className="text-rose-500"> *</span>
-                  </label>
-                  <input
-                    name="district"
-                    value={form.district}
-                    onChange={handleInputChange}
-                    placeholder={"한글로 작성해주세요."}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
-                  />
-                  {renderError("district")}
-                </div>
-              </div>
+
+              <RegionSelectKR
+                valueCity={form.city}
+                valueDistrict={form.district}
+                disabled={isEditLocked}
+                required={true}
+                onChangeCity={(nextCity) => {
+                  setForm((prev) => ({ ...prev, city: nextCity }));
+                  setErrors((prev) => ({ ...prev, city: "" }));
+                }}
+                onChangeDistrict={(nextDistrict) => {
+                  setForm((prev) => ({ ...prev, district: nextDistrict }));
+                  setErrors((prev) => ({ ...prev, district: "" }));
+                }}
+                renderError={(field) => renderError(field)}
+              />
             </section>
 
             {/* 2. Visa info */}
