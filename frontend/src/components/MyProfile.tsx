@@ -247,7 +247,7 @@ export default function MyProfile() {
             <div className={"flex items-center justify-center gap-4"}>
               <button
                 onClick={handleLogout}
-                className="mt-2 flex w-36 items-center justify-center gap-1 rounded border px-4 py-2 text-sm font-medium text-gray-500 hover:cursor-pointer">
+                className="mt-2 flex w-36 items-center justify-center gap-1 rounded border bg-black px-4 py-2 text-sm font-medium text-white hover:cursor-pointer">
                 <div>Logout</div>
                 <PiSignOut size={18} />
               </button>
@@ -321,7 +321,7 @@ export default function MyProfile() {
 
                 <button
                   onClick={() => router.push("/teacher/application")}
-                  className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
+                  className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 font-medium text-white shadow-sm hover:cursor-pointer hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
                   Fill out/View teacher application
                 </button>
 

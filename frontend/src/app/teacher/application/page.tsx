@@ -1190,14 +1190,14 @@ export default function TeacherApplicationPage() {
                   type="button"
                   onClick={() => router.push("/")}
                   disabled={isSubmitting}
-                  className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm shadow-slate-200 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm shadow-slate-200 transition hover:cursor-pointer hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
                   Cancel / 취소하기
                 </button>
 
                 <button
                   type="submit"
                   disabled={isSubmitting || !canEditOrSubmit}
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300 transition hover:cursor-pointer hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
                   {isSubmitting
                     ? hasExistingApplication
                       ? "Updating... / 수정 중..."
