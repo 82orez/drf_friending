@@ -556,9 +556,9 @@ export default function MainPage() {
             <div className="mx-auto flex min-h-full max-w-4xl items-center px-4 py-10 sm:px-6">
               <div role="dialog" aria-modal="true" className="w-full rounded-3xl border border-gray-200 bg-gray-50 shadow-2xl">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 py-4 sm:px-6">
+                <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
+                    <div className="h-24 w-24 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
                       {detailThumb ? (
                         <img src={detailThumb} alt={`${detailFullName} thumbnail`} className="h-full w-full object-cover" />
                       ) : (
