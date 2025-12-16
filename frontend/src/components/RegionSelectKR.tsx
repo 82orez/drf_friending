@@ -48,17 +48,26 @@ export default function RegionSelectKR({
   const [selectedLevel1, setSelectedLevel1] = useState<string>("");
   const [selectedLevel2, setSelectedLevel2] = useState<string>("");
 
+  // 한글 가-나-다 순(ko-KR)으로 정렬 헬퍼
+  const sortByNameKo = <T extends { name: string }>(arr: T[]) => {
+    return [...arr].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", "ko-KR", { sensitivity: "base" }));
+  };
+
   const selectedSidoObj = useMemo(() => {
     return sidoList.find((s) => s.name === valueCity) ?? null;
   }, [sidoList, valueCity]);
 
-  const level1Options = useMemo(() => selectedSidoObj?.districts ?? [], [selectedSidoObj]);
+  const level1Options = useMemo(() => {
+    return sortByNameKo(selectedSidoObj?.districts ?? []);
+  }, [selectedSidoObj]);
 
   const selectedLevel1Obj = useMemo(() => {
     return level1Options.find((d) => d.name === selectedLevel1) ?? null;
   }, [level1Options, selectedLevel1]);
 
-  const level2Options = useMemo(() => selectedLevel1Obj?.districts ?? [], [selectedLevel1Obj]);
+  const level2Options = useMemo(() => {
+    return sortByNameKo(selectedLevel1Obj?.districts ?? []);
+  }, [selectedLevel1Obj]);
 
   const hasLevel2 = level2Options.length > 0;
   const hasLevel1 = level1Options.length > 0;
