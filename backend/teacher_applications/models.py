@@ -341,7 +341,6 @@ class TeacherApplication(models.Model):
     )
 
     evaluation_result = models.TextField(
-        max_length=1000,
         blank=True,
         verbose_name="Evaluation Result / 평가 결과",
         help_text="전체적인 이력서 평가 결과 (1000자 이내, 관리자 전용) / Overall resume evaluation result (max 1000 chars, Admin only)",

@@ -6,6 +6,7 @@ from .models import TeacherApplication
 @admin.register(TeacherApplication)
 class TeacherApplicationAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "full_name",
         "email",
         "nationality",
