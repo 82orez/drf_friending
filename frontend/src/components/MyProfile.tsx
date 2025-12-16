@@ -247,7 +247,7 @@ export default function MyProfile() {
             <div className={"flex items-center justify-center gap-4"}>
               <button
                 onClick={handleLogout}
-                className="mt-2 flex w-36 items-center justify-center gap-1 rounded border bg-black px-4 py-2 text-sm font-medium text-white hover:cursor-pointer">
+                className="mt-2 flex w-36 items-center justify-center gap-1 rounded-xl border bg-black px-4 py-2 text-sm font-medium text-white hover:cursor-pointer">
                 <div>Logout</div>
                 <PiSignOut size={18} />
               </button>

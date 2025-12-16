@@ -604,7 +604,7 @@ export default function TeacherApplicationPage() {
               {/* Profile image + Visa scan */}
               <div className="mt-4 grid gap-6 md:grid-cols-2">
                 {/* Profile image */}
-                <div>
+                <div className={"rounded-xl border border-gray-300 p-4"}>
                   <label className="block text-sm font-medium text-slate-800">
                     Profile Image (2MB max, JPG/PNG) / 프로필 이미지
                     {!hasExistingApplication && <span className="text-rose-500"> *</span>}
@@ -634,7 +634,7 @@ export default function TeacherApplicationPage() {
                 </div>
 
                 {/* Visa scan */}
-                <div>
+                <div className={"rounded-xl border border-gray-300 p-4"}>
                   <label className="block text-sm font-medium text-slate-800">
                     Visa Copy (2MB max, JPG/PNG) / 비자 사본
                     {!hasExistingApplication && <span className="text-rose-500"> *</span>}
