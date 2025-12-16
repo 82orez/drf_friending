@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import cityDistrictData from "@/lib/city_district.json";
 
 type TeacherApplication = {
   id: number;
@@ -61,6 +62,8 @@ type SearchCategory = "LOCATION" | "GENDER" | "LANGUAGE" | "AGE_BRACKET";
 type AgeBracket = "ALL" | "20S" | "30S" | "40S" | "50S" | "60PLUS";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+const ALL_VALUE = "ALL" as const;
 
 function toAbsoluteMediaUrl(url?: string | null) {
   if (!url) return null;
@@ -170,12 +173,61 @@ export default function MainPage() {
   const [error, setError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<TeacherApplication[]>([]);
 
-  // 검색 UI 상태
+  // 검색 UI 상태 (기존 단일 카테고리 검색)
   const [category, setCategory] = useState<SearchCategory>("LOCATION");
   const [keyword, setKeyword] = useState("");
   const [gender, setGender] = useState<string>("ALL");
   const [language, setLanguage] = useState<string>("ALL");
   const [ageBracket, setAgeBracket] = useState<AgeBracket>("ALL");
+
+  // 조건 검색(복합) UI 상태
+  const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
+
+  // location: 시/도 -> 시/군/구 -> (선택) 구(일반구)
+  const [sido, setSido] = useState<string>(ALL_VALUE);
+  const [sigungu, setSigungu] = useState<string>(ALL_VALUE);
+  const [gu, setGu] = useState<string>(ALL_VALUE);
+
+  // 조건 검색: language / gender / age
+  const [advLanguage, setAdvLanguage] = useState<string>(ALL_VALUE);
+  const [advGender, setAdvGender] = useState<string>(ALL_VALUE);
+  const [advAgeBracket, setAdvAgeBracket] = useState<AgeBracket>("ALL");
+
+  const sidoOptions = useMemo(() => {
+    const s = (cityDistrictData as any)?.sido;
+    if (!Array.isArray(s)) return [];
+    return s.map((x: any) => String(x?.name)).filter(Boolean);
+  }, []);
+
+  const sigunguOptions = useMemo(() => {
+    if (sido === ALL_VALUE) return [];
+    const s = (cityDistrictData as any)?.sido;
+    const found = Array.isArray(s) ? s.find((x: any) => String(x?.name) === sido) : null;
+    const districts = found?.districts;
+    if (!Array.isArray(districts)) return [];
+    return districts.map((d: any) => String(d?.name)).filter(Boolean);
+  }, [sido]);
+
+  const guOptions = useMemo(() => {
+    if (sido === ALL_VALUE || sigungu === ALL_VALUE) return [];
+    const s = (cityDistrictData as any)?.sido;
+    const foundSido = Array.isArray(s) ? s.find((x: any) => String(x?.name) === sido) : null;
+    const sigunguList = foundSido?.districts;
+    const foundSigungu = Array.isArray(sigunguList) ? sigunguList.find((d: any) => String(d?.name) === sigungu) : null;
+    const inner = foundSigungu?.districts;
+    if (!Array.isArray(inner)) return [];
+    return inner.map((g: any) => String(g?.name)).filter(Boolean);
+  }, [sido, sigungu]);
+
+  // location select 연동: 상위 변경 시 하위 초기화
+  useEffect(() => {
+    setSigungu(ALL_VALUE);
+    setGu(ALL_VALUE);
+  }, [sido]);
+
+  useEffect(() => {
+    setGu(ALL_VALUE);
+  }, [sigungu]);
 
   // 상세 모달 상태
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
@@ -256,7 +308,22 @@ export default function MainPage() {
     const kw = normalize(keyword);
 
     return teachers.filter((t) => {
-      // 카테고리별 조건 검색
+      // 조건 검색(복합): location + language + gender + age 를 AND로 결합
+      if (isAdvancedSearch) {
+        const combinedLocation = normalize(`${t.city || ""} ${t.district || ""}`);
+
+        if (sido !== ALL_VALUE && !combinedLocation.includes(normalize(sido))) return false;
+        if (sigungu !== ALL_VALUE && !combinedLocation.includes(normalize(sigungu))) return false;
+        if (gu !== ALL_VALUE && !combinedLocation.includes(normalize(gu))) return false;
+
+        if (advLanguage !== ALL_VALUE && normalize(t.teaching_languages) !== normalize(advLanguage)) return false;
+        if (advGender !== ALL_VALUE && (t.gender || "") !== advGender) return false;
+        if (advAgeBracket !== "ALL" && getAgeBracket(t.age ?? null) !== advAgeBracket) return false;
+
+        return true;
+      }
+
+      // 기존: 카테고리별 단일 조건 검색
       if (category === "LOCATION") {
         if (!kw) return true;
         const combined = normalize(`${t.city || ""} ${t.district || ""}`);
@@ -280,7 +347,7 @@ export default function MainPage() {
 
       return true;
     });
-  }, [teachers, category, keyword, gender, language, ageBracket]);
+  }, [teachers, isAdvancedSearch, sido, sigungu, gu, advLanguage, advGender, advAgeBracket, category, keyword, gender, language, ageBracket]);
 
   const handleLogout = async () => {
     try {
@@ -350,12 +417,113 @@ export default function MainPage() {
     );
   };
 
+  const renderAdvancedSearchControls = () => {
+    return (
+      <div className="flex w-full items-center gap-2">
+        {/* location */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <select
+            value={sido}
+            onChange={(e) => setSido(e.target.value)}
+            className="w-full min-w-[150px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+            title="Location (시/도)">
+            <option value={ALL_VALUE}>지역 전체</option>
+            {sidoOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sigungu}
+            onChange={(e) => setSigungu(e.target.value)}
+            disabled={sido === ALL_VALUE}
+            className="w-full min-w-[160px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 disabled:opacity-60"
+            title="Location (시/군/구)">
+            <option value={ALL_VALUE}>시/군/구 전체</option>
+            {sigunguOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={gu}
+            onChange={(e) => setGu(e.target.value)}
+            disabled={sido === ALL_VALUE || sigungu === ALL_VALUE || guOptions.length === 0}
+            className="w-full min-w-[140px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 disabled:opacity-60"
+            title="Location (일반구)">
+            <option value={ALL_VALUE}>구 전체</option>
+            {guOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* language */}
+        <select
+          value={advLanguage}
+          onChange={(e) => setAdvLanguage(e.target.value)}
+          className="w-[170px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+          title="Language">
+          <option value={ALL_VALUE}>전체 언어</option>
+          <option value="English">English</option>
+          <option value="Japanese">Japanese</option>
+          <option value="Chinese">Chinese</option>
+          <option value="Spanish">Spanish</option>
+        </select>
+
+        {/* gender */}
+        <select
+          value={advGender}
+          onChange={(e) => setAdvGender(e.target.value)}
+          className="w-[170px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+          title="Gender">
+          <option value={ALL_VALUE}>전체 성별</option>
+          <option value="MALE">Male</option>
+          <option value="FEMALE">Female</option>
+          <option value="OTHER">Other</option>
+          <option value="PREFER_NOT">Prefer not to say</option>
+        </select>
+
+        {/* age */}
+        <select
+          value={advAgeBracket}
+          onChange={(e) => setAdvAgeBracket(e.target.value as AgeBracket)}
+          className="w-[160px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+          title="Age">
+          <option value="ALL">전체 연령대</option>
+          <option value="20S">20s</option>
+          <option value="30S">30s</option>
+          <option value="40S">40s</option>
+          <option value="50S">50s</option>
+          <option value="60PLUS">60+</option>
+        </select>
+      </div>
+    );
+  };
+
   const activeFilterLabel = useMemo(() => {
+    if (isAdvancedSearch) {
+      const locParts = [sido !== ALL_VALUE ? sido : null, sigungu !== ALL_VALUE ? sigungu : null, gu !== ALL_VALUE ? gu : null].filter(Boolean);
+      const locText = locParts.length ? locParts.join(" / ") : "지역 전체";
+      const langText = advLanguage === ALL_VALUE ? "전체 언어" : advLanguage;
+      const genderText = advGender === ALL_VALUE ? "전체 성별" : labelGender(advGender);
+      const ageText = advAgeBracket === "ALL" ? "전체 연령대" : labelAgeBracket(advAgeBracket);
+
+      // 예: 경기도 / 양평군 - English - Female - 20s
+      return `${locText} - ${langText} - ${genderText} - ${ageText}`;
+    }
+
     if (category === "LOCATION") return keyword ? `Location: "${keyword}"` : "Location: (all)";
     if (category === "GENDER") return `Gender: ${gender === "ALL" ? "All" : labelGender(gender)}`;
     if (category === "LANGUAGE") return `Language: ${language === "ALL" ? "All" : language}`;
     return `Age: ${labelAgeBracket(ageBracket)}`;
-  }, [category, keyword, gender, language, ageBracket]);
+  }, [isAdvancedSearch, sido, sigungu, gu, advLanguage, advGender, advAgeBracket, category, keyword, gender, language, ageBracket]);
 
   const detailThumb = toAbsoluteMediaUrl(teacherDetail?.profile_image_thumbnail);
   const detailFullName = `${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim();
@@ -376,26 +544,59 @@ export default function MainPage() {
 
           {/* Center: Search */}
           <div className="flex w-full items-center gap-2">
-            <select
-              value={category}
-              onChange={(e) => {
-                const next = e.target.value as SearchCategory;
-                setCategory(next);
+            {/* 조건 검색 버튼 */}
+            <button
+              onClick={() => {
+                setIsAdvancedSearch((v) => !v);
 
-                // 카테고리 변경 시 불필요 상태 정리
+                // 모드 전환 시 기존/조건 검색 상태 정리 (원치 않으면 이 부분 제거 가능)
                 setKeyword("");
                 setGender("ALL");
                 setLanguage("ALL");
                 setAgeBracket("ALL");
-              }}
-              className="w-[180px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
-              <option value="LOCATION">Location</option>
-              <option value="GENDER">Gender</option>
-              <option value="LANGUAGE">Language</option>
-              <option value="AGE_BRACKET">Age</option>
-            </select>
 
-            <div className="w-full">{renderSearchControl()}</div>
+                setSido(ALL_VALUE);
+                setSigungu(ALL_VALUE);
+                setGu(ALL_VALUE);
+                setAdvLanguage(ALL_VALUE);
+                setAdvGender(ALL_VALUE);
+                setAdvAgeBracket("ALL");
+              }}
+              className={clsx(
+                "shrink-0 rounded-xl border px-3 py-2.5 text-sm font-medium shadow-sm transition focus:ring-4 focus:outline-none",
+                isAdvancedSearch
+                  ? "border-gray-900 bg-gray-900 text-white hover:bg-black focus:ring-gray-200"
+                  : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50 focus:ring-gray-100",
+              )}>
+              조건 검색
+            </button>
+
+            {!isAdvancedSearch ? (
+              <>
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    const next = e.target.value as SearchCategory;
+                    setCategory(next);
+
+                    // 카테고리 변경 시 불필요 상태 정리
+                    setKeyword("");
+                    setGender("ALL");
+                    setLanguage("ALL");
+                    setAgeBracket("ALL");
+                  }}
+                  className="w-[180px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
+                  <option value="LOCATION">Location</option>
+                  <option value="GENDER">Gender</option>
+                  <option value="LANGUAGE">Language</option>
+                  <option value="AGE_BRACKET">Age</option>
+                </select>
+
+                <div className="w-full">{renderSearchControl()}</div>
+              </>
+            ) : (
+              <div className="w-full">{renderAdvancedSearchControls()}</div>
+            )}
 
             <button
               onClick={fetchTeachers}
@@ -411,7 +612,13 @@ export default function MainPage() {
             </div>
 
             <button
-              onClick={handleLogout}
+              onClick={async () => {
+                try {
+                  await logout();
+                } catch (e) {
+                  console.error("Logout failed:", e);
+                }
+              }}
               className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
               Logout
             </button>
