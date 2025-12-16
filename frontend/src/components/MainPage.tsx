@@ -164,7 +164,7 @@ function TextBlock({ text }: { text?: string | null }) {
 }
 
 export default function MainPage() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -404,8 +404,12 @@ export default function MainPage() {
             </button>
           </div>
 
-          {/* Right: Logout */}
-          <div className="flex min-w-[140px] justify-end">
+          {/* Right: Email + Logout */}
+          <div className="flex min-w-[260px] items-center justify-end gap-3">
+            <div className="max-w-[220px] truncate text-sm text-gray-700 underline" title={user?.email || ""}>
+              {user?.email || ""}
+            </div>
+
             <button
               onClick={handleLogout}
               className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
