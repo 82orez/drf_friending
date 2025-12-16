@@ -367,7 +367,7 @@ export default function MainPage() {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
           {/* Left: Logo */}
           <div className="flex min-w-[160px] items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gray-900 text-sm font-semibold text-white">F</div>
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gray-900 text-xl font-semibold text-white">F</div>
             <div className="leading-tight">
               <div className="text-sm font-semibold">Friending</div>
               <div className="text-xs text-gray-500">Teacher Directory</div>

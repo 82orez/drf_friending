@@ -4,7 +4,6 @@ import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 
-
 import requests
 from faker import Faker
 from PIL import Image, ImageDraw
@@ -36,8 +35,12 @@ def _rand_date(start: date, end: date) -> date:
 
 def _rand_korean_address():
     """
-    ✅ 한글 + 숫자 + 하이픈(-) + 공백(가독성)만 사용
-    예: "서울 강남구 테헤란로 123-45 801호"
+    ✅ 변경된 주소 입력 방식에 맞춰 생성:
+    - city, district, address_line1 를 분리해서 반환
+    - address_line1 에 city/district 가 포함되지 않도록 보장
+    - 한글 + 숫자 + 하이픈(-) + 공백만 사용
+    예:
+      city="서울", district="강남구", address_line1="테헤란로 123-45 801호"
     """
     cities = ["서울", "부산", "인천", "대구", "대전", "광주", "울산", "세종"]
     districts = [
@@ -74,7 +77,8 @@ def _rand_korean_address():
     unit_no = random.randint(101, 2005)
     detail = f"{unit_no}호"
 
-    address_line1 = f"{city} {district} {road} {road_no} {detail}"
+    # ✅ city/district 를 address_line1 에 넣지 않음
+    address_line1 = f"{road} {road_no} {detail}"
     postal_code = f"{random.randint(10000, 99999)}"
     return city, district, address_line1, postal_code
 
@@ -375,3 +379,6 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Done. Created: {created}"))
         self.stdout.write(self.style.WARNING("Users password: Test1234! (dev only)"))
+
+
+# python manage.py generate_teacher_applications --count 50 --style avataaars
