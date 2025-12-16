@@ -21,6 +21,10 @@ from teacher_applications.models import (
     ApplicationStatusChoices,
 )
 
+import json
+from functools import lru_cache
+from pathlib import Path
+
 
 def _rand_phone_kr() -> str:
     mid = random.randint(1000, 9999)
@@ -33,27 +37,70 @@ def _rand_date(start: date, end: date) -> date:
     return start + timedelta(days=random.randint(0, max(days, 0)))
 
 
+@lru_cache(maxsize=1)
+def _load_city_district_json() -> dict:
+    """
+    Load real KR administrative divisions from:
+      frontend/src/lib/city_district.json
+
+    We keep this cached so each management command run reads it once.
+    """
+    # This file is typically:
+    # backend/teacher_applications/management/commands/generate_teacher_applications.py
+    # -> project root is 4 levels up from here.
+    here = Path(__file__).resolve()
+    project_root = here.parents[4]
+
+    json_path = project_root / "frontend" / "src" / "lib" / "city_district.json"
+    if not json_path.exists():
+        raise RuntimeError(
+            f"city_district.json not found at expected path: {json_path}\n"
+            f"Please ensure frontend/src/lib/city_district.json exists."
+        )
+
+    with json_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def _rand_korean_address():
     """
-    ✅ 변경된 주소 입력 방식에 맞춰 생성:
-    - city, district, address_line1 를 분리해서 반환
-    - address_line1 에 city/district 가 포함되지 않도록 보장
-    - 한글 + 숫자 + 하이픈(-) + 공백만 사용
-    예:
-      city="서울", district="강남구", address_line1="테헤란로 123-45 801호"
+    ✅ 실제 대한민국 행정구역 기반으로 생성:
+    - city: 시/도(광역단체)
+    - district: 시/군/구 (또는 '특정시 일반구' 형태면 '용인시 기흥구'처럼 공백으로 결합)
+      - 예: 서울 / 강남구
+      - 예: 경기도 / 용인시 기흥구
+      - 예: 경기도 / 양평군
+      - 예: 세종 / 세종 (시/군/구가 없는 경우 프론트 로직과 동일하게 district=city)
+    - address_line1: city/district 미포함
     """
-    cities = ["서울", "부산", "인천", "대구", "대전", "광주", "울산", "세종"]
-    districts = [
-        "강남구",
-        "서초구",
-        "마포구",
-        "종로구",
-        "중구",
-        "송파구",
-        "영등포구",
-        "해운대구",
-        "수영구",
-    ]
+    data = _load_city_district_json()
+    sido_list = (data or {}).get("sido") or []
+    if not sido_list:
+        raise RuntimeError("city_district.json has no 'sido' entries.")
+
+    sido = random.choice(sido_list)
+    city = str(sido.get("name") or "").strip()
+
+    # 시/도 하위(시/군/구)
+    level1_list = sido.get("districts") or []
+
+    if not level1_list:
+        # e.g. 세종(특별자치시): 프론트에서 district를 city로 저장하는 정책과 맞춤
+        district = city
+    else:
+        level1 = random.choice(level1_list)
+        level1_name = str(level1.get("name") or "").strip()
+
+        # 특정시 산하 일반구(있으면 3단계)
+        level2_list = level1.get("districts") or []
+        if level2_list:
+            level2 = random.choice(level2_list)
+            level2_name = str(level2.get("name") or "").strip()
+            district = f"{level1_name} {level2_name}".strip()
+        else:
+            district = level1_name
+
+    # address_line1 은 city/district 제외(도로명/상세만)
     roads = [
         "테헤란로",
         "강남대로",
@@ -66,10 +113,7 @@ def _rand_korean_address():
         "학동로",
     ]
 
-    city = random.choice(cities)
-    district = random.choice(districts)
     road = random.choice(roads)
-
     main_no = random.randint(1, 999)
     sub_no = random.randint(1, 99)
     road_no = f"{main_no}-{sub_no}"
@@ -77,7 +121,6 @@ def _rand_korean_address():
     unit_no = random.randint(101, 2005)
     detail = f"{unit_no}호"
 
-    # ✅ city/district 를 address_line1 에 넣지 않음
     address_line1 = f"{road} {road_no} {detail}"
     postal_code = f"{random.randint(10000, 99999)}"
     return city, district, address_line1, postal_code
