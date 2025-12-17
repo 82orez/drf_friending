@@ -132,46 +132,7 @@
       "name": "경기도",
       "type": "도",
       "districts": [
-        {
-          "name": "수원시",
-          "type": "시",
-          "districts": [
-            { "name": "장안구", "type": "일반구" },
-            { "name": "권선구", "type": "일반구" },
-            { "name": "팔달구", "type": "일반구" },
-            { "name": "영통구", "type": "일반구" }
-          ]
-        },
-        {
-          "name": "성남시",
-          "type": "시",
-          "districts": [
-            { "name": "수정구", "type": "일반구" },
-            { "name": "중원구", "type": "일반구" },
-            { "name": "분당구", "type": "일반구" }
-          ]
-        },
-        { "name": "의정부시", "type": "시" },
-        {
-          "name": "안양시",
-          "type": "시",
-          "districts": [
-            { "name": "만안구", "type": "일반구" },
-            { "name": "동안구", "type": "일반구" }
-          ]
-        },
-        { "name": "부천시", "type": "시" },
-        { "name": "광명시", "type": "시" },
-        { "name": "평택시", "type": "시" },
-        { "name": "동두천시", "type": "시" },
-        {
-          "name": "안산시",
-          "type": "시",
-          "districts": [
-            { "name": "상록구", "type": "일반구" },
-            { "name": "단원구", "type": "일반구" }
-          ]
-        },
+        { "name": "가평군", "type": "군" },
         {
           "name": "고양시",
           "type": "시",
@@ -182,34 +143,73 @@
           ]
         },
         { "name": "과천시", "type": "시" },
+        { "name": "광명시", "type": "시" },
+        { "name": "광주시", "type": "시" },
         { "name": "구리시", "type": "시" },
-        { "name": "남양주시", "type": "시" },
-        { "name": "오산시", "type": "시" },
-        { "name": "시흥시", "type": "시" },
         { "name": "군포시", "type": "시" },
-        { "name": "의왕시", "type": "시" },
-        { "name": "하남시", "type": "시" },
+        { "name": "김포시", "type": "시" },
+        { "name": "남양주시", "type": "시" },
+        { "name": "동두천시", "type": "시" },
+        { "name": "부천시", "type": "시" },
+        {
+          "name": "성남시",
+          "type": "시",
+          "districts": [
+            { "name": "분당구", "type": "일반구" },
+            { "name": "수정구", "type": "일반구" },
+            { "name": "중원구", "type": "일반구" }
+          ]
+        },
+        {
+          "name": "수원시",
+          "type": "시",
+          "districts": [
+            { "name": "권선구", "type": "일반구" },
+            { "name": "영통구", "type": "일반구" },
+            { "name": "장안구", "type": "일반구" },
+            { "name": "팔달구", "type": "일반구" }
+          ]
+        },
+        { "name": "시흥시", "type": "시" },
+        {
+          "name": "안산시",
+          "type": "시",
+          "districts": [
+            { "name": "단원구", "type": "일반구" },
+            { "name": "상록구", "type": "일반구" }
+          ]
+        },
+        { "name": "안성시", "type": "시" },
+        {
+          "name": "안양시",
+          "type": "시",
+          "districts": [
+            { "name": "동안구", "type": "일반구" },
+            { "name": "만안구", "type": "일반구" }
+          ]
+        },
+        { "name": "양주시", "type": "시" },
+        { "name": "양평군", "type": "군" },
+        { "name": "여주시", "type": "시" },
+        { "name": "연천군", "type": "군" },
+        { "name": "오산시", "type": "시" },
         {
           "name": "용인시",
           "type": "시",
           "districts": [
-            { "name": "처인구", "type": "일반구" },
             { "name": "기흥구", "type": "일반구" },
-            { "name": "수지구", "type": "일반구" }
+            { "name": "수지구", "type": "일반구" },
+            { "name": "처인구", "type": "일반구" }
           ]
         },
-        { "name": "파주시", "type": "시" },
+        { "name": "의왕시", "type": "시" },
+        { "name": "의정부시", "type": "시" },
         { "name": "이천시", "type": "시" },
-        { "name": "안성시", "type": "시" },
-        { "name": "김포시", "type": "시" },
-        { "name": "화성시", "type": "시" },
-        { "name": "광주시", "type": "시" },
-        { "name": "양주시", "type": "시" },
+        { "name": "파주시", "type": "시" },
+        { "name": "평택시", "type": "시" },
         { "name": "포천시", "type": "시" },
-        { "name": "여주시", "type": "시" },
-        { "name": "연천군", "type": "군" },
-        { "name": "가평군", "type": "군" },
-        { "name": "양평군", "type": "군" }
+        { "name": "하남시", "type": "시" },
+        { "name": "화성시", "type": "시" }
       ]
     },
     {
