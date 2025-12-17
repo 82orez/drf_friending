@@ -323,9 +323,9 @@ export default function MainPage() {
 
   const renderAdvancedSearchControls = () => {
     return (
-      <div className="flex w-full items-center gap-2">
-        {/* location */}
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="flex w-full flex-col gap-2">
+        {/* 상단: location */}
+        <div className="flex w-full min-w-0 items-center gap-2">
           <select
             value={sido}
             onChange={(e) => setSido(e.target.value)}
@@ -368,45 +368,45 @@ export default function MainPage() {
           </select>
         </div>
 
-        {/* language */}
-        <select
-          value={advLanguage}
-          onChange={(e) => setAdvLanguage(e.target.value)}
-          className="w-[170px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
-          title="Language">
-          <option value={ALL_VALUE}>전체 언어</option>
-          <option value="English">English</option>
-          <option value="Japanese">Japanese</option>
-          <option value="Chinese">Chinese</option>
-          <option value="Spanish">Spanish</option>
-        </select>
+        {/* 하단: language / gender / age */}
+        <div className="flex w-full flex-wrap items-center justify-center gap-2">
+          <select
+            value={advLanguage}
+            onChange={(e) => setAdvLanguage(e.target.value)}
+            className="w-[170px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+            title="Language">
+            <option value={ALL_VALUE}>전체 언어</option>
+            <option value="English">English</option>
+            <option value="Japanese">Japanese</option>
+            <option value="Chinese">Chinese</option>
+            <option value="Spanish">Spanish</option>
+          </select>
 
-        {/* gender */}
-        <select
-          value={advGender}
-          onChange={(e) => setAdvGender(e.target.value)}
-          className="w-[170px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
-          title="Gender">
-          <option value={ALL_VALUE}>전체 성별</option>
-          <option value="MALE">Male</option>
-          <option value="FEMALE">Female</option>
-          <option value="OTHER">Other</option>
-          <option value="PREFER_NOT">Prefer not to say</option>
-        </select>
+          <select
+            value={advGender}
+            onChange={(e) => setAdvGender(e.target.value)}
+            className="w-[170px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+            title="Gender">
+            <option value={ALL_VALUE}>전체 성별</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+            <option value="OTHER">Other</option>
+            <option value="PREFER_NOT">Prefer not to say</option>
+          </select>
 
-        {/* age */}
-        <select
-          value={advAgeBracket}
-          onChange={(e) => setAdvAgeBracket(e.target.value as AgeBracket)}
-          className="w-[160px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
-          title="Age">
-          <option value="ALL">전체 연령대</option>
-          <option value="20S">20s</option>
-          <option value="30S">30s</option>
-          <option value="40S">40s</option>
-          <option value="50S">50s</option>
-          <option value="60PLUS">60+</option>
-        </select>
+          <select
+            value={advAgeBracket}
+            onChange={(e) => setAdvAgeBracket(e.target.value as AgeBracket)}
+            className="w-[160px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+            title="Age">
+            <option value="ALL">전체 연령대</option>
+            <option value="20S">20s</option>
+            <option value="30S">30s</option>
+            <option value="40S">40s</option>
+            <option value="50S">50s</option>
+            <option value="60PLUS">60+</option>
+          </select>
+        </div>
       </div>
     );
   };
