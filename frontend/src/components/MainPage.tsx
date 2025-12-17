@@ -433,7 +433,7 @@ export default function MainPage() {
           <button className="flex min-w-[160px] items-center gap-2 hover:cursor-pointer" onClick={resetFilters}>
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-gray-900 text-xl font-semibold text-white">F</div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold">Friending</div>
+              <div className="text-xl font-semibold">Friending</div>
               <div className="text-xs text-gray-500">Teacher Directory</div>
             </div>
           </button>
@@ -450,16 +450,16 @@ export default function MainPage() {
           </div>
 
           {/* Right: Email + Logout */}
-          <div className="flex min-w-[260px] items-center justify-end gap-3">
-            <div className="max-w-[220px] truncate text-sm text-gray-700 underline" title={user?.email || ""}>
-              {user?.email || ""}
-            </div>
-
+          <div className="flex flex-col items-center justify-end gap-3">
             <button
               onClick={handleLogout}
               className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
               Logout
             </button>
+
+            <div className="max-w-[220px] truncate text-sm text-gray-700 underline" title={user?.email || ""}>
+              {user?.email || ""}
+            </div>
           </div>
         </div>
       </header>
