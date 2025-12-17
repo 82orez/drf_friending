@@ -29,7 +29,7 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
         "phone_number",
         "nationality",
     ]
-    readonly_fields = ["user", "created_at", "updated_at"]
+    readonly_fields = ["user", "created_at", "updated_at", "profile_image_preview"]
 
     fieldsets = (
         (
@@ -38,6 +38,7 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                 "fields": (
                     "user",
                     "profile_image",
+                    "profile_image_preview",
                     "first_name",
                     "last_name",
                     "korean_name",
@@ -115,6 +116,19 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
         ),
         ("관리 정보", {"fields": ("status", "created_at", "updated_at")}),
     )
+
+    def profile_image_preview(self, obj):
+        if not obj or not getattr(obj, "profile_image", None):
+            return "이미지 없음"
+        try:
+            return format_html(
+                '<img src="{}" style="max-height: 120px; max-width: 120px; border-radius: 8px; object-fit: cover;" />',
+                obj.profile_image.url,
+            )
+        except Exception:
+            return "미리보기 불가"
+
+    profile_image_preview.short_description = "Profile image preview"
 
     def full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
