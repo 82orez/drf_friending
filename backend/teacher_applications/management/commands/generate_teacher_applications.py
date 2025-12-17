@@ -311,7 +311,7 @@ class Command(BaseCommand):
             korea_exp_tenths = random.randint(0, max_korea_tenths)
             korea_exp = Decimal(korea_exp_tenths) / Decimal("10")
 
-            status = random.choices(statuses, weights=[55, 20, 15, 10], k=1)[0]
+            status = random.choices(statuses, weights=[10, 10, 70, 10], k=1)[0]
 
             city_ko, district_ko, address_line1_ko, postal_code_num = (
                 _rand_korean_address()
