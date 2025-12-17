@@ -80,7 +80,6 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                     "experience_history",
                     "certifications",
                 ),
-                "classes": ["collapse"],
             },
         ),
         (
@@ -92,7 +91,6 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                     "available_time_slots",
                     "available_from_date",
                 ),
-                "classes": ["collapse"],
             },
         ),
         (
@@ -113,7 +111,6 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                     "memo",
                     "evaluation_result",
                 ),
-                "classes": ("collapse",),  # 접을 수 있도록
             },
         ),
         ("관리 정보", {"fields": ("status", "created_at", "updated_at")}),
