@@ -31,11 +31,10 @@ class GenderChoices(models.TextChoices):
 
 
 class VisaTypeChoices(models.TextChoices):
-    E2 = "E-2", "E-2"
     F2 = "F-2", "F-2"
     F4 = "F-4", "F-4"
     F5 = "F-5", "F-5"
-    D10 = "D-10", "D-10"
+    F6 = "F-6", "F-6"
     OTHER = "OTHER", "Other / 기타"
 
 

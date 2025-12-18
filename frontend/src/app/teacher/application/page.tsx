@@ -10,7 +10,7 @@ import RegionSelectKR from "@/components/RegionSelectKR";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 type Gender = "" | "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT";
-type VisaType = "" | "E-2" | "F-2" | "F-4" | "F-5" | "D-10" | "OTHER";
+type VisaType = "" | "F-2" | "F-4" | "F-5" | "F-6" | "OTHER";
 type EmploymentType = "" | "FULL_TIME" | "PART_TIME" | "FREELANCE" | "ANY";
 
 interface TeacherApplicationForm {
@@ -861,11 +861,10 @@ export default function TeacherApplicationPage() {
                     onChange={handleInputChange}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2">
                     <option value="">Select / 선택</option>
-                    <option value="E-2">E-2</option>
                     <option value="F-2">F-2</option>
                     <option value="F-4">F-4</option>
                     <option value="F-5">F-5</option>
-                    <option value="D-10">D-10</option>
+                    <option value="F-6">F-6</option>
                     <option value="OTHER">Other / 기타</option>
                   </select>
                   {renderError("visa_type")}
