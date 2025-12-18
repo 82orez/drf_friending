@@ -254,52 +254,52 @@ export default function MyProfile() {
             </div>
 
             {/* === 프로필 이미지 영역 시작 === */}
-            <div className="mt-6 border-t pt-6 text-left">
-              <h2 className="mb-4 text-lg font-semibold text-gray-900">Profile Image</h2>
+            {/*<div className="mt-6 border-t pt-6 text-left">*/}
+            {/*  <h2 className="mb-4 text-lg font-semibold text-gray-900">Profile Image</h2>*/}
 
-              <div className="flex items-start gap-4">
-                {/* 현재 프로필 이미지 / 미리보기 */}
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-24 w-24 overflow-hidden rounded-full bg-gray-100">
-                    {/* previewUrl > profileImageUrl > 기본 이미지(anon-user.jpg) 순으로 사용 */}
-                    <img src={previewUrl || profileImageUrl || "/anon-user.jpg"} alt="Profile" className="h-full w-full object-cover" />
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    {selectedFile ? selectedFile.name : profileImageUrl ? "현재 프로필 이미지" : "기본 프로필 이미지"}
-                  </span>
-                </div>
+            {/*  <div className="flex items-start gap-4">*/}
+            {/*    /!* 현재 프로필 이미지 / 미리보기 *!/*/}
+            {/*    <div className="flex flex-col items-center gap-2">*/}
+            {/*      <div className="h-24 w-24 overflow-hidden rounded-full bg-gray-100">*/}
+            {/*        /!* previewUrl > profileImageUrl > 기본 이미지(anon-user.jpg) 순으로 사용 *!/*/}
+            {/*        <img src={previewUrl || profileImageUrl || "/anon-user.jpg"} alt="Profile" className="h-full w-full object-cover" />*/}
+            {/*      </div>*/}
+            {/*      <span className="text-xs text-gray-400">*/}
+            {/*        {selectedFile ? selectedFile.name : profileImageUrl ? "현재 프로필 이미지" : "기본 프로필 이미지"}*/}
+            {/*      </span>*/}
+            {/*    </div>*/}
 
-                {/* 업로드 컨트롤 */}
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">이미지 선택</label>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png"
-                      onChange={handleFileChange}
-                      className="mt-1 block w-full text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                    <p className="mt-1 text-xs text-gray-400">JPEG, JPG, PNG 이미지 파일만 업로드 가능 / 최대 2MB</p>
-                  </div>
+            {/*    /!* 업로드 컨트롤 *!/*/}
+            {/*    <div className="flex-1 space-y-3">*/}
+            {/*      <div>*/}
+            {/*        <label className="block text-sm font-medium text-gray-700">이미지 선택</label>*/}
+            {/*        <input*/}
+            {/*          type="file"*/}
+            {/*          accept="image/jpeg,image/png"*/}
+            {/*          onChange={handleFileChange}*/}
+            {/*          className="mt-1 block w-full text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100"*/}
+            {/*        />*/}
+            {/*        <p className="mt-1 text-xs text-gray-400">JPEG, JPG, PNG 이미지 파일만 업로드 가능 / 최대 2MB</p>*/}
+            {/*      </div>*/}
 
-                  <button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={uploading || !selectedFile}
-                    className={`flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none ${
-                      uploading || !selectedFile ? "cursor-not-allowed bg-indigo-300" : "bg-indigo-600 hover:bg-indigo-700"
-                    }`}>
-                    {uploading ? "업로드 중..." : "프로필 이미지 업로드"}
-                  </button>
+            {/*      <button*/}
+            {/*        type="button"*/}
+            {/*        onClick={handleUpload}*/}
+            {/*        disabled={uploading || !selectedFile}*/}
+            {/*        className={`flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none ${*/}
+            {/*          uploading || !selectedFile ? "cursor-not-allowed bg-indigo-300" : "bg-indigo-600 hover:bg-indigo-700"*/}
+            {/*        }`}>*/}
+            {/*        {uploading ? "업로드 중..." : "프로필 이미지 업로드"}*/}
+            {/*      </button>*/}
 
-                  {uploadError && <p className="text-sm text-red-500">{uploadError}</p>}
-                  {uploadSuccess && <p className="text-sm text-green-600">{uploadSuccess}</p>}
-                </div>
-              </div>
-            </div>
+            {/*      {uploadError && <p className="text-sm text-red-500">{uploadError}</p>}*/}
+            {/*      {uploadSuccess && <p className="text-sm text-green-600">{uploadSuccess}</p>}*/}
+            {/*    </div>*/}
+            {/*  </div>*/}
+            {/*</div>*/}
             {/* === 프로필 이미지 영역 끝 === */}
 
-            <div className={"rounded border px-4 py-6"}>
+            <div className={"mt-12 rounded border px-4 py-6"}>
               <div className="mb-4 text-lg font-semibold text-gray-900">My Application Status</div>
 
               <div className={clsx("space-y-4", { "opacity-50": loadingApplication })}>
@@ -307,15 +307,17 @@ export default function MyProfile() {
                   {loadingApplication ? (
                     <div className="text-sm text-gray-400">상태 확인 중...</div>
                   ) : (
-                    <div className={`rounded border p-2 font-medium ${getStatusColorClass(applicationStatus)}`}>
-                      {getStatusDisplay(applicationStatus)}
+                    <div className={`rounded border p-2 py-6 font-medium ${getStatusColorClass(applicationStatus)}`}>
+                      <div className={"text-lg font-semibold"}>{getStatusDisplay(applicationStatus)}</div>
+                      {applicationStatus === "ACCEPTED" && (
+                        <div className={"mt-4 text-gray-800"}>
+                          <div>Congratulations!</div>
+                          <div className={"mt-4"}>Your application will be forwarded to the cultural center managers.</div>
+                          <div>If it is approved by any culture centers,</div>
+                          <div>you will be contacted accordingly.</div>
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {applicationStatus && (
-                    <button onClick={fetchApplicationStatus} className="text-xs text-indigo-600 underline hover:text-indigo-800">
-                      Refresh
-                    </button>
                   )}
                 </div>
 
@@ -332,7 +334,7 @@ export default function MyProfile() {
                       type="button"
                       onClick={handleDeleteApplication}
                       disabled={deletingApplication}
-                      className={`mt-6 w-full rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none ${
+                      className={`mt-6 w-full rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm hover:cursor-pointer focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none ${
                         deletingApplication ? "cursor-not-allowed bg-red-300" : "bg-red-600 hover:bg-red-700"
                       }`}>
                       {deletingApplication ? "Deleting..." : "Delete my application"}
