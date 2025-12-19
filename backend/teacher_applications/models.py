@@ -45,6 +45,15 @@ class NationalityChoices(models.TextChoices):
     OTHER = "OTHER", "Other / 기타"
 
 
+class NativeLanguageChoices(models.TextChoices):
+    ENGLISH = "ENGLISH", "English / 영어"
+    KOREAN = "KOREAN", "Korean / 한국어"
+    JAPANESE = "JAPANESE", "Japanese / 일본어"
+    CHINESE = "CHINESE", "Chinese / 중국어"
+    SPANISH = "SPANISH", "Spanish / 스페인어"
+    OTHER = "OTHER", "Other / 기타"
+
+
 class VisaTypeChoices(models.TextChoices):
     F2 = "F-2", "F-2"
     F4 = "F-4", "F-4"
@@ -168,6 +177,7 @@ class TeacherApplication(models.Model):
     )
     native_language = models.CharField(
         max_length=100,
+        choices=NativeLanguageChoices.choices,
         verbose_name="Native language / 모국어",
     )
 

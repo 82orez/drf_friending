@@ -14,7 +14,7 @@ type VisaType = "" | "F-2" | "F-4" | "F-5" | "F-6" | "OTHER";
 type EmploymentType = "" | "FULL_TIME" | "PART_TIME" | "FREELANCE" | "ANY";
 
 // ✅ native_language를 select로 운영할 값(백엔드는 CharField라 자유지만, 프론트에서 표준화)
-type NativeLanguage = "" | "English" | "Japanese" | "Chinese" | "Korean" | "Spanish" | "Other";
+type NativeLanguage = "" | "ENGLISH" | "KOREAN" | "JAPANESE" | "CHINESE" | "SPANISH" | "OTHER";
 
 interface TeacherApplicationForm {
   // Personal info
@@ -88,12 +88,12 @@ const NATIONALITY_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 const NATIVE_LANGUAGE_OPTIONS: Array<{ value: NativeLanguage; label: string }> = [
-  { value: "English", label: "English / 영어" },
-  { value: "Japanese", label: "Japanese / 일본어" },
-  { value: "Chinese", label: "Chinese / 중국어" },
-  { value: "Korean", label: "Korean / 한국어" },
-  { value: "Spanish", label: "Spanish / 스페인어" },
-  { value: "Other", label: "Other / 기타" },
+  { value: "ENGLISH", label: "English / 영어" },
+  { value: "KOREAN", label: "Korean / 한국어" },
+  { value: "JAPANESE", label: "Japanese / 일본어" },
+  { value: "CHINESE", label: "Chinese / 중국어" },
+  { value: "SPANISH", label: "Spanish / 스페인어" },
+  { value: "OTHER", label: "Other / 기타" },
 ];
 
 export default function TeacherApplicationPage() {
