@@ -365,7 +365,6 @@ class TeacherApplicationListView(generics.ListAPIView):
     ordering_fields = ["created_at", "visa_expiry_date", "status"]
     ordering = ["-created_at"]
 
-    @method_decorator(cache_page(60 * 5))  # 5분 캐싱
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
