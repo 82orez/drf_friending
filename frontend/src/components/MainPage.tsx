@@ -569,13 +569,13 @@ export default function MainPage() {
                         </div>
 
                         <div className="flex items-start justify-between gap-3">
-                          <dt className="text-gray-500">Location</dt>
-                          <dd className="text-right font-medium text-gray-900">{locationText}</dd>
+                          <dt className="text-gray-500">Teaching</dt>
+                          <dd className="text-right font-medium text-gray-900">{t.teaching_languages || "-"}</dd>
                         </div>
 
                         <div className="flex items-start justify-between gap-3">
-                          <dt className="text-gray-500">Teaching</dt>
-                          <dd className="text-right font-medium text-gray-900">{t.teaching_languages || "-"}</dd>
+                          <dt className="text-gray-500">Location</dt>
+                          <dd className="text-right font-medium text-gray-900">{locationText}</dd>
                         </div>
                       </dl>
                     </div>
@@ -665,7 +665,7 @@ export default function MainPage() {
                           <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
                           <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
                           <Field label="Nationality" value={teacherDetail?.nationality || "-"} />
-                          <Field label="Native language" value={teacherDetail?.native_language || "-"} />
+                          {/*<Field label="Native language" value={teacherDetail?.native_language || "-"} />*/}
                           <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
                           <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
                         </Section>
