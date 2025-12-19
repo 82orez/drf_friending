@@ -1010,7 +1010,7 @@ export default function TeacherApplicationPage() {
                     onBlur={() => handleDecimalBlur("total_teaching_experience_years")}
                     inputMode="decimal"
                     pattern="^\d*(\.\d?)?$"
-                    placeholder="e.g. 3, 3.5, .2 (Up to 1 decimal)"
+                    placeholder="e.g. 3, 3.5, .2"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("total_teaching_experience_years")}
@@ -1024,7 +1024,7 @@ export default function TeacherApplicationPage() {
                     onBlur={() => handleDecimalBlur("korea_teaching_experience_years")}
                     inputMode="decimal"
                     pattern="^\d*(\.\d?)?$"
-                    placeholder="e.g. 1, 1.0, .5 (Up to 1 decimal)"
+                    placeholder="e.g. 1, 1.0, .5"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("korea_teaching_experience_years")}

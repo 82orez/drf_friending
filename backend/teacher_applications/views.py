@@ -269,7 +269,9 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
             serializer = self.get_serializer(
                 instance, data=request.data, partial=partial
             )
-            serializer.is_valid(raise_exception=True)
+            serializer.is_valid(
+                raise_exception=True
+            )  # ✅ 여기서 DRFValidationError 발생 가능
             self.perform_update(serializer)
 
             return Response(
@@ -279,16 +281,25 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
                     "data": serializer.data,
                 }
             )
+
         except NotFound as e:
-            return Response(
-                e.detail,
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return Response(e.detail, status=status.HTTP_404_NOT_FOUND)
+
         except PermissionDenied as e:
+            return Response(e.detail, status=status.HTTP_403_FORBIDDEN)
+
+        # ✅ (추가) serializer validation 에러를 구조 그대로 내려주기
+        except DRFValidationError as e:
             return Response(
-                e.detail,
-                status=status.HTTP_403_FORBIDDEN,
+                {
+                    "success": False,
+                    "message": "이력서 수정에 실패했습니다.",
+                    "errors": e.detail,  # ✅ str(e) 금지! detail 그대로
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # ✅ 그 외 예상치 못한 예외
         except Exception as e:
             return Response(
                 {
