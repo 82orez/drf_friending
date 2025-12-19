@@ -19,6 +19,8 @@ from teacher_applications.models import (
     TeachingLanguageChoices,
     EmploymentTypeChoices,
     ApplicationStatusChoices,
+    NationalityChoices,
+    NativeLanguageChoices,
 )
 
 import json
@@ -258,13 +260,13 @@ class Command(BaseCommand):
         User = get_user_model()
 
         nationalities = [
-            ("United States", "English"),
-            ("Canada", "English"),
-            ("United Kingdom", "English"),
-            ("Australia", "English"),
-            ("Japan", "Japanese"),
-            ("China", "Chinese"),
-            ("Spain", "Spanish"),
+            (NationalityChoices.USA, NativeLanguageChoices.ENGLISH),
+            (NationalityChoices.CANADA, NativeLanguageChoices.ENGLISH),
+            (NationalityChoices.UK, NativeLanguageChoices.ENGLISH),
+            (NationalityChoices.AUSTRALIA, NativeLanguageChoices.ENGLISH),
+            (NationalityChoices.JAPAN, NativeLanguageChoices.JAPANESE),
+            (NationalityChoices.CHINA, NativeLanguageChoices.CHINESE),
+            (NationalityChoices.OTHER, NativeLanguageChoices.SPANISH),
         ]
 
         teaching_lang_values = [c[0] for c in TeachingLanguageChoices.choices]

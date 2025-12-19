@@ -44,6 +44,8 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                     "korean_name",
                     "gender",
                     "date_of_birth",
+                    "nationality",
+                    "native_language",
                 )
             },
         ),
