@@ -221,6 +221,23 @@ export default function TeacherApplicationPage() {
     };
   }, [profilePreviewUrl, visaPreviewUrl]);
 
+  // ✅ 소수점 1자리까지만 허용 (정수 / 0.3 / .2 / 1.2 / 1. 모두 가능)
+  const sanitizeDecimalOnePlace = (raw: string) => {
+    let v = raw.replace(/[^0-9.]/g, ""); // 숫자와 '.'만 남김
+
+    const firstDot = v.indexOf(".");
+    if (firstDot !== -1) {
+      const before = v.slice(0, firstDot);
+      const after = v
+        .slice(firstDot + 1)
+        .replace(/\./g, "") // '.' 추가 입력 제거
+        .slice(0, 1); // ✅ 소수 1자리
+      v = `${before}.${after}`;
+    }
+
+    return v;
+  };
+
   // 전화번호 포맷터 (숫자만 -> 010-1234-5678 / 011-123-1234 등)
   const formatKoreanPhoneNumber = (value: string): string => {
     // 1) 숫자만 남기기
@@ -267,6 +284,17 @@ export default function TeacherApplicationPage() {
         phone_number: formatted,
       }));
       setErrors((prev) => ({ ...prev, phone_number: "" }));
+      return;
+    }
+
+    // ✅ 총 강의 경력 / 한국 강의 경력: 소수점 1자리 제한
+    if (name === "total_teaching_experience_years" || name === "korea_teaching_experience_years") {
+      const sanitized = sanitizeDecimalOnePlace(value);
+      setForm((prev) => ({
+        ...prev,
+        [name]: sanitized,
+      }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
       return;
     }
 
@@ -926,7 +954,9 @@ export default function TeacherApplicationPage() {
                     name="total_teaching_experience_years"
                     value={form.total_teaching_experience_years}
                     onChange={handleInputChange}
-                    placeholder="e.g. 3.5 (Only Numbers)"
+                    inputMode="decimal"
+                    pattern="^\d*(\.\d?)?$"
+                    placeholder="e.g. 3, 3.5, .2"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("total_teaching_experience_years")}
@@ -937,7 +967,9 @@ export default function TeacherApplicationPage() {
                     name="korea_teaching_experience_years"
                     value={form.korea_teaching_experience_years}
                     onChange={handleInputChange}
-                    placeholder="e.g. 1.0 (Only Numbers)"
+                    inputMode="decimal"
+                    pattern="^\d*(\.\d?)?$"
+                    placeholder="e.g. 1, 1.0, .5"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("korea_teaching_experience_years")}
