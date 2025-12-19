@@ -62,6 +62,13 @@ interface TeacherApplicationForm {
 
 type ErrorMap = Record<string, string>;
 
+type DecimalFieldName = "total_teaching_experience_years" | "korea_teaching_experience_years";
+
+// ✅ UX 정책: "."만 입력된 경우 처리 방식
+// - "empty": 빈 값("")으로 처리 (기본)
+// - "zero": "0"으로 처리
+const DOT_ONLY_POLICY: "empty" | "zero" = "empty";
+
 export default function TeacherApplicationPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -236,6 +243,46 @@ export default function TeacherApplicationPage() {
     }
 
     return v;
+  };
+
+  // ✅ blur 시 보정:
+  // - "1." -> "1.0" (그리고 "0." -> "0.0")
+  // - "."  -> 정책에 따라 "" 또는 "0"
+  const normalizeDecimalOnBlur = (raw: string) => {
+    const v = sanitizeDecimalOnePlace(raw);
+
+    if (v === ".") {
+      return DOT_ONLY_POLICY === "zero" ? "0" : "";
+    }
+
+    // "숫자+." 형태면 0을 붙여서 완성
+    if (/^\d+\.$/.test(v)) {
+      return `${v}0`;
+    }
+
+    return v;
+  };
+
+  // ✅ submit 직전 보정 (blur 안 하고 바로 제출해도 안전하게 처리)
+  const normalizeDecimalBeforeSubmit = (raw: string) => {
+    const v = sanitizeDecimalOnePlace(raw);
+
+    if (v === ".") {
+      return DOT_ONLY_POLICY === "zero" ? "0" : "";
+    }
+    if (/^\d+\.$/.test(v)) {
+      return `${v}0`;
+    }
+    return v;
+  };
+
+  const handleDecimalBlur = (field: DecimalFieldName) => {
+    setForm((prev) => {
+      const nextValue = normalizeDecimalOnBlur(prev[field]);
+      if (nextValue === prev[field]) return prev;
+      return { ...prev, [field]: nextValue };
+    });
+    setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   // 전화번호 포맷터 (숫자만 -> 010-1234-5678 / 011-123-1234 등)
@@ -465,6 +512,10 @@ export default function TeacherApplicationPage() {
     try {
       const formData = new FormData();
 
+      // ✅ submit 직전 decimal 값 보정 (blur 없이 제출해도 처리됨)
+      const totalExpForSubmit = normalizeDecimalBeforeSubmit(form.total_teaching_experience_years);
+      const koreaExpForSubmit = normalizeDecimalBeforeSubmit(form.korea_teaching_experience_years);
+
       // 파일 추가 (새 파일이 있을 때만)
       if (profileImageFile) {
         formData.append("profile_image", profileImageFile);
@@ -493,8 +544,10 @@ export default function TeacherApplicationPage() {
 
       formData.append("teaching_languages", form.teaching_languages);
       if (form.preferred_subjects) formData.append("preferred_subjects", form.preferred_subjects);
-      if (form.total_teaching_experience_years) formData.append("total_teaching_experience_years", form.total_teaching_experience_years);
-      if (form.korea_teaching_experience_years) formData.append("korea_teaching_experience_years", form.korea_teaching_experience_years);
+
+      // ✅ 보정된 값으로 append (빈 값이면 append 안 함)
+      if (totalExpForSubmit) formData.append("total_teaching_experience_years", totalExpForSubmit);
+      if (koreaExpForSubmit) formData.append("korea_teaching_experience_years", koreaExpForSubmit);
 
       formData.append("self_introduction", form.self_introduction);
       formData.append("education_history", form.education_history);
@@ -611,7 +664,7 @@ export default function TeacherApplicationPage() {
           {/* ✅ 상태가 NEW가 아니면 수정 불가 안내 */}
           {isEditLocked && (
             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-              주의) 담당자가 이력서를 검토하기 시작하면 더이상 수정할 수 없습니다! (Once your application is under review, you can no longer edit it!
+              주의) 담당자가 이력서를 검토하기 시작하면 더이상 수정할 수 없습니다! (Once your application is under review, you can no longer edit it!)
             </div>
           )}
         </div>
@@ -954,9 +1007,10 @@ export default function TeacherApplicationPage() {
                     name="total_teaching_experience_years"
                     value={form.total_teaching_experience_years}
                     onChange={handleInputChange}
+                    onBlur={() => handleDecimalBlur("total_teaching_experience_years")}
                     inputMode="decimal"
                     pattern="^\d*(\.\d?)?$"
-                    placeholder="e.g. 3, 3.5, .2"
+                    placeholder="e.g. 3, 3.5, .2 (Up to 1 decimal)"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("total_teaching_experience_years")}
@@ -967,9 +1021,10 @@ export default function TeacherApplicationPage() {
                     name="korea_teaching_experience_years"
                     value={form.korea_teaching_experience_years}
                     onChange={handleInputChange}
+                    onBlur={() => handleDecimalBlur("korea_teaching_experience_years")}
                     inputMode="decimal"
                     pattern="^\d*(\.\d?)?$"
-                    placeholder="e.g. 1, 1.0, .5"
+                    placeholder="e.g. 1, 1.0, .5 (Up to 1 decimal)"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
                   />
                   {renderError("korea_teaching_experience_years")}
