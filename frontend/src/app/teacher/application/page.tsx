@@ -71,29 +71,30 @@ type DecimalFieldName = "total_teaching_experience_years" | "korea_teaching_expe
 // - "zero": "0"으로 처리
 const DOT_ONLY_POLICY: "empty" | "zero" = "empty";
 
-// ✅ Nationality / Native language options (select)
-const NATIONALITY_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "AUSTRALIA", label: "Australia / 호주" },
-  { value: "CANADA", label: "Canada / 캐나다" },
-  { value: "CHINA", label: "China / 중국" },
-  { value: "IRELAND", label: "Ireland / 아일랜드" },
-  { value: "JAPAN", label: "Japan / 일본" },
-  { value: "NEW_ZEALAND", label: "New Zealand / 뉴질랜드" },
-  { value: "PHILIPPINES", label: "Philippines / 필리핀" },
-  { value: "SOUTH_AFRICA", label: "South Africa / 남아프리카공화국" },
-  { value: "SOUTH_KOREA", label: "South Korea / 대한민국" },
-  { value: "UK", label: "United Kingdom / 영국" },
-  { value: "USA", label: "United States / 미국" },
-  { value: "OTHER", label: "Other / 기타" },
+// ✅ Nationality options (select) - emoji flags
+const NATIONALITY_OPTIONS: Array<{ value: string; label: string; flag: string }> = [
+  { value: "AUSTRALIA", label: "Australia / 호주", flag: "🇦🇺" },
+  { value: "CANADA", label: "Canada / 캐나다", flag: "🇨🇦" },
+  { value: "CHINA", label: "China / 중국", flag: "🇨🇳" },
+  { value: "IRELAND", label: "Ireland / 아일랜드", flag: "🇮🇪" },
+  { value: "JAPAN", label: "Japan / 일본", flag: "🇯🇵" },
+  { value: "NEW_ZEALAND", label: "New Zealand / 뉴질랜드", flag: "🇳🇿" },
+  { value: "PHILIPPINES", label: "Philippines / 필리핀", flag: "🇵🇭" },
+  { value: "SOUTH_AFRICA", label: "South Africa / 남아프리카공화국", flag: "🇿🇦" },
+  { value: "SOUTH_KOREA", label: "South Korea / 대한민국", flag: "🇰🇷" },
+  { value: "UK", label: "United Kingdom / 영국", flag: "🇬🇧" },
+  { value: "USA", label: "United States / 미국", flag: "🇺🇸" },
+  { value: "OTHER", label: "Other / 기타", flag: "🏳️" },
 ];
 
-const NATIVE_LANGUAGE_OPTIONS: Array<{ value: NativeLanguage; label: string }> = [
-  { value: "ENGLISH", label: "English / 영어" },
-  { value: "KOREAN", label: "Korean / 한국어" },
-  { value: "JAPANESE", label: "Japanese / 일본어" },
-  { value: "CHINESE", label: "Chinese / 중국어" },
-  { value: "SPANISH", label: "Spanish / 스페인어" },
-  { value: "OTHER", label: "Other / 기타" },
+// ✅ Native language options (select) - emoji flags/icons
+const NATIVE_LANGUAGE_OPTIONS: Array<{ value: NativeLanguage; label: string; flag: string }> = [
+  { value: "ENGLISH", label: "English / 영어", flag: "🇺🇸" },
+  { value: "KOREAN", label: "Korean / 한국어", flag: "🇰🇷" },
+  { value: "JAPANESE", label: "Japanese / 일본어", flag: "🇯🇵" },
+  { value: "CHINESE", label: "Chinese / 중국어", flag: "🇨🇳" },
+  { value: "SPANISH", label: "Spanish / 스페인어", flag: "🇪🇸" },
+  { value: "OTHER", label: "Other / 기타", flag: "🏳️" },
 ];
 
 export default function TeacherApplicationPage() {
@@ -167,6 +168,7 @@ export default function TeacherApplicationPage() {
   // 기존 이력서 확인
   useEffect(() => {
     checkExistingApplication();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkExistingApplication = async () => {
@@ -558,7 +560,7 @@ export default function TeacherApplicationPage() {
       if (form.gender) formData.append("gender", form.gender);
       if (form.date_of_birth) formData.append("date_of_birth", form.date_of_birth);
       formData.append("nationality", form.nationality); // ✅ value(예: "USA")가 들어감
-      formData.append("native_language", form.native_language); // ✅ value(예: "English")가 들어감
+      formData.append("native_language", form.native_language);
       formData.append("email", form.email);
       formData.append("phone_number", form.phone_number);
       formData.append("address_line1", form.address_line1);
@@ -847,7 +849,7 @@ export default function TeacherApplicationPage() {
 
               {/* Nationality / native language / contact */}
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {/* ✅ Nationality: input -> select */}
+                {/* ✅ Nationality: emoji flags */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Nationality / 국적
@@ -862,14 +864,14 @@ export default function TeacherApplicationPage() {
                     <option value="">Select / 선택</option>
                     {NATIONALITY_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {opt.flag} {opt.label}
                       </option>
                     ))}
                   </select>
                   {renderError("nationality")}
                 </div>
 
-                {/* ✅ Native language: input -> select */}
+                {/* ✅ Native language: emoji flags/icons */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Native Language / 모국어
@@ -884,7 +886,7 @@ export default function TeacherApplicationPage() {
                     <option value="">Select / 선택</option>
                     {NATIVE_LANGUAGE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {opt.flag} {opt.label}
                       </option>
                     ))}
                   </select>
