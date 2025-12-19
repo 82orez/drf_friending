@@ -30,6 +30,21 @@ class GenderChoices(models.TextChoices):
     PREFER_NOT = "PREFER_NOT", "Prefer not to say / 선택하지 않음"
 
 
+class NationalityChoices(models.TextChoices):
+    USA = "USA", "United States / 미국"
+    UK = "UK", "United Kingdom / 영국"
+    CANADA = "CANADA", "Canada / 캐나다"
+    IRELAND = "IRELAND", "Ireland / 아일랜드"
+    AUSTRALIA = "AUSTRALIA", "Australia / 호주"
+    NEW_ZEALAND = "NEW_ZEALAND", "New Zealand / 뉴질랜드"
+    SOUTH_AFRICA = "SOUTH_AFRICA", "South Africa / 남아프리카공화국"
+    PHILIPPINES = "PHILIPPINES", "Philippines / 필리핀"
+    SOUTH_KOREA = "SOUTH_KOREA", "South Korea / 대한민국"
+    JAPAN = "JAPAN", "Japan / 일본"
+    CHINA = "CHINA", "China / 중국"
+    OTHER = "OTHER", "Other / 기타"
+
+
 class VisaTypeChoices(models.TextChoices):
     F2 = "F-2", "F-2"
     F4 = "F-4", "F-4"
@@ -148,6 +163,7 @@ class TeacherApplication(models.Model):
 
     nationality = models.CharField(
         max_length=100,
+        choices=NationalityChoices.choices,
         verbose_name="Nationality",
     )
     native_language = models.CharField(

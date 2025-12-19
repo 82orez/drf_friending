@@ -13,6 +13,9 @@ type Gender = "" | "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT";
 type VisaType = "" | "F-2" | "F-4" | "F-5" | "F-6" | "OTHER";
 type EmploymentType = "" | "FULL_TIME" | "PART_TIME" | "FREELANCE" | "ANY";
 
+// ✅ native_language를 select로 운영할 값(백엔드는 CharField라 자유지만, 프론트에서 표준화)
+type NativeLanguage = "" | "English" | "Japanese" | "Chinese" | "Korean" | "Spanish" | "Other";
+
 interface TeacherApplicationForm {
   // Personal info
   first_name: string;
@@ -21,7 +24,7 @@ interface TeacherApplicationForm {
   gender: Gender;
   date_of_birth: string;
   nationality: string;
-  native_language: string;
+  native_language: NativeLanguage;
   email: string;
   phone_number: string;
   address_line1: string;
@@ -61,13 +64,37 @@ interface TeacherApplicationForm {
 }
 
 type ErrorMap = Record<string, string>;
-
 type DecimalFieldName = "total_teaching_experience_years" | "korea_teaching_experience_years";
 
 // ✅ UX 정책: "."만 입력된 경우 처리 방식
 // - "empty": 빈 값("")으로 처리 (기본)
 // - "zero": "0"으로 처리
 const DOT_ONLY_POLICY: "empty" | "zero" = "empty";
+
+// ✅ Nationality / Native language options (select)
+const NATIONALITY_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "AUSTRALIA", label: "Australia / 호주" },
+  { value: "CANADA", label: "Canada / 캐나다" },
+  { value: "CHINA", label: "China / 중국" },
+  { value: "IRELAND", label: "Ireland / 아일랜드" },
+  { value: "JAPAN", label: "Japan / 일본" },
+  { value: "NEW_ZEALAND", label: "New Zealand / 뉴질랜드" },
+  { value: "PHILIPPINES", label: "Philippines / 필리핀" },
+  { value: "SOUTH_AFRICA", label: "South Africa / 남아프리카공화국" },
+  { value: "SOUTH_KOREA", label: "South Korea / 대한민국" },
+  { value: "UK", label: "United Kingdom / 영국" },
+  { value: "USA", label: "United States / 미국" },
+  { value: "OTHER", label: "Other / 기타" },
+];
+
+const NATIVE_LANGUAGE_OPTIONS: Array<{ value: NativeLanguage; label: string }> = [
+  { value: "English", label: "English / 영어" },
+  { value: "Japanese", label: "Japanese / 일본어" },
+  { value: "Chinese", label: "Chinese / 중국어" },
+  { value: "Korean", label: "Korean / 한국어" },
+  { value: "Spanish", label: "Spanish / 스페인어" },
+  { value: "Other", label: "Other / 기타" },
+];
 
 export default function TeacherApplicationPage() {
   const router = useRouter();
@@ -176,7 +203,7 @@ export default function TeacherApplicationPage() {
       gender: data.gender || "",
       date_of_birth: data.date_of_birth || "",
       nationality: data.nationality || "",
-      native_language: data.native_language || "",
+      native_language: (data.native_language as NativeLanguage) || "",
       email: user?.email || data.email || "", // 로그인한 사용자의 이메일 우선 사용
       phone_number: data.phone_number || "",
       address_line1: data.address_line1 || "",
@@ -530,8 +557,8 @@ export default function TeacherApplicationPage() {
       if (form.korean_name) formData.append("korean_name", form.korean_name);
       if (form.gender) formData.append("gender", form.gender);
       if (form.date_of_birth) formData.append("date_of_birth", form.date_of_birth);
-      formData.append("nationality", form.nationality);
-      formData.append("native_language", form.native_language);
+      formData.append("nationality", form.nationality); // ✅ value(예: "USA")가 들어감
+      formData.append("native_language", form.native_language); // ✅ value(예: "English")가 들어감
       formData.append("email", form.email);
       formData.append("phone_number", form.phone_number);
       formData.append("address_line1", form.address_line1);
@@ -820,30 +847,47 @@ export default function TeacherApplicationPage() {
 
               {/* Nationality / native language / contact */}
               <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {/* ✅ Nationality: input -> select */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Nationality / 국적
                     <span className="text-rose-500"> *</span>
                   </label>
-                  <input
+                  <select
                     name="nationality"
                     value={form.nationality}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
-                  />
+                    disabled={isEditLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
+                    <option value="">Select / 선택</option>
+                    {NATIONALITY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                   {renderError("nationality")}
                 </div>
+
+                {/* ✅ Native language: input -> select */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Native Language / 모국어
                     <span className="text-rose-500"> *</span>
                   </label>
-                  <input
+                  <select
                     name="native_language"
                     value={form.native_language}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
-                  />
+                    disabled={isEditLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
+                    <option value="">Select / 선택</option>
+                    {NATIVE_LANGUAGE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                   {renderError("native_language")}
                 </div>
               </div>
