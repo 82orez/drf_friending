@@ -132,6 +132,77 @@ function labelAgeBracket(b: AgeBracket) {
   }
 }
 
+// ✅ Nationality -> Flag Emoji + Label
+const NATIONALITY_META = {
+  USA: { flag: "🇺🇸", label: "United States / 미국" },
+  UK: { flag: "🇬🇧", label: "United Kingdom / 영국" },
+  CANADA: { flag: "🇨🇦", label: "Canada / 캐나다" },
+  IRELAND: { flag: "🇮🇪", label: "Ireland / 아일랜드" },
+  AUSTRALIA: { flag: "🇦🇺", label: "Australia / 호주" },
+  NEW_ZEALAND: { flag: "🇳🇿", label: "New Zealand / 뉴질랜드" },
+  SOUTH_AFRICA: { flag: "🇿🇦", label: "South Africa / 남아프리카공화국" },
+  PHILIPPINES: { flag: "🇵🇭", label: "Philippines / 필리핀" },
+  SOUTH_KOREA: { flag: "🇰🇷", label: "South Korea / 대한민국" },
+  JAPAN: { flag: "🇯🇵", label: "Japan / 일본" },
+  CHINA: { flag: "🇨🇳", label: "China / 중국" },
+  OTHER: { flag: "🏳️", label: "Other / 기타" },
+} as const;
+
+type NationalityKey = keyof typeof NATIONALITY_META;
+
+// 서버에서 nationality가 "USA"로 오기도 하고,
+// "United States / 미국" 같이 라벨로 오기도 하는 경우를 대비해 최대한 안전하게 코드로 정규화
+function normalizeNationalityKey(raw?: string | null): NationalityKey | null {
+  if (!raw) return null;
+  const v = raw.trim();
+  if (!v) return null;
+
+  // 1) 코드가 그대로 오는 경우 (USA, SOUTH_KOREA 등)
+  const upper = v.toUpperCase().replace(/[\s-]+/g, "_"); // "South Korea" -> "SOUTH_KOREA"
+  if (upper in NATIONALITY_META) return upper as NationalityKey;
+
+  // 2) 라벨 문자열로 오는 경우 대비 (포함 검사)
+  const n = v.toLowerCase();
+  if (n.includes("united states") || n === "usa") return "USA";
+  if (n.includes("united kingdom") || n === "uk" || n.includes("britain")) return "UK";
+  if (n.includes("canada")) return "CANADA";
+  if (n.includes("ireland")) return "IRELAND";
+  if (n.includes("australia")) return "AUSTRALIA";
+  if (n.includes("new zealand")) return "NEW_ZEALAND";
+  if (n.includes("south africa")) return "SOUTH_AFRICA";
+  if (n.includes("philippines")) return "PHILIPPINES";
+  if (n.includes("south korea") || n === "korea" || n.includes("대한민국")) return "SOUTH_KOREA";
+  if (n.includes("japan") || n.includes("일본")) return "JAPAN";
+  if (n.includes("china") || n.includes("중국")) return "CHINA";
+  if (n.includes("other") || n.includes("기타")) return "OTHER";
+
+  return "OTHER";
+}
+
+function renderNationalityWithFlag(raw?: string | null) {
+  const key = normalizeNationalityKey(raw);
+  if (!key) return <span>-</span>;
+
+  const meta = NATIONALITY_META[key];
+
+  // raw가 코드("USA")면 label로 보기 좋게 표시,
+  // raw가 이미 "United States / 미국"처럼 라벨이면 raw 유지
+  const cleaned = (raw || "").trim();
+  const cleanedAsKey = cleaned.toUpperCase().replace(/[\s-]+/g, "_");
+  const isRawCode = cleaned !== "" && cleanedAsKey === key;
+
+  const text = isRawCode ? meta.label : cleaned || meta.label;
+
+  return (
+    <span className="inline-flex items-center justify-end gap-1.5">
+      <span aria-hidden="true" title={meta.label} className="text-base leading-none">
+        {meta.flag}
+      </span>
+      <span>{text}</span>
+    </span>
+  );
+}
+
 function Field({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) {
   const display = value === null || value === undefined || value === "" ? "-" : value;
   return (
@@ -565,7 +636,7 @@ export default function MainPage() {
                       <dl className="mt-4 space-y-2 text-sm">
                         <div className="flex items-start justify-between gap-3">
                           <dt className="text-gray-500">Nationality</dt>
-                          <dd className="text-right font-medium text-gray-900">{t.nationality || "-"}</dd>
+                          <dd className="text-right font-medium text-gray-900">{renderNationalityWithFlag(t.nationality)}</dd>
                         </div>
 
                         <div className="flex items-start justify-between gap-3">
@@ -664,7 +735,7 @@ export default function MainPage() {
                         <Section title="Basic Info">
                           <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
                           <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
-                          <Field label="Nationality" value={teacherDetail?.nationality || "-"} />
+                          <Field label="Nationality" value={renderNationalityWithFlag(teacherDetail?.nationality)} />
                           {/*<Field label="Native language" value={teacherDetail?.native_language || "-"} />*/}
                           <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
                           <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
@@ -679,20 +750,6 @@ export default function MainPage() {
                           <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
                         </Section>
                       </div>
-
-                      {/*<div className="grid gap-4 lg:grid-cols-2">*/}
-                      {/*  <Section title="Experience">*/}
-                      {/*    <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />*/}
-                      {/*    <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />*/}
-                      {/*  </Section>*/}
-
-                      {/*  <Section title="Visa & Meta">*/}
-                      {/*    <Field label="Visa type" value={teacherDetail?.visa_type || "-"} />*/}
-                      {/*    <Field label="Visa expiry date" value={formatDate(teacherDetail?.visa_expiry_date)} />*/}
-                      {/*    <Field label="Created" value={formatDate(teacherDetail?.created_at)} />*/}
-                      {/*    <Field label="Updated" value={formatDate(teacherDetail?.updated_at)} />*/}
-                      {/*  </Section>*/}
-                      {/*</div>*/}
 
                       <Section title="Self Introduction">
                         <TextBlock text={teacherDetail?.self_introduction} />
