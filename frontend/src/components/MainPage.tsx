@@ -664,7 +664,7 @@ export default function MainPage() {
                                 Click to watch!
                               </a>
                             ) : (
-                              <span className={"text-gray-500"}>-</span>
+                              "-"
                             )}
                           </dd>
                         </div>
@@ -759,6 +759,22 @@ export default function MainPage() {
                           {/*<Field label="Native language" value={teacherDetail?.native_language || "-"} />*/}
                           <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
                           <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
+                          <Field
+                            label="Intro video"
+                            value={
+                              teacherDetail?.introduction_youtube_url ? (
+                                <a
+                                  href={teacherDetail.introduction_youtube_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="italic underline underline-offset-2 hover:text-gray-700">
+                                  Click to watch!
+                                </a>
+                              ) : (
+                                "-"
+                              )
+                            }
+                          />
                         </Section>
 
                         <Section title="Location & Experience">
