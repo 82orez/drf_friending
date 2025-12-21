@@ -651,10 +651,10 @@ export default function MainPage() {
                           <dd className="text-right font-medium text-gray-900">{locationText}</dd>
                         </div>
 
-                        {t.introduction_youtube_url ? (
-                          <div className="flex items-start justify-between gap-3">
-                            <dt className="text-gray-500">Intro video</dt>
-                            <dd className="text-right font-medium text-gray-900">
+                        <div className="flex items-start justify-between gap-3">
+                          <dt className="text-gray-500">Intro video</dt>
+                          <dd className="text-right font-medium text-gray-900">
+                            {t.introduction_youtube_url ? (
                               <a
                                 href={t.introduction_youtube_url}
                                 target="_blank"
@@ -663,9 +663,11 @@ export default function MainPage() {
                                 onClick={(e) => e.stopPropagation()}>
                                 YouTube link
                               </a>
-                            </dd>
-                          </div>
-                        ) : null}
+                            ) : (
+                              "-"
+                            )}
+                          </dd>
+                        </div>
                       </dl>
                     </div>
                   </div>
