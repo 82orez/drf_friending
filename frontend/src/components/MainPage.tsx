@@ -604,7 +604,7 @@ export default function MainPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") openTeacherDetail(t.id);
                   }}
-                  className="group cursor-pointer rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                  className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:ring-4 focus:ring-gray-100 focus:outline-none">
                   <div className="flex items-start gap-3">
                     <div className="h-14 w-14 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
                       {thumb ? (
@@ -659,12 +659,12 @@ export default function MainPage() {
                                 href={t.introduction_youtube_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="underline underline-offset-2 hover:text-gray-700"
+                                className="italic underline underline-offset-2 hover:text-gray-700"
                                 onClick={(e) => e.stopPropagation()}>
-                                YouTube link
+                                Click to watch!
                               </a>
                             ) : (
-                              "-"
+                              <span className={"text-gray-500"}>-</span>
                             )}
                           </dd>
                         </div>
