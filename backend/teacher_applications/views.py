@@ -17,6 +17,10 @@ from django.contrib.auth.models import Group
 from .models import TeacherApplication, ApplicationStatusChoices
 from .serializers import TeacherApplicationSerializer
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class TeacherApplicationCreateView(generics.CreateAPIView):
     """
@@ -35,6 +39,10 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
         try:
             application = TeacherApplication.objects.get(user=user)
             serializer = self.get_serializer(application)
+            logger.info(
+                "Teacher application retrieved",
+                extra={"user_id": getattr(user, "id", None)},
+            )
             return Response(
                 {
                     "success": True,
@@ -44,6 +52,10 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
                 }
             )
         except TeacherApplication.DoesNotExist:
+            logger.info(
+                "Teacher application not found",
+                extra={"user_id": getattr(user, "id", None)},
+            )
             return Response(
                 {
                     "success": True,
@@ -58,6 +70,10 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
 
         # === 핵심: 유저당 1개의 이력서만 허용 ===
         if TeacherApplication.objects.filter(user=user).exists():
+            logger.warning(
+                "Duplicate teacher application create attempt",
+                extra={"user_id": getattr(user, "id", None)},
+            )
             # DRF ValidationError 로 던지면 400 + 에러 내용이 JSON 으로 반환됨
             raise DRFValidationError(
                 {
@@ -70,6 +86,10 @@ class TeacherApplicationCreateView(generics.CreateAPIView):
 
         # 여기까지 왔다는 것은 아직 이력서가 없다는 뜻
         instance = serializer.save(user=user)
+        logger.info(
+            "Teacher application created",
+            extra={"user_id": getattr(user, "id", None), "application_id": instance.id},
+        )
 
         # 1) 지원자에게 이력서 등록 완료 이메일 발송
         self.send_confirmation_email(instance)
@@ -103,8 +123,18 @@ Friending Team
                 recipient_list=[instance.email],
                 fail_silently=True,  # 이메일 발송 실패해도 API는 성공 처리
             )
+            logger.info(
+                "Confirmation email send attempted",
+                extra={"application_id": instance.id, "to": instance.email},
+            )
         except Exception:
-            pass
+            logger.exception(
+                "Failed to send confirmation email",
+                extra={
+                    "application_id": getattr(instance, "id", None),
+                    "to": getattr(instance, "email", None),
+                },
+            )
 
     def send_new_application_notification_email(self, instance):
         """
@@ -136,13 +166,20 @@ Friending Team
                 recipients.update(reviewer_emails)
             except Group.DoesNotExist:
                 # 그룹이 없으면 스킵
-                pass
+                logger.warning(
+                    "Reviewers group does not exist; skipping reviewer notifications",
+                    extra={"application_id": instance.id},
+                )
 
             # 지원자 본인에게 중복 발송 방지
             if instance.email:
                 recipients.discard(instance.email)
 
             if not recipients:
+                logger.info(
+                    "No recipients for new application notification",
+                    extra={"application_id": instance.id},
+                )
                 return
 
             subject = "New Teacher Application Submitted / 새 이력서(지원서) 등록 알림"
@@ -172,9 +209,19 @@ Please review it in the admin/reviewer page.
                 recipient_list=list(recipients),
                 fail_silently=True,
             )
+            logger.info(
+                "New application notification email send attempted",
+                extra={
+                    "application_id": instance.id,
+                    "recipient_count": len(recipients),
+                },
+            )
         except Exception:
             # 이메일 발송 실패해도 지원서 제출은 성공으로 처리
-            pass
+            logger.exception(
+                "Failed to send new application notification email",
+                extra={"application_id": getattr(instance, "id", None)},
+            )
 
     def create(self, request, *args, **kwargs):
         """Create 응답 커스터마이징"""
@@ -189,6 +236,13 @@ Please review it in the admin/reviewer page.
 
         # serializer / perform_create 에서 발생한 ValidationError 처리
         except DRFValidationError as e:
+            logger.warning(
+                "Teacher application submit validation error",
+                extra={
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "errors": e.detail,
+                },
+            )
             return Response(
                 {
                     "success": False,
@@ -200,6 +254,10 @@ Please review it in the admin/reviewer page.
 
         # 그 외 예상치 못한 예외
         except Exception as e:
+            logger.exception(
+                "Teacher application submit unexpected error",
+                extra={"user_id": getattr(getattr(request, "user", None), "id", None)},
+            )
             return Response(
                 {
                     "success": False,
@@ -225,6 +283,12 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
         try:
             return TeacherApplication.objects.get(user=self.request.user)
         except TeacherApplication.DoesNotExist:
+            logger.info(
+                "Teacher application not found for user",
+                extra={
+                    "user_id": getattr(getattr(self.request, "user", None), "id", None)
+                },
+            )
             raise NotFound(
                 detail={
                     "success": False,
@@ -237,6 +301,13 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
         try:
             instance = self.get_object()
             serializer = self.get_serializer(instance)
+            logger.info(
+                "Teacher application retrieved (self)",
+                extra={
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "application_id": instance.id,
+                },
+            )
             return Response(
                 {
                     "success": True,
@@ -258,6 +329,14 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
 
             # ✅ status가 NEW일 때만 수정 허용
             if instance.status != "NEW":
+                logger.warning(
+                    "Teacher application update forbidden due to status",
+                    extra={
+                        "user_id": getattr(getattr(request, "user", None), "id", None),
+                        "application_id": instance.id,
+                        "status": instance.status,
+                    },
+                )
                 raise PermissionDenied(
                     detail={
                         "success": False,
@@ -274,6 +353,13 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
             )  # ✅ 여기서 DRFValidationError 발생 가능
             self.perform_update(serializer)
 
+            logger.info(
+                "Teacher application updated",
+                extra={
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "application_id": instance.id,
+                },
+            )
             return Response(
                 {
                     "success": True,
@@ -290,6 +376,16 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
 
         # ✅ (추가) serializer validation 에러를 구조 그대로 내려주기
         except DRFValidationError as e:
+            logger.warning(
+                "Teacher application update validation error",
+                extra={
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "application_id": getattr(
+                        locals().get("instance", None), "id", None
+                    ),
+                    "errors": e.detail,
+                },
+            )
             return Response(
                 {
                     "success": False,
@@ -301,6 +397,15 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
 
         # ✅ 그 외 예상치 못한 예외
         except Exception as e:
+            logger.exception(
+                "Teacher application update unexpected error",
+                extra={
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "application_id": getattr(
+                        locals().get("instance", None), "id", None
+                    ),
+                },
+            )
             return Response(
                 {
                     "success": False,
@@ -321,6 +426,14 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
 
         allowed_statuses = {"REJECTED", "NEW"}
         if instance.status not in allowed_statuses:
+            logger.warning(
+                "Teacher application delete forbidden due to status",
+                extra={
+                    "user_id": getattr(getattr(request, "user", None), "id", None),
+                    "application_id": instance.id,
+                    "status": instance.status,
+                },
+            )
             return Response(
                 {
                     "success": False,
@@ -330,6 +443,13 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
             )
 
         instance.delete()
+        logger.info(
+            "Teacher application deleted",
+            extra={
+                "user_id": getattr(getattr(request, "user", None), "id", None),
+                "application_id": instance.id,
+            },
+        )
 
         return Response(
             {
@@ -366,6 +486,10 @@ class TeacherApplicationListView(generics.ListAPIView):
     ordering = ["-created_at"]
 
     def list(self, request, *args, **kwargs):
+        logger.info(
+            "Teacher application list requested (admin)",
+            extra={"user_id": getattr(getattr(request, "user", None), "id", None)},
+        )
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
@@ -406,6 +530,17 @@ class TeacherApplicationDetailView(generics.RetrieveUpdateAPIView):
         # 상태가 변경된 경우 이메일 발송
         new_status = serializer.instance.status
         if old_status != new_status and new_status in ["ACCEPTED", "REJECTED"]:
+            logger.info(
+                "Teacher application status changed",
+                extra={
+                    "admin_user_id": getattr(
+                        getattr(request, "user", None), "id", None
+                    ),
+                    "application_id": instance.id,
+                    "old_status": old_status,
+                    "new_status": new_status,
+                },
+            )
             self.send_status_update_email(serializer.instance, new_status)
 
         return Response(serializer.data)
@@ -427,5 +562,20 @@ class TeacherApplicationDetailView(generics.RetrieveUpdateAPIView):
                 recipient_list=[instance.email],
                 fail_silently=True,
             )
+            logger.info(
+                "Status update email send attempted",
+                extra={
+                    "application_id": instance.id,
+                    "to": instance.email,
+                    "status": status,
+                },
+            )
         except Exception:
-            pass
+            logger.exception(
+                "Failed to send status update email",
+                extra={
+                    "application_id": getattr(instance, "id", None),
+                    "to": getattr(instance, "email", None),
+                    "status": status,
+                },
+            )
