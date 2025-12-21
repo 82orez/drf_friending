@@ -113,6 +113,7 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                 "fields": (
                     "memo",
                     "evaluation_result",
+                    "introduction_youtube_url",
                 ),
             },
         ),

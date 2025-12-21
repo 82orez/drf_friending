@@ -56,6 +56,8 @@ type TeacherApplication = {
 
   memo?: string | null;
   evaluation_result?: string | null;
+
+  introduction_youtube_url?: string | null;
 };
 
 type AgeBracket = "ALL" | "20S" | "30S" | "40S" | "50S" | "60PLUS";
@@ -648,6 +650,22 @@ export default function MainPage() {
                           <dt className="text-gray-500">Location</dt>
                           <dd className="text-right font-medium text-gray-900">{locationText}</dd>
                         </div>
+
+                        {t.introduction_youtube_url ? (
+                          <div className="flex items-start justify-between gap-3">
+                            <dt className="text-gray-500">Intro video</dt>
+                            <dd className="text-right font-medium text-gray-900">
+                              <a
+                                href={t.introduction_youtube_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline underline-offset-2 hover:text-gray-700"
+                                onClick={(e) => e.stopPropagation()}>
+                                YouTube link
+                              </a>
+                            </dd>
+                          </div>
+                        ) : null}
                       </dl>
                     </div>
                   </div>

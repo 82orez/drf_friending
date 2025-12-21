@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, URLValidator
 from django.db import models
 from datetime import date
 
@@ -8,6 +8,7 @@ from django.core.files.base import ContentFile
 from PIL import Image, ImageOps
 import io
 import os
+from urllib.parse import urlparse
 
 from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
@@ -20,6 +21,38 @@ def validate_image_size_under_2mb(value):
         raise ValidationError(
             "이미지 파일 크기는 2MB 이하여야 합니다. (Max size is 2MB)"
         )
+
+
+def validate_youtube_url(value: str):
+    """
+    Allow only YouTube URLs:
+    - https://youtu.be/...
+    - https://www.youtube.com/watch?v=...
+    - https://youtube.com/...
+    """
+    if not value:
+        return
+
+    try:
+        parsed = urlparse(value)
+        host = (parsed.netloc or "").lower()
+
+        allowed_hosts = {
+            "youtu.be",
+            "www.youtu.be",
+            "youtube.com",
+            "www.youtube.com",
+            "m.youtube.com",
+        }
+
+        if host not in allowed_hosts:
+            raise ValidationError(
+                "유효한 유튜브 링크만 입력해 주세요. (Only YouTube links are allowed.)"
+            )
+    except ValidationError:
+        raise
+    except Exception:
+        raise ValidationError("유효한 URL 형식이 아닙니다. (Invalid URL format.)")
 
 
 # === 선택지(Choices) 정의 ===
@@ -369,6 +402,16 @@ class TeacherApplication(models.Model):
         blank=True,
         verbose_name="Evaluation Result / 평가 결과",
         help_text="전체적인 이력서 평가 결과 (1000자 이내, 관리자 전용) / Overall resume evaluation result (max 1000 chars, Admin only)",
+    )
+
+    # ✅ 유튜브 소개 영상 링크 (선택)
+    introduction_youtube_url = models.URLField(
+        blank=True,
+        null=True,
+        max_length=500,
+        validators=[URLValidator(), validate_youtube_url],
+        verbose_name="YouTube intro video link / 유튜브 소개 영상 링크 (선택)",
+        help_text="e.g. https://youtu.be/kkkUVYjxN1U?si=... / 예: 유튜브 소개 영상 링크",
     )
 
     def _generate_profile_thumbnail_and_meta(self):
