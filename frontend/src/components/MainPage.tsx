@@ -5,6 +5,7 @@ import clsx from "clsx";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import cityDistrictData from "@/lib/city_district.json";
+import WeeklyTimeTableReadOnly, { WeeklyTimeTableSummary } from "@/components/WeeklyTimeTableReadOnly";
 
 type TeacherApplication = {
   id: number;
@@ -44,7 +45,10 @@ type TeacherApplication = {
 
   employment_type?: string | null;
   preferred_locations?: string | null;
-  available_time_slots?: string | null;
+
+  // ✅ JSONField라서 object로 올 수도 있고, 일부 endpoint에서 string으로 올 수도 있어 안전하게 unknown 처리
+  available_time_slots?: unknown | null;
+
   available_from_date?: string | null;
 
   visa_type?: string | null;
@@ -651,6 +655,14 @@ export default function MainPage() {
                           <dd className="text-right font-medium text-gray-900">{locationText}</dd>
                         </div>
 
+                        {/* ✅ NEW: Availability(카드/리스트용 요약) */}
+                        {/*<div className="flex items-start justify-between gap-3">*/}
+                        {/*  <dt className="text-gray-500">Availability</dt>*/}
+                        {/*  <dd className="text-right">*/}
+                        {/*    <WeeklyTimeTableSummary value={t.available_time_slots} />*/}
+                        {/*  </dd>*/}
+                        {/*</div>*/}
+
                         <div className="flex items-start justify-between gap-3">
                           <dt className="text-gray-500">Intro video</dt>
                           <dd className="text-right font-medium text-gray-900">
@@ -786,6 +798,11 @@ export default function MainPage() {
                           <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
                         </Section>
                       </div>
+
+                      {/* ✅ NEW: Availability 섹션(상세 모달용) */}
+                      <Section title="Availability / 근무 가능 시간대">
+                        <WeeklyTimeTableReadOnly value={teacherDetail?.available_time_slots} showMiniGrid={true} />
+                      </Section>
 
                       <Section title="Self Introduction">
                         <TextBlock text={teacherDetail?.self_introduction} />
