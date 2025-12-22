@@ -241,7 +241,7 @@ export default function WeeklyTimeTablePicker({
       {open && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
-          <div className="absolute top-1/2 left-1/2 w-[min(1040px,95vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-5 shadow-2xl">
+          <div className="absolute top-1/2 left-1/2 h-[80%] w-[min(1040px,95vw)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Available Time Slots / 근무 가능 시간대</h3>
