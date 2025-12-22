@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from datetime import date
 from .models import TeacherApplication
+import json  # ✅ added
 
 
 class TeacherApplicationSerializer(serializers.ModelSerializer):
@@ -28,6 +29,9 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
     # 읽기 전용 필드로 추가 정보 제공
     age = serializers.SerializerMethodField(read_only=True)
     is_visa_expiring_soon = serializers.SerializerMethodField(read_only=True)
+
+    # ✅ JSONField로 변경된 모델 필드에 맞춰, multipart/form-data로 넘어오는 JSON 문자열도 허용
+    available_time_slots = serializers.JSONField(required=False, allow_null=True)
 
     class Meta:
         model = TeacherApplication
@@ -84,6 +88,28 @@ class TeacherApplicationSerializer(serializers.ModelSerializer):
                     "This email has already been used for an application. "
                     "이미 해당 이메일로 지원서가 제출되어 있습니다."
                 )
+        return value
+
+    # ✅ added
+    def validate_available_time_slots(self, value):
+        """
+        JSONField 대응:
+        - application/json: dict/list 그대로 들어옴
+        - multipart/form-data: JSON 문자열로 들어올 수 있어 파싱
+        """
+        if value in (None, ""):
+            return None
+
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError(
+                    "Invalid JSON for available_time_slots. "
+                    "available_time_slots 값은 올바른 JSON 형식이어야 합니다."
+                )
+
+        # dict/list 등 JSON-serializable python object는 그대로 허용
         return value
 
     def validate_date_of_birth(self, value):

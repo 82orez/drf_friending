@@ -341,11 +341,12 @@ class TeacherApplication(models.Model):
         help_text="e.g. Seoul, Online only / 예: 서울, 온라인만 등",
     )
 
-    available_time_slots = models.CharField(
-        max_length=255,
+    # ✅ 변경: CharField -> JSONField
+    available_time_slots = models.JSONField(
         blank=True,
+        null=True,
         verbose_name="Available time slots / 근무 가능 시간대",
-        help_text="e.g. Weekdays evenings, Weekends / 예: 평일 저녁, 주말 등",
+        help_text="Weekly timetable selection stored as JSON / 주간 타임테이블 선택값(JSON)으로 저장",
     )
 
     available_from_date = models.DateField(
