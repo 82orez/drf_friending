@@ -241,7 +241,7 @@ export default function WeeklyTimeTablePicker({
       {open && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
-          <div className="absolute top-1/2 left-1/2 h-[80%] w-[min(1040px,95vw)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-2xl bg-white p-5 shadow-2xl">
+          <div className="absolute top-1/2 left-1/2 flex h-[80%] w-[min(1040px,95vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Available Time Slots / 근무 가능 시간대</h3>
@@ -283,55 +283,57 @@ export default function WeeklyTimeTablePicker({
               </button>
             </div>
 
-            <div className="mt-4 overflow-auto rounded-xl border border-slate-200">
-              <div className="min-w-[920px] touch-none">
-                {/* Header */}
-                <div className="grid" style={{ gridTemplateColumns: `110px repeat(${DAYS.length}, 1fr)` }}>
-                  <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">Time</div>
-                  {DAYS.map((d) => (
-                    <div key={d.key} className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-slate-600">
-                      {d.label}
-                    </div>
-                  ))}
-                </div>
+            <div className="mt-4 flex-1 overflow-hidden rounded-xl border border-slate-200">
+              <div className="h-full overflow-auto">
+                <div className="min-w-[920px] touch-none">
+                  {/* Header (sticky in modal/table scroll area) */}
+                  <div className="sticky top-0 z-20 grid" style={{ gridTemplateColumns: `110px repeat(${DAYS.length}, 1fr)` }}>
+                    <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">Time</div>
+                    {DAYS.map((d) => (
+                      <div key={d.key} className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-slate-600">
+                        {d.label}
+                      </div>
+                    ))}
+                  </div>
 
-                {/* Rows */}
-                {slots.map((slotIndex, rowIdx) => {
-                  const time = leftLabels[rowIdx];
-                  return (
-                    <div key={slotIndex} className="grid" style={{ gridTemplateColumns: `110px repeat(${DAYS.length}, 1fr)` }}>
-                      <div className="border-b border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">{time}</div>
+                  {/* Rows */}
+                  {slots.map((slotIndex, rowIdx) => {
+                    const time = leftLabels[rowIdx];
+                    return (
+                      <div key={slotIndex} className="grid" style={{ gridTemplateColumns: `110px repeat(${DAYS.length}, 1fr)` }}>
+                        <div className="border-b border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">{time}</div>
 
-                      {DAYS.map((d) => {
-                        const on = isSelected(draft, d.key, slotIndex);
-                        return (
-                          <div
-                            key={`${d.key}-${slotIndex}`}
-                            className={[
-                              "border-b border-slate-200 px-2 py-2",
-                              "select-none",
-                              disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
-                              on ? "bg-slate-900/10" : "bg-white hover:bg-slate-50",
-                            ].join(" ")}
-                            onPointerDown={(e) => {
-                              if (disabled) return;
-                              e.preventDefault();
-                              startPaint(d.key, slotIndex);
-                            }}
-                            onPointerEnter={() => {
-                              if (disabled) return;
-                              continuePaint(d.key, slotIndex);
-                            }}
-                            title={`${d.label} ${time}`}>
+                        {DAYS.map((d) => {
+                          const on = isSelected(draft, d.key, slotIndex);
+                          return (
                             <div
-                              className={["h-5 w-full rounded-md border", on ? "border-slate-900 bg-slate-900/20" : "border-slate-200"].join(" ")}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                              key={`${d.key}-${slotIndex}`}
+                              className={[
+                                "border-b border-slate-200 px-2 py-2",
+                                "select-none",
+                                disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+                                on ? "bg-slate-900/10" : "bg-white hover:bg-slate-50",
+                              ].join(" ")}
+                              onPointerDown={(e) => {
+                                if (disabled) return;
+                                e.preventDefault();
+                                startPaint(d.key, slotIndex);
+                              }}
+                              onPointerEnter={() => {
+                                if (disabled) return;
+                                continuePaint(d.key, slotIndex);
+                              }}
+                              title={`${d.label} ${time}`}>
+                              <div
+                                className={["h-5 w-full rounded-md border", on ? "border-slate-900 bg-slate-900/20" : "border-slate-200"].join(" ")}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
