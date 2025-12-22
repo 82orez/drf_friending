@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import clsx from "clsx";
 import type { AvailableTimeSlots } from "@/components/WeeklyTimeTablePicker";
+import { ChevronDown } from "lucide-react";
 
 type DayKey = "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
 
@@ -212,7 +213,7 @@ export default function WeeklyTimeTableReadOnly({
       {/* Top summary */}
       <div className="rounded-2xl border border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-gray-900">Availability / 근무 가능 시간대</div>
+          <div className="text-sm font-semibold text-gray-900">요일별 강의 가능 시간대</div>
           <div className="text-xs text-gray-500">
             {normalized.tz} · {normalized.stepMinutes}m
           </div>
@@ -233,79 +234,82 @@ export default function WeeklyTimeTableReadOnly({
           </div>
         )}
 
-        {/* ✅ 토글 버튼 */}
+        {/* ✅ 토글 버튼 (오른쪽 Chevron) */}
         {showMiniGrid && (
-          <div className="mt-4">
+          <div className="mt-6">
             <button
               type="button"
               onClick={() => setIsOpen((v) => !v)}
               aria-expanded={isOpen}
               className={clsx(
-                "w-full rounded-xl border px-3 py-2 text-sm font-semibold",
-                "border-gray-200 bg-white text-gray-900",
+                "w-full rounded-xl border border-gray-200 bg-white px-3 py-2",
+                "text-sm font-semibold text-gray-900",
                 "hover:bg-gray-50 active:bg-gray-100",
                 "transition",
+                "flex items-center justify-between gap-3",
               )}>
-              {isOpen ? "주간 타임 테이블 닫기" : "주간 타임 테이블 상세 보기"}
+              <span>{isOpen ? "주간 타임 테이블 닫기" : "주간 타임 테이블 상세 보기"}</span>
+
+              <ChevronDown className={clsx("h-4 w-4 text-gray-500 transition-transform duration-200", isOpen ? "rotate-180" : "rotate-0")} />
             </button>
           </div>
         )}
-      </div>
 
-      {/* Mini grid (read-only heatmap) - ✅ 토글로 펼침/접힘 */}
-      {showMiniGrid && (
-        <div
-          className={clsx(
-            "overflow-hidden rounded-2xl border border-gray-200 bg-white",
-            "transition-[max-height,opacity] duration-300 ease-out",
-            isOpen ? "max-h-[1600px] opacity-100" : "max-h-0 opacity-0",
-          )}>
-          {/* 내용은 접힌 상태에서도 DOM에 남아있지만, max-height로 숨김 */}
-          <div className="overflow-x-hidden">
-            {/* ✅ min-w 제거: 화면 폭에 맞춰 자연스럽게 맞춤 */}
-            <div>
-              {/* Header */}
-              <div className="sticky top-0 z-10 grid" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                <div className="border-b border-gray-200 bg-gray-50 px-2 py-2 text-[11px] font-semibold text-gray-600">Time</div>
+        {/* Mini grid (read-only heatmap) - ✅ 토글로 펼침/접힘 */}
+        {showMiniGrid && (
+          <div
+            className={clsx(
+              "mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white",
+              "transition-[max-height,opacity] duration-300 ease-out",
+              isOpen ? "max-h-[1600px] opacity-100" : "max-h-0 opacity-0",
+            )}>
+            {/* 내용은 접힌 상태에서도 DOM에 남아있지만, max-height로 숨김 */}
+            <div className="overflow-x-hidden">
+              {/* ✅ min-w 제거: 화면 폭에 맞춰 자연스럽게 맞춤 */}
+              <div>
+                {/* Header */}
+                <div className="sticky top-0 z-10 grid" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+                  <div className="border-b border-gray-200 bg-gray-50 px-2 py-2 text-[11px] font-semibold text-gray-600">Time</div>
 
-                {DAYS.map((d) => (
-                  <div
-                    key={d.key}
-                    className="border-b border-gray-200 bg-gray-50 px-1 py-2 text-center text-[11px] font-semibold text-gray-600"
-                    title={d.label}>
-                    {/* ✅ 짧은 라벨로 폭 절약 */}
-                    {d.short}
-                  </div>
-                ))}
+                  {DAYS.map((d) => (
+                    <div
+                      key={d.key}
+                      className="border-b border-gray-200 bg-gray-50 px-1 py-2 text-center text-[11px] font-semibold text-gray-600"
+                      title={d.label}>
+                      {/* ✅ 짧은 라벨로 폭 절약 */}
+                      {d.short}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Rows */}
+                {slots.map((slotIndex) => {
+                  const rowLabel = labelForRow(slotIndex, normalized.stepMinutes);
+                  return (
+                    <div key={slotIndex} className="grid" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+                      <div className="border-b border-gray-200 bg-white px-2 py-1.5 text-[11px] text-gray-500">{rowLabel}</div>
+
+                      {DAYS.map((d) => {
+                        const on = isSelected(normalized, d.key, slotIndex);
+                        return (
+                          <div
+                            key={`${d.key}-${slotIndex}`}
+                            className={clsx("border-b border-gray-200 px-1 py-1.5", on ? "bg-gray-900/10" : "bg-white")}
+                            title={rowLabel ? `${d.label} ${rowLabel}` : d.label}>
+                            <div className={clsx("h-3 w-full rounded-md border", on ? "border-gray-900 bg-gray-900/20" : "border-gray-200")} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
-
-              {/* Rows */}
-              {slots.map((slotIndex) => {
-                const rowLabel = labelForRow(slotIndex, normalized.stepMinutes);
-                return (
-                  <div key={slotIndex} className="grid" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
-                    <div className="border-b border-gray-200 bg-white px-2 py-1.5 text-[11px] text-gray-500">{rowLabel}</div>
-
-                    {DAYS.map((d) => {
-                      const on = isSelected(normalized, d.key, slotIndex);
-                      return (
-                        <div
-                          key={`${d.key}-${slotIndex}`}
-                          className={clsx("border-b border-gray-200 px-1 py-1.5", on ? "bg-gray-900/10" : "bg-white")}
-                          title={rowLabel ? `${d.label} ${rowLabel}` : d.label}>
-                          <div className={clsx("h-3 w-full rounded-md border", on ? "border-gray-900 bg-gray-900/20" : "border-gray-200")} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
             </div>
-          </div>
 
-          <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">Read-only view / 읽기 전용 표시</div>
-        </div>
-      )}
+            <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">Availability / 강의 가능 시간대</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

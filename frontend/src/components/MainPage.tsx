@@ -800,7 +800,7 @@ export default function MainPage() {
                       </div>
 
                       {/* ✅ NEW: Availability 섹션(상세 모달용) */}
-                      <Section title="Availability / 근무 가능 시간대">
+                      <Section title="Availability / 강의 가능 시간대">
                         <WeeklyTimeTableReadOnly value={teacherDetail?.available_time_slots} showMiniGrid={true} />
                       </Section>
 
