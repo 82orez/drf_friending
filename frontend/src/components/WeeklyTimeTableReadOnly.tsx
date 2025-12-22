@@ -178,6 +178,11 @@ export default function WeeklyTimeTableReadOnly({
 }) {
   const normalized = useMemo(() => normalizeAvailableTimeSlots(value), [value]);
 
+  // ✅ 요일 칸 폭 줄이기(여기만 바꿔도 체감 큼)
+  const TIME_COL_PX = 90; // 기존 90 -> 줄임
+  const DAY_COL_PX = 96; // 요일 칸 고정 폭(작게)
+  const GRID_TEMPLATE = `${TIME_COL_PX}px repeat(${DAYS.length}, ${DAY_COL_PX}px)`;
+
   const dayItems = useMemo(() => {
     const p = normalized;
     if (!p) return [];
@@ -229,14 +234,21 @@ export default function WeeklyTimeTableReadOnly({
       {/* Mini grid (read-only heatmap) */}
       {showMiniGrid && (
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-          <div className="overflow-auto">
-            <div className="min-w-[860px]">
+          {/* ✅ 가로 스크롤 유발 최소화: overflow-auto는 유지해도 되지만, 이제 거의 안 생김 */}
+          <div className="overflow-x-hidden">
+            {/* ✅ min-w 제거: 화면 폭에 맞춰 자연스럽게 맞춤 */}
+            <div>
               {/* Header */}
-              <div className="sticky top-0 z-10 grid" style={{ gridTemplateColumns: `90px repeat(${DAYS.length}, 1fr)` }}>
-                <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600">Time</div>
+              <div className="sticky top-0 z-10 grid" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+                <div className="border-b border-gray-200 bg-gray-50 px-2 py-2 text-[11px] font-semibold text-gray-600">Time</div>
+
                 {DAYS.map((d) => (
-                  <div key={d.key} className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-center text-xs font-semibold text-gray-600">
-                    {d.label}
+                  <div
+                    key={d.key}
+                    className="border-b border-gray-200 bg-gray-50 px-1 py-2 text-center text-[11px] font-semibold text-gray-600"
+                    title={d.label}>
+                    {/* ✅ 짧은 라벨로 폭 절약 */}
+                    {d.short}
                   </div>
                 ))}
               </div>
@@ -245,15 +257,15 @@ export default function WeeklyTimeTableReadOnly({
               {slots.map((slotIndex) => {
                 const rowLabel = labelForRow(slotIndex, normalized.stepMinutes);
                 return (
-                  <div key={slotIndex} className="grid" style={{ gridTemplateColumns: `90px repeat(${DAYS.length}, 1fr)` }}>
-                    <div className="border-b border-gray-200 bg-white px-3 py-1.5 text-[11px] text-gray-500">{rowLabel}</div>
+                  <div key={slotIndex} className="grid" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+                    <div className="border-b border-gray-200 bg-white px-2 py-1.5 text-[11px] text-gray-500">{rowLabel}</div>
 
                     {DAYS.map((d) => {
                       const on = isSelected(normalized, d.key, slotIndex);
                       return (
                         <div
                           key={`${d.key}-${slotIndex}`}
-                          className={clsx("border-b border-gray-200 px-2 py-1.5", on ? "bg-gray-900/10" : "bg-white")}
+                          className={clsx("border-b border-gray-200 px-1 py-1.5", on ? "bg-gray-900/10" : "bg-white")}
                           title={rowLabel ? `${d.label} ${rowLabel}` : d.label}>
                           <div className={clsx("h-3 w-full rounded-md border", on ? "border-gray-900 bg-gray-900/20" : "border-gray-200")} />
                         </div>
