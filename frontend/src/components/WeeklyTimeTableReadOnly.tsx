@@ -183,8 +183,8 @@ export default function WeeklyTimeTableReadOnly({
   const [isOpen, setIsOpen] = useState(false);
 
   // ✅ 요일 칸 폭 줄이기
-  const TIME_COL_PX = 90;
-  const DAY_COL_PX = 96;
+  const TIME_COL_PX = 91;
+  const DAY_COL_PX = 91;
   const GRID_TEMPLATE = `${TIME_COL_PX}px repeat(${DAYS.length}, ${DAY_COL_PX}px)`;
 
   const dayItems = useMemo(() => {
@@ -248,7 +248,7 @@ export default function WeeklyTimeTableReadOnly({
                 "transition",
                 "flex items-center justify-between gap-3",
               )}>
-              <span>{isOpen ? "주간 타임 테이블 닫기" : "주간 타임 테이블 상세 보기"}</span>
+              <span>{isOpen ? "타임 테이블 닫기" : "타임 테이블 보기"}</span>
 
               <ChevronDown className={clsx("h-4 w-4 text-gray-500 transition-transform duration-200", isOpen ? "rotate-180" : "rotate-0")} />
             </button>
