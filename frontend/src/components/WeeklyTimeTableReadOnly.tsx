@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import clsx from "clsx";
 import type { AvailableTimeSlots } from "@/components/WeeklyTimeTablePicker";
 
@@ -178,9 +178,12 @@ export default function WeeklyTimeTableReadOnly({
 }) {
   const normalized = useMemo(() => normalizeAvailableTimeSlots(value), [value]);
 
-  // ✅ 요일 칸 폭 줄이기(여기만 바꿔도 체감 큼)
-  const TIME_COL_PX = 90; // 기존 90 -> 줄임
-  const DAY_COL_PX = 96; // 요일 칸 고정 폭(작게)
+  // ✅ 토글 상태 (기본: 접힘)
+  const [isOpen, setIsOpen] = useState(false);
+
+  // ✅ 요일 칸 폭 줄이기
+  const TIME_COL_PX = 90;
+  const DAY_COL_PX = 96;
   const GRID_TEMPLATE = `${TIME_COL_PX}px repeat(${DAYS.length}, ${DAY_COL_PX}px)`;
 
   const dayItems = useMemo(() => {
@@ -229,12 +232,35 @@ export default function WeeklyTimeTableReadOnly({
             ))}
           </div>
         )}
+
+        {/* ✅ 토글 버튼 */}
+        {showMiniGrid && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setIsOpen((v) => !v)}
+              aria-expanded={isOpen}
+              className={clsx(
+                "w-full rounded-xl border px-3 py-2 text-sm font-semibold",
+                "border-gray-200 bg-white text-gray-900",
+                "hover:bg-gray-50 active:bg-gray-100",
+                "transition",
+              )}>
+              {isOpen ? "주간 타임 테이블 닫기" : "주간 타임 테이블 상세 보기"}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Mini grid (read-only heatmap) */}
+      {/* Mini grid (read-only heatmap) - ✅ 토글로 펼침/접힘 */}
       {showMiniGrid && (
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-          {/* ✅ 가로 스크롤 유발 최소화: overflow-auto는 유지해도 되지만, 이제 거의 안 생김 */}
+        <div
+          className={clsx(
+            "overflow-hidden rounded-2xl border border-gray-200 bg-white",
+            "transition-[max-height,opacity] duration-300 ease-out",
+            isOpen ? "max-h-[1600px] opacity-100" : "max-h-0 opacity-0",
+          )}>
+          {/* 내용은 접힌 상태에서도 DOM에 남아있지만, max-height로 숨김 */}
           <div className="overflow-x-hidden">
             {/* ✅ min-w 제거: 화면 폭에 맞춰 자연스럽게 맞춤 */}
             <div>
