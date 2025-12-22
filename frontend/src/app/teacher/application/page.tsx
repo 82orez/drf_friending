@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RegionSelectKR from "@/components/RegionSelectKR";
+import WeeklyTimeTablePicker, { AvailableTimeSlots } from "@/components/WeeklyTimeTablePicker";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -53,7 +54,10 @@ interface TeacherApplicationForm {
   // Working conditions
   employment_type: EmploymentType;
   preferred_locations: string;
-  available_time_slots: string;
+
+  // ✅ 변경: 문자열 -> 주간 타임테이블 JSON
+  available_time_slots: AvailableTimeSlots | null;
+
   available_from_date: string;
 
   // Consents
@@ -139,7 +143,7 @@ export default function TeacherApplicationPage() {
     additional_info: "",
     employment_type: "",
     preferred_locations: "",
-    available_time_slots: "",
+    available_time_slots: null, // ✅ 변경
     available_from_date: "",
     consentPersonalData: false,
     consentDataRetention: false,
@@ -226,7 +230,10 @@ export default function TeacherApplicationPage() {
       additional_info: data.additional_info || "",
       employment_type: data.employment_type || "",
       preferred_locations: data.preferred_locations || "",
-      available_time_slots: data.available_time_slots || "",
+
+      // ✅ 변경: 서버의 JSON 값을 그대로 넣어서 컴포넌트가 표시하게 함
+      available_time_slots: data.available_time_slots || null,
+
       available_from_date: data.available_from_date || "",
       consentPersonalData: data.consent_personal_data || false,
       consentDataRetention: data.consent_data_retention || false,
@@ -587,7 +594,12 @@ export default function TeacherApplicationPage() {
 
       if (form.employment_type) formData.append("employment_type", form.employment_type);
       if (form.preferred_locations) formData.append("preferred_locations", form.preferred_locations);
-      if (form.available_time_slots) formData.append("available_time_slots", form.available_time_slots);
+
+      // ✅ 변경: JSON -> 문자열로 넣기 (multipart/form-data)
+      if (form.available_time_slots) {
+        formData.append("available_time_slots", JSON.stringify(form.available_time_slots));
+      }
+
       if (form.available_from_date) formData.append("available_from_date", form.available_from_date);
 
       // 동의 항목 (DRF가 "true"/"false" 문자열을 boolean으로 파싱해줌)
@@ -1195,17 +1207,23 @@ export default function TeacherApplicationPage() {
               </div>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {/* ✅ 변경된 UI */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">Available Time Slots / 근무 가능 시간대</label>
-                  <input
-                    name="available_time_slots"
+
+                  <WeeklyTimeTablePicker
                     value={form.available_time_slots}
-                    onChange={handleInputChange}
-                    placeholder="Weekday evenings, Weekends... / 평일 저녁, 주말 등"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isEditLocked}
+                    errorText={errors["available_time_slots"] || null}
+                    onChange={(next) => {
+                      setForm((prev) => ({ ...prev, available_time_slots: next }));
+                      setErrors((prev) => ({ ...prev, available_time_slots: "" }));
+                    }}
                   />
-                  {renderError("available_time_slots")}
+
+                  <p className="mt-1 text-xs text-slate-500">Select weekly availability (30-min slots). / 주간 시간표에서 30분 단위로 선택하세요.</p>
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-800">Available From / 근무 시작 가능 일자</label>
                   <input
