@@ -178,11 +178,17 @@ export default function TeacherApplicationPage() {
   const isCoreField = (name: string) =>
     [
       "profile_image",
+      "visa_scan", // ✅ 추가: visa scan도 core 잠금
       "first_name",
       "last_name",
       "gender",
       "date_of_birth",
       "nationality",
+      "native_language", // ✅ 추가
+      "visa_type", // ✅ 추가
+      "teaching_languages", // ✅ 추가
+      "education_history", // ✅ 추가
+      "experience_history", // ✅ 추가
       "phone_number",
       "address_line1",
       "city",
@@ -483,8 +489,8 @@ export default function TeacherApplicationPage() {
   };
 
   const handleVisaScanChange = (e: ChangeEvent<HTMLInputElement>) => {
-    // ✅ REJECTED: 전체 수정 불가
-    if (isAllLocked) return;
+    // ✅ REJECTED: 전체 수정 불가, 또는 core 필드 잠금
+    if (isAllLocked || (isPartialLocked && isCoreField("visa_scan"))) return;
 
     const file = e.target.files?.[0] || null;
     const error = validateFile(file, "visa_scan");
@@ -604,7 +610,7 @@ export default function TeacherApplicationPage() {
       const koreaExpForSubmit = normalizeDecimalBeforeSubmit(form.korea_teaching_experience_years);
 
       // 파일 추가 (새 파일이 있을 때만)
-      // ✅ profile_image는 core 잠금 대상이라 기존 이력서(=partial lock)에서는 파일 선택이 막혀있음
+      // ✅ profile_image / visa_scan은 core 잠금 대상이라 기존 이력서(=partial lock)에서는 파일 선택이 막혀있음
       if (profileImageFile) formData.append("profile_image", profileImageFile);
       if (visaScanFile) formData.append("visa_scan", visaScanFile);
 
@@ -760,7 +766,8 @@ export default function TeacherApplicationPage() {
           {/* ✅ 기존 & REJECTED 아님: 일부 항목 잠금 안내 */}
           {!isAllLocked && hasExistingApplication && (
             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-              안내) 제출된 이력서는 <b>일부 주요 항목(프로필 사진 / 기본 인적 정보/ 연락처 / 주소 /동의 항목 등)</b>에 대해 수정이 불가할 수 있습니다.
+              안내) 제출된 이력서는 <b>일부 주요 항목(프로필/비자 이미지, 기본 인적 정보, 비자/언어/학력·경력, 연락처/주소, 동의 항목 등)</b>에 대해
+              수정이 불가할 수 있습니다.
             </div>
           )}
         </div>
@@ -811,7 +818,7 @@ export default function TeacherApplicationPage() {
                   </div>
                 </div>
 
-                {/* Visa scan (✅ editable unless REJECTED) */}
+                {/* Visa scan (✅ core locked) */}
                 <div className={"rounded-xl border border-gray-300 p-4"}>
                   <label className="block text-sm font-medium text-slate-800">
                     Visa Copy (2MB max, JPG/PNG) / 비자 사본
@@ -830,12 +837,12 @@ export default function TeacherApplicationPage() {
                         type="file"
                         accept="image/jpeg,image/png"
                         onChange={handleVisaScanChange}
-                        disabled={isAllLocked}
+                        disabled={isFieldDisabled("visa_scan")}
                         className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                       <p className="mt-1 text-xs text-slate-500">
                         JPEG or PNG, up to 2MB. / JPEG 또는 PNG, 최대 2MB.
-                        {hasExistingApplication && " (기존 이미지 유지하려면 선택하지 마세요)"}
+                        {hasExistingApplication && " (기존 이력서의 비자 사본 이미지는 수정할 수 없습니다.)"}
                       </p>
                       {renderError("visa_scan")}
                     </div>
@@ -945,7 +952,7 @@ export default function TeacherApplicationPage() {
                   {renderError("nationality")}
                 </div>
 
-                {/* ✅ Native language: (요구사항에 없어서) REJECTED만 잠금 */}
+                {/* ✅ Native language: core locked */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Native Language / 모국어
@@ -955,7 +962,7 @@ export default function TeacherApplicationPage() {
                     name="native_language"
                     value={form.native_language}
                     onChange={handleInputChange}
-                    disabled={isAllLocked}
+                    disabled={isFieldDisabled("native_language")}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     {NATIVE_LANGUAGE_OPTIONS.map((opt) => (
@@ -1066,7 +1073,7 @@ export default function TeacherApplicationPage() {
                     name="visa_type"
                     value={form.visa_type}
                     onChange={handleInputChange}
-                    disabled={isAllLocked}
+                    disabled={isFieldDisabled("visa_type")}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     <option value="F-2">F-2</option>
@@ -1106,7 +1113,7 @@ export default function TeacherApplicationPage() {
                     name="teaching_languages"
                     value={form.teaching_languages}
                     onChange={handleInputChange}
-                    disabled={isAllLocked}
+                    disabled={isFieldDisabled("teaching_languages")}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     <option value="English">English</option>
@@ -1194,7 +1201,7 @@ export default function TeacherApplicationPage() {
                     name="education_history"
                     value={form.education_history}
                     onChange={handleInputChange}
-                    disabled={isAllLocked}
+                    disabled={isFieldDisabled("education_history")}
                     rows={4}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
@@ -1210,7 +1217,7 @@ export default function TeacherApplicationPage() {
                     name="experience_history"
                     value={form.experience_history}
                     onChange={handleInputChange}
-                    disabled={isAllLocked}
+                    disabled={isFieldDisabled("experience_history")}
                     rows={4}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
