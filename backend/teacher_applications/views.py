@@ -6,8 +6,6 @@ from rest_framework.exceptions import (
     NotFound,
     PermissionDenied,
 )
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 from django.core.mail import send_mail
 from django.conf import settings
 
@@ -327,8 +325,8 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
             partial = kwargs.pop("partial", False)
             instance = self.get_object()
 
-            # ✅ status가 NEW일 때만 수정 허용
-            if instance.status != "NEW":
+            # ✅ status가 REJECTED일 때만 수정 불가
+            if instance.status == ApplicationStatusChoices.REJECTED:
                 logger.warning(
                     "Teacher application update forbidden due to status",
                     extra={
@@ -340,7 +338,7 @@ class TeacherApplicationUpdateView(generics.RetrieveUpdateDestroyAPIView):
                 raise PermissionDenied(
                     detail={
                         "success": False,
-                        "message": "현재 상태에서는 이력서를 수정할 수 없습니다. (Only editable when status is NEW)",
+                        "message": "불합격(REJECTED) 상태에서는 이력서를 수정할 수 없습니다.",
                         "status": instance.status,
                     }
                 )

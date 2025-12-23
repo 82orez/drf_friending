@@ -164,10 +164,42 @@ export default function TeacherApplicationPage() {
   const [hasExistingApplication, setHasExistingApplication] = useState(false);
   const [existingApplicationData, setExistingApplicationData] = useState<any>(null);
 
-  // ✅ status가 NEW일 때만 "수정" 가능하게 제한
+  // ✅ DB 에서 status 불러오기
   const applicationStatus: string | null = existingApplicationData?.status ?? null;
-  const canEditOrSubmit = !hasExistingApplication || applicationStatus === "NEW"; // 새 제출은 허용, 기존은 NEW일 때만 허용
-  const isEditLocked = hasExistingApplication && applicationStatus !== "NEW";
+
+  // 1) status==REJECTED: 전체 수정/제출 불가
+  const isAllLocked = hasExistingApplication && applicationStatus === "REJECTED";
+
+  // 2) REJECTED가 아닌 기존 이력서: 일부 항목만 수정 불가 (개인정보/동의/프로필사진 등)
+  // 기존에 이력서가 이미 등록되어 있고, 그 상태가 "REJECTED"가 아닌 경우에는 부분 수정 가능
+  const isPartialLocked = hasExistingApplication && applicationStatus !== "REJECTED";
+
+  // ✅ 일부 수정 불가 필드(core field) 선언부(예: 여권 사진=프로필 이미지, 기본 인적사항, 연락처/주소, 동의)
+  const isCoreField = (name: string) =>
+    [
+      "profile_image",
+      "first_name",
+      "last_name",
+      "gender",
+      "date_of_birth",
+      "nationality",
+      "phone_number",
+      "address_line1",
+      "city",
+      "district",
+      "postal_code",
+      "consentPersonalData",
+      "consentDataRetention",
+      "consentThirdParty",
+      "confirmationInfoTrue",
+    ].includes(name);
+
+  const isFieldDisabled = (name: string) => {
+    if (isAllLocked) return true;
+    // ✅ 기존 이력서이고 REJECTED가 아니면 core 필드만 잠금
+    if (isPartialLocked && isCoreField(name)) return true;
+    return false;
+  };
 
   // 기존 이력서 확인
   useEffect(() => {
@@ -359,6 +391,12 @@ export default function TeacherApplicationPage() {
     const target = e.target as HTMLInputElement;
     const { name, value, type, checked } = target;
 
+    // ✅ REJECTED는 전체 수정 불가
+    if (isAllLocked) return;
+
+    // ✅ 기존 이력서 & REJECTED가 아니면 core 필드는 수정 불가 (프론트에서 한 번 더 방어)
+    if (isPartialLocked && isCoreField(name)) return;
+
     // ✅ 전화번호는 별도 처리 (숫자만 입력해도 자동 포맷)
     if (name === "phone_number") {
       const formatted = formatKoreanPhoneNumber(value);
@@ -417,6 +455,9 @@ export default function TeacherApplicationPage() {
   };
 
   const handleProfileImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    // ✅ REJECTED: 전체 수정 불가, 또는 core 필드 잠금
+    if (isAllLocked || (isPartialLocked && isCoreField("profile_image"))) return;
+
     const file = e.target.files?.[0] || null;
     const error = validateFile(file, "profile_image");
     if (error) {
@@ -442,6 +483,9 @@ export default function TeacherApplicationPage() {
   };
 
   const handleVisaScanChange = (e: ChangeEvent<HTMLInputElement>) => {
+    // ✅ REJECTED: 전체 수정 불가
+    if (isAllLocked) return;
+
     const file = e.target.files?.[0] || null;
     const error = validateFile(file, "visa_scan");
     if (error) {
@@ -468,6 +512,14 @@ export default function TeacherApplicationPage() {
 
   const validateForm = (): boolean => {
     const newErrors: ErrorMap = {};
+
+    // ✅ REJECTED는 제출 불가이므로 여기서 굳이 검증할 필요는 없지만, 안전하게 처리
+    if (isAllLocked) {
+      const msg = "불합격(REJECTED) 상태의 이력서는 수정/재제출이 불가합니다.";
+      toast.error(msg);
+      setSubmitError(msg);
+      return false;
+    }
 
     // 이미지 파일 검증 (기존 이력서가 없는 경우만)
     if (!hasExistingApplication) {
@@ -522,10 +574,9 @@ export default function TeacherApplicationPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // ✅ 서버 요청 전에 프론트에서 한 번 더 차단
-    if (isEditLocked) {
-      const msg =
-        "담당자가 이력서 검토를 시작한 이후에는 이를 수정할 수 없습니다. (Once your application is under review, you can no longer edit it.)";
+    // ✅ REJECTED: handleSubmit 실행 불가 (요구사항)
+    if (isAllLocked) {
+      const msg = "불합격(REJECTED) 상태의 이력서는 전체 수정 및 재제출이 불가합니다. (Rejected applications cannot be edited or resubmitted.)";
       setSubmitError(msg);
       toast.error(msg);
       return;
@@ -553,12 +604,9 @@ export default function TeacherApplicationPage() {
       const koreaExpForSubmit = normalizeDecimalBeforeSubmit(form.korea_teaching_experience_years);
 
       // 파일 추가 (새 파일이 있을 때만)
-      if (profileImageFile) {
-        formData.append("profile_image", profileImageFile);
-      }
-      if (visaScanFile) {
-        formData.append("visa_scan", visaScanFile);
-      }
+      // ✅ profile_image는 core 잠금 대상이라 기존 이력서(=partial lock)에서는 파일 선택이 막혀있음
+      if (profileImageFile) formData.append("profile_image", profileImageFile);
+      if (visaScanFile) formData.append("visa_scan", visaScanFile);
 
       // 문자열 필드들
       formData.append("first_name", form.first_name);
@@ -566,7 +614,7 @@ export default function TeacherApplicationPage() {
       if (form.korean_name) formData.append("korean_name", form.korean_name);
       if (form.gender) formData.append("gender", form.gender);
       if (form.date_of_birth) formData.append("date_of_birth", form.date_of_birth);
-      formData.append("nationality", form.nationality); // ✅ value(예: "USA")가 들어감
+      formData.append("nationality", form.nationality);
       formData.append("native_language", form.native_language);
       formData.append("email", form.email);
       formData.append("phone_number", form.phone_number);
@@ -702,10 +750,17 @@ export default function TeacherApplicationPage() {
           <h1 className="text-3xl font-semibold text-slate-900">Teacher Application / 강사 이력서 등록</h1>
           <p className="mt-4 text-sm text-slate-600">이력서를 작성하고 제출하는 페이지입니다.</p>
 
-          {/* ✅ 상태가 NEW가 아니면 수정 불가 안내 */}
-          {isEditLocked && (
+          {/* ✅ REJECTED: 전체 잠금 안내 */}
+          {isAllLocked && (
+            <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-900">
+              현재 상태가 <b>REJECTED(불합격)</b> 이므로 이력서는 수정 및 재제출이 불가합니다.
+            </div>
+          )}
+
+          {/* ✅ 기존 & REJECTED 아님: 일부 항목 잠금 안내 */}
+          {!isAllLocked && hasExistingApplication && (
             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-              주의) 담당자가 이력서를 검토하기 시작하면 더이상 수정할 수 없습니다! (Once your application is under review, you can no longer edit it!)
+              안내) 제출된 이력서는 <b>일부 주요 항목(프로필 사진 / 기본 인적 정보/ 연락처 / 주소 /동의 항목 등)</b>에 대해 수정이 불가할 수 있습니다.
             </div>
           )}
         </div>
@@ -725,7 +780,7 @@ export default function TeacherApplicationPage() {
 
               {/* Profile image + Visa scan */}
               <div className="mt-4 grid gap-6 md:grid-cols-2">
-                {/* Profile image */}
+                {/* Profile image (✅ core locked) */}
                 <div className={"rounded-xl border border-gray-300 p-4"}>
                   <label className="block text-sm font-medium text-slate-800">
                     Profile Image (2MB max, JPG/PNG) / 프로필 이미지
@@ -744,18 +799,19 @@ export default function TeacherApplicationPage() {
                         type="file"
                         accept="image/jpeg,image/png"
                         onChange={handleProfileImageChange}
-                        className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800"
+                        disabled={isFieldDisabled("profile_image")}
+                        className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                       <p className="mt-1 text-xs text-slate-500">
                         JPEG or PNG, up to 2MB. / JPEG 또는 PNG, 최대 2MB.
-                        {hasExistingApplication && " (기존 이미지 유지하려면 선택하지 마세요)"}
+                        {hasExistingApplication && " (기존 이력서의 프로필 이미지는 수정할 수 없습니다.)"}
                       </p>
                       {renderError("profile_image")}
                     </div>
                   </div>
                 </div>
 
-                {/* Visa scan */}
+                {/* Visa scan (✅ editable unless REJECTED) */}
                 <div className={"rounded-xl border border-gray-300 p-4"}>
                   <label className="block text-sm font-medium text-slate-800">
                     Visa Copy (2MB max, JPG/PNG) / 비자 사본
@@ -774,7 +830,8 @@ export default function TeacherApplicationPage() {
                         type="file"
                         accept="image/jpeg,image/png"
                         onChange={handleVisaScanChange}
-                        className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800"
+                        disabled={isAllLocked}
+                        className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                       <p className="mt-1 text-xs text-slate-500">
                         JPEG or PNG, up to 2MB. / JPEG 또는 PNG, 최대 2MB.
@@ -797,7 +854,8 @@ export default function TeacherApplicationPage() {
                     name="first_name"
                     value={form.first_name}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isFieldDisabled("first_name")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("first_name")}
                 </div>
@@ -810,7 +868,8 @@ export default function TeacherApplicationPage() {
                     name="last_name"
                     value={form.last_name}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isFieldDisabled("last_name")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("last_name")}
                 </div>
@@ -820,7 +879,8 @@ export default function TeacherApplicationPage() {
                     name="korean_name"
                     value={form.korean_name}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isAllLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("korean_name")}
                 </div>
@@ -835,7 +895,8 @@ export default function TeacherApplicationPage() {
                     name="gender"
                     value={form.gender}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2">
+                    disabled={isFieldDisabled("gender")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     <option value="MALE">Male / 남성</option>
                     <option value="FEMALE">Female / 여성</option>
@@ -853,7 +914,8 @@ export default function TeacherApplicationPage() {
                     name="date_of_birth"
                     value={form.date_of_birth}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isFieldDisabled("date_of_birth")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("date_of_birth")}
                 </div>
@@ -861,7 +923,7 @@ export default function TeacherApplicationPage() {
 
               {/* Nationality / native language / contact */}
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {/* ✅ Nationality: emoji flags */}
+                {/* ✅ Nationality: core locked */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Nationality / 국적
@@ -871,7 +933,7 @@ export default function TeacherApplicationPage() {
                     name="nationality"
                     value={form.nationality}
                     onChange={handleInputChange}
-                    disabled={isEditLocked}
+                    disabled={isFieldDisabled("nationality")}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     {NATIONALITY_OPTIONS.map((opt) => (
@@ -883,7 +945,7 @@ export default function TeacherApplicationPage() {
                   {renderError("nationality")}
                 </div>
 
-                {/* ✅ Native language: emoji flags/icons */}
+                {/* ✅ Native language: (요구사항에 없어서) REJECTED만 잠금 */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Native Language / 모국어
@@ -893,7 +955,7 @@ export default function TeacherApplicationPage() {
                     name="native_language"
                     value={form.native_language}
                     onChange={handleInputChange}
-                    disabled={isEditLocked}
+                    disabled={isAllLocked}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     {NATIVE_LANGUAGE_OPTIONS.map((opt) => (
@@ -917,12 +979,13 @@ export default function TeacherApplicationPage() {
                     name="email"
                     value={form.email}
                     onChange={handleInputChange}
-                    disabled={true} // 수정 불가하도록 비활성화
-                    className="mt-1 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500" // 비활성화된 스타일 적용
+                    disabled={true}
+                    className="mt-1 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
                   />
                   <p className="mt-1 text-xs text-slate-500">이메일 주소는 로그인한 계정의 이메일이 자동으로 설정됩니다.</p>
                   {renderError("email")}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Phone Number / 전화번호 (Only numbers)
@@ -933,7 +996,8 @@ export default function TeacherApplicationPage() {
                     value={form.phone_number}
                     onChange={handleInputChange}
                     placeholder="010 1234 5678"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isFieldDisabled("phone_number")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("phone_number")}
                 </div>
@@ -951,7 +1015,8 @@ export default function TeacherApplicationPage() {
                     value={form.address_line1}
                     onChange={handleInputChange}
                     placeholder={"한글로 작성해주세요."}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isFieldDisabled("address_line1")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("address_line1")}
                 </div>
@@ -961,7 +1026,8 @@ export default function TeacherApplicationPage() {
                     name="postal_code"
                     value={form.postal_code}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isFieldDisabled("postal_code")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("postal_code")}
                 </div>
@@ -970,13 +1036,15 @@ export default function TeacherApplicationPage() {
               <RegionSelectKR
                 valueCity={form.city}
                 valueDistrict={form.district}
-                disabled={isEditLocked}
+                disabled={isAllLocked || (isPartialLocked && (isCoreField("city") || isCoreField("district")))}
                 required={true}
                 onChangeCity={(nextCity) => {
+                  if (isAllLocked || (isPartialLocked && isCoreField("city"))) return;
                   setForm((prev) => ({ ...prev, city: nextCity }));
                   setErrors((prev) => ({ ...prev, city: "" }));
                 }}
                 onChangeDistrict={(nextDistrict) => {
+                  if (isAllLocked || (isPartialLocked && isCoreField("district"))) return;
                   setForm((prev) => ({ ...prev, district: nextDistrict }));
                   setErrors((prev) => ({ ...prev, district: "" }));
                 }}
@@ -998,7 +1066,8 @@ export default function TeacherApplicationPage() {
                     name="visa_type"
                     value={form.visa_type}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2">
+                    disabled={isAllLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     <option value="F-2">F-2</option>
                     <option value="F-4">F-4</option>
@@ -1015,7 +1084,8 @@ export default function TeacherApplicationPage() {
                     name="visa_expiry_date"
                     value={form.visa_expiry_date}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isAllLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("visa_expiry_date")}
                 </div>
@@ -1036,7 +1106,8 @@ export default function TeacherApplicationPage() {
                     name="teaching_languages"
                     value={form.teaching_languages}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2">
+                    disabled={isAllLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     <option value="English">English</option>
                     <option value="Japanese">Japanese</option>
@@ -1051,8 +1122,9 @@ export default function TeacherApplicationPage() {
                     name="preferred_subjects"
                     value={form.preferred_subjects}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     placeholder="Conversation, Business English, Kids..."
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("preferred_subjects")}
                 </div>
@@ -1068,8 +1140,9 @@ export default function TeacherApplicationPage() {
                     onBlur={() => handleDecimalBlur("total_teaching_experience_years")}
                     inputMode="decimal"
                     pattern="^\d*(\.\d?)?$"
+                    disabled={isAllLocked}
                     placeholder="e.g. 3, 3.5, .2"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("total_teaching_experience_years")}
                 </div>
@@ -1082,8 +1155,9 @@ export default function TeacherApplicationPage() {
                     onBlur={() => handleDecimalBlur("korea_teaching_experience_years")}
                     inputMode="decimal"
                     pattern="^\d*(\.\d?)?$"
+                    disabled={isAllLocked}
                     placeholder="e.g. 1, 1.0, .5"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("korea_teaching_experience_years")}
                 </div>
@@ -1104,11 +1178,13 @@ export default function TeacherApplicationPage() {
                     name="self_introduction"
                     value={form.self_introduction}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     rows={4}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("self_introduction")}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Education History / 학력 사항
@@ -1118,11 +1194,13 @@ export default function TeacherApplicationPage() {
                     name="education_history"
                     value={form.education_history}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     rows={4}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("education_history")}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
                     Teaching & Work Experience / 강의 및 근무 경력
@@ -1132,41 +1210,48 @@ export default function TeacherApplicationPage() {
                     name="experience_history"
                     value={form.experience_history}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     rows={4}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("experience_history")}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-800">Certificates & Qualifications / 자격증 및 인증</label>
                   <textarea
                     name="certifications"
                     value={form.certifications}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     rows={3}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("certifications")}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-800">Teaching Style & Strengths / 수업 스타일 및 강점</label>
                   <textarea
                     name="teaching_style"
                     value={form.teaching_style}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     rows={3}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("teaching_style")}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-800">Additional Information / 기타 참고 사항</label>
                   <textarea
                     name="additional_info"
                     value={form.additional_info}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     rows={3}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("additional_info")}
                 </div>
@@ -1184,7 +1269,8 @@ export default function TeacherApplicationPage() {
                     name="employment_type"
                     value={form.employment_type}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2">
+                    disabled={isAllLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100">
                     <option value="">Select / 선택</option>
                     <option value="FULL_TIME">Full-time / 풀타임</option>
                     <option value="PART_TIME">Part-time / 파트타임</option>
@@ -1199,23 +1285,24 @@ export default function TeacherApplicationPage() {
                     name="preferred_locations"
                     value={form.preferred_locations}
                     onChange={handleInputChange}
+                    disabled={isAllLocked}
                     placeholder="e.g. Seoul, Online only / 예: 서울, 온라인만 등"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("preferred_locations")}
                 </div>
               </div>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {/* ✅ 변경된 UI */}
                 <div>
                   <label className="block text-sm font-medium text-slate-800">Available Time Slots / 근무 가능 시간대</label>
 
                   <WeeklyTimeTablePicker
                     value={form.available_time_slots}
-                    disabled={isEditLocked}
+                    disabled={isAllLocked}
                     errorText={errors["available_time_slots"] || null}
                     onChange={(next) => {
+                      if (isAllLocked) return;
                       setForm((prev) => ({ ...prev, available_time_slots: next }));
                       setErrors((prev) => ({ ...prev, available_time_slots: "" }));
                     }}
@@ -1231,7 +1318,8 @@ export default function TeacherApplicationPage() {
                     name="available_from_date"
                     value={form.available_from_date}
                     onChange={handleInputChange}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2"
+                    disabled={isAllLocked}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 ring-slate-900/5 outline-none focus:bg-white focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                   {renderError("available_from_date")}
                 </div>
@@ -1250,7 +1338,8 @@ export default function TeacherApplicationPage() {
                     name="consentPersonalData"
                     checked={form.consentPersonalData}
                     onChange={handleInputChange}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                    disabled={isFieldDisabled("consentPersonalData")}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 disabled:cursor-not-allowed"
                   />
                   <span>
                     <span className="font-medium">
@@ -1269,7 +1358,8 @@ export default function TeacherApplicationPage() {
                     name="consentDataRetention"
                     checked={form.consentDataRetention}
                     onChange={handleInputChange}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                    disabled={isFieldDisabled("consentDataRetention")}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 disabled:cursor-not-allowed"
                   />
                   <span>
                     <span className="font-medium">
@@ -1288,7 +1378,8 @@ export default function TeacherApplicationPage() {
                     name="consentThirdParty"
                     checked={form.consentThirdParty}
                     onChange={handleInputChange}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                    disabled={isFieldDisabled("consentThirdParty")}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 disabled:cursor-not-allowed"
                   />
                   <span>
                     <span className="font-medium">
@@ -1306,7 +1397,8 @@ export default function TeacherApplicationPage() {
                     name="confirmationInfoTrue"
                     checked={form.confirmationInfoTrue}
                     onChange={handleInputChange}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                    disabled={isFieldDisabled("confirmationInfoTrue")}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 disabled:cursor-not-allowed"
                   />
                   <span>
                     <span className="font-medium">
@@ -1333,22 +1425,21 @@ export default function TeacherApplicationPage() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || !canEditOrSubmit}
+                  disabled={isSubmitting || isAllLocked}
                   className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-slate-300 transition hover:cursor-pointer hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400">
                   {isSubmitting
                     ? hasExistingApplication
                       ? "Updating... / 수정 중..."
                       : "Submitting... / 제출 중..."
                     : hasExistingApplication
-                      ? applicationStatus === "NEW"
-                        ? "Update & Submit Application / 이력서 수정 및 제출"
-                        : "Update Locked / 수정 불가"
+                      ? isAllLocked
+                        ? "Update Locked / 수정 불가"
+                        : "Update Application / 이력서 수정"
                       : "Submit Application / 이력서 제출"}
                 </button>
               </div>
 
-              {/* ✅ 버튼 비활성화 사유를 바로 아래에 표시 */}
-              {isEditLocked && <p className="mt-4 text-center text-sm text-slate-600">이력서 수정은 담당자가 검토를 시작하기 전에만 가능합니다.</p>}
+              {isAllLocked && <p className="mt-4 text-center text-sm text-slate-600">REJECTED 상태에서는 수정 및 재제출이 불가합니다.</p>}
             </div>
           </form>
         </div>
