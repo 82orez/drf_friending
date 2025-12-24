@@ -39,6 +39,39 @@ def _rand_date(start: date, end: date) -> date:
     return start + timedelta(days=random.randint(0, max(days, 0)))
 
 
+def _rand_available_time_slots() -> dict:
+    """
+    JSONField용 available_time_slots 더미 데이터 생성.
+    - 각 요일: 6~43 범위의 '연속된(순서대로)' 숫자 시퀀스를 임의로 생성
+    - 예: [18, 19, 20, 21]
+    """
+
+    def _rand_consecutive_slots(min_slot: int = 6, max_slot: int = 43) -> list[int]:
+        if random.random() < 0.2:
+            return []
+
+        start = random.randint(min_slot, max_slot)
+        max_len = (max_slot - start) + 1
+        length = random.randint(1, min(max_len, 10))  # 길이는 적당히 제한
+        return list(range(start, start + length))
+
+    return {
+        "tz": "Asia/Seoul",
+        "stepMinutes": 30,
+        "startHour": 6,
+        "endHour": 24,
+        "days": {
+            "MON": _rand_consecutive_slots(),
+            "TUE": _rand_consecutive_slots(),
+            "WED": _rand_consecutive_slots(),
+            "THU": _rand_consecutive_slots(),
+            "FRI": _rand_consecutive_slots(),
+            "SAT": _rand_consecutive_slots(),
+            "SUN": _rand_consecutive_slots(),
+        },
+    }
+
+
 @lru_cache(maxsize=1)
 def _load_city_district_json() -> dict:
     """
@@ -399,9 +432,7 @@ class Command(BaseCommand):
                 ),
                 employment_type=random.choice(employ_types),
                 preferred_locations=random.choice(["서울", "경기", "부산", "온라인만"]),
-                available_time_slots=random.choice(
-                    ["평일 저녁", "주말", "평일 오전", "유동적"]
-                ),
+                available_time_slots=_rand_available_time_slots(),
                 available_from_date=available_from,
                 consent_personal_data=True,
                 consent_data_retention=True,
