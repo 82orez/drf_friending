@@ -773,13 +773,18 @@ export default function TeacherApplicationPage() {
               </b>{" "}
               may no longer be editable.
             </p>
-            <p className={"mt-2"}>Please make sure to review all details carefully before submitting your application.</p>
 
-            <p className={"mt-6"}>
-              제출된 강사 지원서는 <b>일부 주요 항목들(프로필/비자 이미지, 기본 인적 정보, 비자/언어/학력·경력, 연락처/주소, 동의 항목 등)</b>에 대해
-              수정이 불가할 수 있습니다.
-            </p>
-            <p className={"mt-2"}>따라서 지원서를 제출하시기 전에 반드시 내용을 확인하시기 바랍니다.</p>
+            {!hasExistingApplication && (
+              <div>
+                <p className={"mt-2"}>Please make sure to review all details carefully before submitting your application.</p>
+
+                <p className={"mt-6"}>
+                  제출된 강사 지원서는 <b>일부 주요 항목들(프로필/비자 이미지, 기본 인적 정보, 비자/언어/학력·경력, 연락처/주소, 동의 항목 등)</b>에
+                  대해 수정이 불가할 수 있습니다.
+                </p>
+                <p className={"mt-2"}>따라서 지원서를 제출하시기 전에 반드시 내용을 확인하시기 바랍니다.</p>
+              </div>
+            )}
           </div>
         </div>
 
