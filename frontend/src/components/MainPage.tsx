@@ -703,10 +703,22 @@ export default function MainPage() {
       {/* Detail Modal */}
       {selectedTeacherId !== null && (
         <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeTeacherDetail} aria-hidden="true" />
-          <div className="absolute inset-0 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+          <div
+            className="absolute inset-0 overflow-y-auto"
+            onMouseDown={(e) => {
+              // 스크롤 레이어(=모달 바깥)를 직접 클릭한 경우에만 닫기
+              if (e.target === e.currentTarget) closeTeacherDetail();
+            }}>
             <div className="mx-auto flex min-h-full max-w-4xl items-center px-4 py-10 sm:px-6">
-              <div role="dialog" aria-modal="true" className="w-full rounded-3xl border border-gray-200 bg-gray-50 shadow-2xl">
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="w-full rounded-3xl border border-gray-200 bg-gray-50 shadow-2xl"
+                onMouseDown={(e) => {
+                  // 모달 내부 클릭은 바깥 클릭 핸들러로 전파되지 않게 막기
+                  e.stopPropagation();
+                }}>
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
                   <div className="flex items-center gap-3">
