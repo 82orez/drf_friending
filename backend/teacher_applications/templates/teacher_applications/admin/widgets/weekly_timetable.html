@@ -1,0 +1,54 @@
+<div class="weekly-timetable" data-initial="{{ widget.value|escapejs }}">
+  <!-- 실제 저장값(JSON 문자열)은 hidden input으로 유지 -->
+  <input
+    type="hidden"
+    name="{{ widget.name }}"
+    id="{{ widget.attrs.id }}"
+    value="{{ widget.value|escape }}"
+  />
+
+  <div class="wtt-toolbar">
+    <div class="wtt-toolbar__left">
+      <button
+        type="button"
+        class="button wtt-btn"
+        data-action="preset-weekdays-evening"
+      >
+        Weekdays 18-22 / 평일 저녁
+      </button>
+      <button
+        type="button"
+        class="button wtt-btn"
+        data-action="preset-weekends-day"
+      >
+        Weekends 10-18 / 주말
+      </button>
+      <button
+        type="button"
+        class="button wtt-btn"
+        data-action="preset-weekdays-morning"
+      >
+        Weekdays 9-12 / 평일 오전
+      </button>
+      <button
+        type="button"
+        class="button wtt-btn wtt-btn--danger"
+        data-action="clear"
+      >
+        Clear / 초기화
+      </button>
+    </div>
+
+    <div class="wtt-toolbar__right">
+      <span class="wtt-hint"
+        >Click/drag to paint (mouse/touch). · 30min slots</span
+      >
+    </div>
+  </div>
+
+  <div class="wtt-wrap">
+    <div class="wtt-grid" data-role="grid"></div>
+  </div>
+
+  <div class="wtt-summary">Selected: <span data-role="summary">-</span></div>
+</div>

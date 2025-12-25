@@ -1,10 +1,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import TeacherApplication
+from .admin_forms import TeacherApplicationAdminForm
 
 
 @admin.register(TeacherApplication)
 class TeacherApplicationAdmin(admin.ModelAdmin):
+    form = TeacherApplicationAdminForm
+
     list_display = [
         "id",
         "full_name",
