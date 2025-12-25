@@ -49,7 +49,7 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                     "date_of_birth",
                     "nationality",
                     "native_language",
-                )
+                ),
             },
         ),
         (
@@ -94,9 +94,18 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                 "fields": (
                     "employment_type",
                     "preferred_locations",
-                    "available_time_slots",
                     "available_from_date",
                 ),
+            },
+        ),
+        (
+            "강의 가능 시간대",
+            {
+                "classes": (
+                    "collapse",
+                    "collapsed",
+                ),  # ✅ 클릭하면 펼쳐짐 + 처음엔 접힘
+                "fields": ("available_time_slots",),
             },
         ),
         (
