@@ -31,15 +31,22 @@ export default function Flag({ countryCode, label, size = 16, className }: Props
     );
   }
 
+  const r = Math.max(5, Math.floor(size / 8));
+
   return (
-    <span aria-hidden="true" title={label} className={clsx("inline-flex leading-none", className)}>
+    <span
+      aria-hidden="true"
+      title={label}
+      className={clsx("inline-flex overflow-hidden leading-none", className)}
+      style={{ width: size, height: size, borderRadius: r }}>
       <ReactCountryFlag
         countryCode={countryCode.toUpperCase()}
         svg
         style={{
           width: size,
           height: size,
-          borderRadius: Math.max(2, Math.floor(size / 8)),
+          display: "block",
+          borderRadius: r,
         }}
         aria-label={label}
       />
