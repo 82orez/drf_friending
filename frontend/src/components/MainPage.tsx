@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import cityDistrictData from "@/lib/city_district.json";
 import WeeklyTimeTableReadOnly, { WeeklyTimeTableSummary } from "@/components/WeeklyTimeTableReadOnly";
+import Flag from "@/components/Flag";
 
 type TeacherApplication = {
   id: number;
@@ -140,18 +141,18 @@ function labelAgeBracket(b: AgeBracket) {
 
 // ✅ Nationality -> Flag Emoji + Label
 const NATIONALITY_META = {
-  USA: { flag: "🇺🇸", label: "United States / 미국" },
-  UK: { flag: "🇬🇧", label: "United Kingdom / 영국" },
-  CANADA: { flag: "🇨🇦", label: "Canada / 캐나다" },
-  IRELAND: { flag: "🇮🇪", label: "Ireland / 아일랜드" },
-  AUSTRALIA: { flag: "🇦🇺", label: "Australia / 호주" },
-  NEW_ZEALAND: { flag: "🇳🇿", label: "New Zealand / 뉴질랜드" },
-  SOUTH_AFRICA: { flag: "🇿🇦", label: "South Africa / 남아프리카공화국" },
-  PHILIPPINES: { flag: "🇵🇭", label: "Philippines / 필리핀" },
-  SOUTH_KOREA: { flag: "🇰🇷", label: "South Korea / 대한민국" },
-  JAPAN: { flag: "🇯🇵", label: "Japan / 일본" },
-  CHINA: { flag: "🇨🇳", label: "China / 중국" },
-  OTHER: { flag: "🏳️", label: "Other / 기타" },
+  USA: { iso2: "US", label: "United States / 미국" },
+  UK: { iso2: "GB", label: "United Kingdom / 영국" },
+  CANADA: { iso2: "CA", label: "Canada / 캐나다" },
+  IRELAND: { iso2: "IE", label: "Ireland / 아일랜드" },
+  AUSTRALIA: { iso2: "AU", label: "Australia / 호주" },
+  NEW_ZEALAND: { iso2: "NZ", label: "New Zealand / 뉴질랜드" },
+  SOUTH_AFRICA: { iso2: "ZA", label: "South Africa / 남아프리카공화국" },
+  PHILIPPINES: { iso2: "PH", label: "Philippines / 필리핀" },
+  SOUTH_KOREA: { iso2: "KR", label: "South Korea / 대한민국" },
+  JAPAN: { iso2: "JP", label: "Japan / 일본" },
+  CHINA: { iso2: "CN", label: "China / 중국" },
+  OTHER: { iso2: "UN", label: "Other / 기타" },
 } as const;
 
 type NationalityKey = keyof typeof NATIONALITY_META;
@@ -201,9 +202,7 @@ function renderNationalityWithFlag(raw?: string | null) {
 
   return (
     <span className="inline-flex items-center justify-end gap-1.5">
-      <span aria-hidden="true" title={meta.label} className="text-base leading-none">
-        {meta.flag}
-      </span>
+      <Flag countryCode={meta.iso2} label={meta.label} size={16} className="shrink-0" />
       <span>{text}</span>
     </span>
   );
