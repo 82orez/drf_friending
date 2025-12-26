@@ -4,8 +4,8 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DRF Auth App",
-  description: "Django REST Framework Authentication with Next.js",
+  title: "Friending",
+  description: "Friending",
 };
 
 export default function RootLayout({
