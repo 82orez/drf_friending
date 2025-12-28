@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "accounts",
     "storages",
     "teacher_applications",
+    "culture_centers",
 ]
 
 MIDDLEWARE = [
