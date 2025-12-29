@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import clsx from "clsx";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -302,6 +302,74 @@ export default function MainPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [teacherDetail, setTeacherDetail] = useState<TeacherApplication | null>(null);
+
+  // ✅ PDF 저장: 캡처 대상 ref + 생성 상태
+  const pdfRef = useRef<HTMLDivElement | null>(null);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+
+  const safeFileName = (s: string) =>
+    s
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, "_")
+      .replace(/\s+/g, " ")
+      .slice(0, 80);
+
+  const downloadDetailAsPdf = async () => {
+    if (!pdfRef.current) return;
+    setPdfGenerating(true);
+
+    try {
+      // ✅ 동적 import: Next.js 번들/SSR 이슈 최소화
+      const html2canvas = (await import("html2canvas-pro")).default;
+      const { jsPDF } = await import("jspdf");
+
+      const el = pdfRef.current;
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        scrollX: 0,
+        scrollY: -window.scrollY,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF({
+        orientation: "p",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const id = selectedTeacherId ?? "teacher";
+      const name = safeFileName(detailFullName || `Teacher_${id}`);
+      pdf.save(`${name}_detail_${id}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("PDF 생성에 실패했습니다. 콘솔 로그를 확인해 주세요.");
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
 
   const fetchTeachers = async () => {
     setLoading(true);
@@ -611,7 +679,7 @@ export default function MainPage() {
                   <div className="flex items-start gap-3">
                     <div className="h-14 w-14 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
                       {thumb ? (
-                        <img src={thumb} alt={`${fullName} thumbnail`} className="h-full w-full object-cover" />
+                        <img src={thumb} alt={`${fullName} thumbnail`} className="h-full w-full object-cover" crossOrigin="anonymous" />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
                       )}
@@ -718,140 +786,139 @@ export default function MainPage() {
                   // 모달 내부 클릭은 바깥 클릭 핸들러로 전파되지 않게 막기
                   e.stopPropagation();
                 }}>
-                {/* Header */}
-                <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-24 w-24 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
-                      {detailThumb ? (
-                        <img src={detailThumb} alt={`${detailFullName} thumbnail`} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-base font-semibold text-gray-900">
-                        {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
+                {/* ✅ PDF 캡처 대상 (Header + Body) */}
+                <div ref={pdfRef}>
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-24 w-24 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
+                        {detailThumb ? (
+                          <img src={detailThumb} alt={`${detailFullName} thumbnail`} className="h-full w-full object-cover" crossOrigin="anonymous" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
+                        )}
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span
-                          className={clsx(
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
-                            badgeClassByGender(teacherDetail?.gender),
-                          )}>
-                          {labelGender(teacherDetail?.gender)}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                          Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
-                        </span>
-                        {/*<span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">*/}
-                        {/*  Status: {teacherDetail?.status || "-"}*/}
-                        {/*</span>*/}
+                      <div>
+                        <div className="text-base font-semibold text-gray-900">
+                          {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span
+                            className={clsx(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
+                              badgeClassByGender(teacherDetail?.gender),
+                            )}>
+                            {labelGender(teacherDetail?.gender)}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                            Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <button
+                      onClick={closeTeacherDetail}
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                      Close (Esc)
+                    </button>
                   </div>
 
-                  <button
-                    onClick={closeTeacherDetail}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
-                    Close (Esc)
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="space-y-4 px-5 py-5 sm:px-6">
-                  {detailError ? (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                      {detailError}
-                      <div className="mt-3">
-                        <button
-                          onClick={() => openTeacherDetail(selectedTeacherId)}
-                          className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
-                          Retry
-                        </button>
+                  {/* Body */}
+                  <div className="space-y-4 px-5 py-5 sm:px-6">
+                    {detailError ? (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                        {detailError}
+                        <div className="mt-3">
+                          <button
+                            onClick={() => openTeacherDetail(selectedTeacherId)}
+                            className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
+                            Retry
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : detailLoading ? (
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600">상세 정보를 불러오는 중입니다...</div>
-                  ) : (
-                    <>
-                      <div className="mb-10 grid gap-4 lg:grid-cols-2">
-                        <Section title="Basic Info">
-                          <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
-                          <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
-                          <Field label="Nationality" value={renderNationalityWithFlag(teacherDetail?.nationality)} />
-                          {/*<Field label="Native language" value={teacherDetail?.native_language || "-"} />*/}
-                          <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
-                          <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
-                          <Field
-                            label="Intro video"
-                            value={
-                              teacherDetail?.introduction_youtube_url ? (
-                                <a
-                                  href={teacherDetail.introduction_youtube_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="italic underline underline-offset-2 hover:text-gray-700">
-                                  Click to watch!
-                                </a>
-                              ) : (
-                                "-"
-                              )
-                            }
-                          />
+                    ) : detailLoading ? (
+                      <div className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600">상세 정보를 불러오는 중입니다...</div>
+                    ) : (
+                      <>
+                        <div className="mb-10 grid gap-4 lg:grid-cols-2">
+                          <Section title="Basic Info">
+                            <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
+                            <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
+                            <Field label="Nationality" value={renderNationalityWithFlag(teacherDetail?.nationality)} />
+                            <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
+                            <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
+                            <Field
+                              label="Intro video"
+                              value={
+                                teacherDetail?.introduction_youtube_url ? (
+                                  <a
+                                    href={teacherDetail.introduction_youtube_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="italic underline underline-offset-2 hover:text-gray-700">
+                                    Click to watch!
+                                  </a>
+                                ) : (
+                                  "-"
+                                )
+                              }
+                            />
+                          </Section>
+
+                          <Section title="Location & Experience">
+                            <Field
+                              label="City / District"
+                              value={[teacherDetail?.city, teacherDetail?.district].filter(Boolean).join(" · ") || "-"}
+                            />
+                            <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />
+                            <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
+                          </Section>
+                        </div>
+
+                        {/* ✅ Availability 섹션(상세 모달용) */}
+                        <Section title="Availability / 강의 가능 시간대">
+                          <WeeklyTimeTableReadOnly value={teacherDetail?.available_time_slots} showMiniGrid={true} />
                         </Section>
 
-                        <Section title="Location & Experience">
-                          <Field label="City / District" value={[teacherDetail?.city, teacherDetail?.district].filter(Boolean).join(" · ") || "-"} />
-                          {/*<Field label="Address" value={teacherDetail?.address_line1 || "-"} />*/}
-                          {/*<Field label="Email" value={teacherDetail?.email || "-"} mono />*/}
-                          {/*<Field label="Phone" value={teacherDetail?.phone_number || "-"} mono />*/}
-                          <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />
-                          <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
-                        </Section>
-                      </div>
-
-                      {/* ✅ NEW: Availability 섹션(상세 모달용) */}
-                      <Section title="Availability / 강의 가능 시간대">
-                        <WeeklyTimeTableReadOnly value={teacherDetail?.available_time_slots} showMiniGrid={true} />
-                      </Section>
-
-                      <Section title="Self Introduction">
-                        <TextBlock text={teacherDetail?.self_introduction} />
-                      </Section>
-
-                      <Section title="Education History">
-                        <TextBlock text={teacherDetail?.education_history} />
-                      </Section>
-
-                      <Section title="Experience History">
-                        <TextBlock text={teacherDetail?.experience_history} />
-                      </Section>
-
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        <Section title="Certifications">
-                          <TextBlock text={teacherDetail?.certifications} />
+                        <Section title="Self Introduction">
+                          <TextBlock text={teacherDetail?.self_introduction} />
                         </Section>
 
-                        <Section title="Teaching Style & Strengths">
-                          <TextBlock text={teacherDetail?.teaching_style} />
+                        <Section title="Education History">
+                          <TextBlock text={teacherDetail?.education_history} />
                         </Section>
-                      </div>
 
-                      <Section title="Additional Info">
-                        <TextBlock text={teacherDetail?.additional_info} />
-                      </Section>
+                        <Section title="Experience History">
+                          <TextBlock text={teacherDetail?.experience_history} />
+                        </Section>
 
-                      <Section title="Admin Evaluation">
-                        <TextBlock text={teacherDetail?.evaluation_result} />
-                      </Section>
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <Section title="Certifications">
+                            <TextBlock text={teacherDetail?.certifications} />
+                          </Section>
 
-                      {/*{teacherDetail?.memo?.trim() ? (*/}
-                      {/*  <Section title="Admin Memo">*/}
-                      {/*    <TextBlock text={teacherDetail?.memo} />*/}
-                      {/*  </Section>*/}
-                      {/*) : null}*/}
-                    </>
-                  )}
+                          <Section title="Teaching Style & Strengths">
+                            <TextBlock text={teacherDetail?.teaching_style} />
+                          </Section>
+                        </div>
+
+                        <Section title="Additional Info">
+                          <TextBlock text={teacherDetail?.additional_info} />
+                        </Section>
+
+                        <Section title="Admin Evaluation">
+                          <TextBlock text={teacherDetail?.evaluation_result} />
+                        </Section>
+
+                        {/*{teacherDetail?.memo?.trim() ? (*/}
+                        {/*  <Section title="Admin Memo">*/}
+                        {/*    <TextBlock text={teacherDetail?.memo} />*/}
+                        {/*  </Section>*/}
+                        {/*) : null}*/}
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Footer actions */}
@@ -861,6 +928,18 @@ export default function MainPage() {
                     className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:cursor-pointer hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
                     Refresh Detail
                   </button>
+
+                  {/* ✅ NEW: PDF 저장 버튼 */}
+                  <button
+                    onClick={downloadDetailAsPdf}
+                    disabled={detailLoading || !!detailError || pdfGenerating}
+                    className={clsx(
+                      "rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition focus:ring-4 focus:ring-gray-100 focus:outline-none",
+                      detailLoading || !!detailError || pdfGenerating ? "cursor-not-allowed opacity-60" : "hover:cursor-pointer hover:bg-gray-50",
+                    )}>
+                    {pdfGenerating ? "Generating PDF..." : "Save as PDF"}
+                  </button>
+
                   <button
                     onClick={closeTeacherDetail}
                     className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
