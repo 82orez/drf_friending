@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts",
     "storages",
+    "import_export",
     "teacher_applications",
     "culture_centers",
 ]
