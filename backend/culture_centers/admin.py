@@ -28,10 +28,7 @@ class CultureCenterAdmin(ImportExportModelAdmin):
         "region",
         "branch_name",
         "address_detail",
-        "center_phone",
-        "manager_name",
-        "manager_phone",
-        "manager_email",
+        "notes",
     )
     list_filter = ("center", "region")
     search_fields = ("center__name", "branch_name", "address_detail")
