@@ -30,13 +30,16 @@ class CultureCenterBaseResource(resources.ModelResource):
     )
     branch_name = fields.Field(column_name="지점명", attribute="branch_name")
     address_detail = fields.Field(column_name="주소", attribute="address_detail")
-    notes = fields.Field(column_name="비고", attribute="notes")
 
     # ✅ 엑셀에 컬럼이 있으면 자동 반영(없으면 빈 값)
-    center_phone = fields.Field(column_name="센터전화", attribute="center_phone")
+    center_phone = fields.Field(column_name="센터_전화번호", attribute="center_phone")
     manager_name = fields.Field(column_name="담당자명", attribute="manager_name")
-    manager_phone = fields.Field(column_name="담당자전화", attribute="manager_phone")
-    manager_email = fields.Field(column_name="담당자이메일", attribute="manager_email")
+    manager_phone = fields.Field(
+        column_name="담당자_전화번호", attribute="manager_phone"
+    )
+    manager_email = fields.Field(column_name="담당자_이메일", attribute="manager_email")
+
+    notes = fields.Field(column_name="비고", attribute="notes")
 
     class Meta:
         model = CultureCenter
@@ -49,11 +52,11 @@ class CultureCenterBaseResource(resources.ModelResource):
             "region",
             "branch_name",
             "address_detail",
-            "notes",
             "center_phone",
             "manager_name",
             "manager_phone",
             "manager_email",
+            "notes",
         )
 
         skip_unchanged = True

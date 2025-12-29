@@ -49,7 +49,6 @@ class CultureCenter(models.Model):
 
     branch_name = models.CharField("지점 이름", max_length=100)
     address_detail = models.CharField("상세 주소", max_length=255)
-    notes = models.CharField("비고", max_length=255, blank=True, null=True)
 
     # ✅ 추가: 모두 nullable
     center_phone = models.CharField(
@@ -62,6 +61,8 @@ class CultureCenter(models.Model):
         "담당자 전화번호", max_length=50, blank=True, null=True
     )
     manager_email = models.EmailField("담당자 이메일", blank=True, null=True)
+
+    notes = models.CharField("비고", max_length=255, blank=True, null=True)
 
     created_at = models.DateTimeField("생성일", auto_now_add=True)
     updated_at = models.DateTimeField("수정일", auto_now=True)
