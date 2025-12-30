@@ -323,17 +323,17 @@ export default function MainPage() {
       const html2canvas = (await import("html2canvas-pro")).default;
       const { jsPDF } = await import("jspdf");
 
-      const el = pdfRef.current;
+      // ✅ 한글/레이아웃 깨짐 최소화: 폰트 로딩 완료까지 대기
+      try {
+        const fontsAny = (document as any).fonts;
+        if (fontsAny?.ready) await fontsAny.ready;
+      } catch {}
 
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        scrollX: 0,
-        scrollY: -window.scrollY,
-      });
+      const root = pdfRef.current;
 
-      const imgData = canvas.toDataURL("image/png");
+      // ✅ 섹션(블록) 단위 캡처 → 페이지 나눔을 깔끔하게
+      const blocks = Array.from(root.querySelectorAll<HTMLElement>("[data-pdf-block='true']"));
+      const targets = blocks.length ? blocks : [root];
 
       const pdf = new jsPDF({
         orientation: "p",
@@ -343,21 +343,84 @@ export default function MainPage() {
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const contentWidth = pageWidth - margin * 2;
+      const contentHeight = pageHeight - margin * 2;
 
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let cursorY = margin;
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      const addCanvasToPdf = (canvas: HTMLCanvasElement) => {
+        const imgData = canvas.toDataURL("image/png");
+        const imgWidth = contentWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+        // 1) 한 페이지에 들어가는 경우: 남은 공간 체크 후 배치
+        if (imgHeight <= contentHeight) {
+          if (cursorY + imgHeight > margin + contentHeight) {
+            pdf.addPage();
+            cursorY = margin;
+          }
+          pdf.addImage(imgData, "PNG", margin, cursorY, imgWidth, imgHeight);
+          cursorY += imgHeight + 2; // 약간의 여백
+          return;
+        }
 
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        // 2) 블록 자체가 한 페이지보다 큰 경우: 블록 단위로 여러 페이지에 걸쳐 분할
+        //    (섹션 단위 페이지 나눔을 최대한 지키되, 너무 큰 섹션은 불가피하게 분할)
+        if (cursorY !== margin) {
+          pdf.addPage();
+          cursorY = margin;
+        }
+
+        let heightLeft = imgHeight;
+        let position = margin;
+
+        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+        heightLeft -= contentHeight;
+
+        while (heightLeft > 0) {
+          pdf.addPage();
+          position = margin - (imgHeight - heightLeft);
+          pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+          heightLeft -= contentHeight;
+        }
+
+        cursorY = margin;
+      };
+
+      for (const el of targets) {
+        const canvas = await html2canvas(el, {
+          scale: Math.min(2, window.devicePixelRatio || 2),
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          // ✅ Close/Footer 버튼 자동 제외 + 캡처용 폰트/줄바꿈 보정(클론 문서에서만 적용)
+          onclone: (clonedDoc) => {
+            const clonedRoot = clonedDoc.querySelector("[data-pdf-root='true']") as HTMLElement | null;
+            if (!clonedRoot) return;
+
+            // Close/Footer 등 제외(클론에서만 숨김: UI 깜빡임 방지)
+            clonedRoot.querySelectorAll<HTMLElement>("[data-pdf-ignore='true']").forEach((node) => {
+              node.style.display = "none";
+            });
+
+            // 한글 폰트/레이아웃 깨짐 최소화 (클론에서만)
+            const style = clonedDoc.createElement("style");
+            style.textContent = `
+              /* PDF 캡처 전용 스타일(클론에만 적용) */
+              [data-pdf-root="true"], [data-pdf-root="true"] * {
+                font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif !important;
+                -webkit-font-smoothing: antialiased;
+                text-rendering: geometricPrecision;
+                letter-spacing: 0 !important;
+                word-break: keep-all;
+                line-break: strict;
+              }
+            `;
+            clonedDoc.head.appendChild(style);
+          },
+        });
+
+        addCanvasToPdf(canvas);
       }
 
       const id = selectedTeacherId ?? "teacher";
@@ -779,6 +842,8 @@ export default function MainPage() {
             }}>
             <div className="mx-auto flex min-h-full max-w-4xl items-center px-4 py-10 sm:px-6">
               <div
+                ref={pdfRef}
+                data-pdf-root="true"
                 role="dialog"
                 aria-modal="true"
                 className="w-full rounded-3xl border border-gray-200 bg-gray-50 shadow-2xl"
@@ -786,143 +851,156 @@ export default function MainPage() {
                   // 모달 내부 클릭은 바깥 클릭 핸들러로 전파되지 않게 막기
                   e.stopPropagation();
                 }}>
-                {/* ✅ PDF 캡처 대상 (Header + Body) */}
-                <div ref={pdfRef}>
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-24 w-24 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
-                        {detailThumb ? (
-                          <img src={detailThumb} alt={`${detailFullName} thumbnail`} className="h-full w-full object-cover" crossOrigin="anonymous" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
-                        )}
+                {/* Header */}
+                <div
+                  data-pdf-block="true"
+                  className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-24 w-24 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
+                      {detailThumb ? (
+                        <img src={detailThumb} alt={`${detailFullName} thumbnail`} className="h-full w-full object-cover" crossOrigin="anonymous" />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-base font-semibold text-gray-900">
+                        {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
                       </div>
-                      <div>
-                        <div className="text-base font-semibold text-gray-900">
-                          {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <span
-                            className={clsx(
-                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
-                              badgeClassByGender(teacherDetail?.gender),
-                            )}>
-                            {labelGender(teacherDetail?.gender)}
-                          </span>
-                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                            Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
-                          </span>
-                        </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span
+                          className={clsx(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
+                            badgeClassByGender(teacherDetail?.gender),
+                          )}>
+                          {labelGender(teacherDetail?.gender)}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                          Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
+                        </span>
                       </div>
                     </div>
-
-                    <button
-                      onClick={closeTeacherDetail}
-                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
-                      Close (Esc)
-                    </button>
                   </div>
 
-                  {/* Body */}
-                  <div className="space-y-4 px-5 py-5 sm:px-6">
-                    {detailError ? (
-                      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                        {detailError}
-                        <div className="mt-3">
-                          <button
-                            onClick={() => openTeacherDetail(selectedTeacherId)}
-                            className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
-                            Retry
-                          </button>
-                        </div>
+                  <button
+                    data-pdf-ignore="true"
+                    onClick={closeTeacherDetail}
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                    Close (Esc)
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="space-y-4 px-5 py-5 sm:px-6">
+                  {detailError ? (
+                    <div data-pdf-block="true" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                      {detailError}
+                      <div className="mt-3" data-pdf-ignore="true">
+                        <button
+                          onClick={() => openTeacherDetail(selectedTeacherId)}
+                          className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
+                          Retry
+                        </button>
                       </div>
-                    ) : detailLoading ? (
-                      <div className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600">상세 정보를 불러오는 중입니다...</div>
-                    ) : (
-                      <>
-                        <div className="mb-10 grid gap-4 lg:grid-cols-2">
-                          <Section title="Basic Info">
-                            <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
-                            <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
-                            <Field label="Nationality" value={renderNationalityWithFlag(teacherDetail?.nationality)} />
-                            <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
-                            <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
-                            <Field
-                              label="Intro video"
-                              value={
-                                teacherDetail?.introduction_youtube_url ? (
-                                  <a
-                                    href={teacherDetail.introduction_youtube_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="italic underline underline-offset-2 hover:text-gray-700">
-                                    Click to watch!
-                                  </a>
-                                ) : (
-                                  "-"
-                                )
-                              }
-                            />
-                          </Section>
+                    </div>
+                  ) : detailLoading ? (
+                    <div data-pdf-block="true" className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
+                      상세 정보를 불러오는 중입니다...
+                    </div>
+                  ) : (
+                    <>
+                      <div data-pdf-block="true" className="mb-10 grid gap-4 lg:grid-cols-2">
+                        <Section title="Basic Info">
+                          <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
+                          <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
+                          <Field label="Nationality" value={renderNationalityWithFlag(teacherDetail?.nationality)} />
+                          <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
+                          <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
+                          <Field
+                            label="Intro video"
+                            value={
+                              teacherDetail?.introduction_youtube_url ? (
+                                <a
+                                  href={teacherDetail.introduction_youtube_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="italic underline underline-offset-2 hover:text-gray-700">
+                                  Click to watch!
+                                </a>
+                              ) : (
+                                "-"
+                              )
+                            }
+                          />
+                        </Section>
 
-                          <Section title="Location & Experience">
-                            <Field
-                              label="City / District"
-                              value={[teacherDetail?.city, teacherDetail?.district].filter(Boolean).join(" · ") || "-"}
-                            />
-                            <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />
-                            <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
-                          </Section>
-                        </div>
+                        <Section title="Location & Experience">
+                          <Field label="City / District" value={[teacherDetail?.city, teacherDetail?.district].filter(Boolean).join(" · ") || "-"} />
+                          <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />
+                          <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
+                        </Section>
+                      </div>
 
-                        {/* ✅ Availability 섹션(상세 모달용) */}
+                      {/* ✅ Availability 섹션(상세 모달용) */}
+                      <div data-pdf-block="true">
                         <Section title="Availability / 강의 가능 시간대">
                           <WeeklyTimeTableReadOnly value={teacherDetail?.available_time_slots} showMiniGrid={true} />
                         </Section>
+                      </div>
 
+                      <div data-pdf-block="true">
                         <Section title="Self Introduction">
                           <TextBlock text={teacherDetail?.self_introduction} />
                         </Section>
+                      </div>
 
+                      <div data-pdf-block="true">
                         <Section title="Education History">
                           <TextBlock text={teacherDetail?.education_history} />
                         </Section>
+                      </div>
 
+                      <div data-pdf-block="true">
                         <Section title="Experience History">
                           <TextBlock text={teacherDetail?.experience_history} />
                         </Section>
+                      </div>
 
-                        <div className="grid gap-4 lg:grid-cols-2">
-                          <Section title="Certifications">
-                            <TextBlock text={teacherDetail?.certifications} />
-                          </Section>
+                      <div data-pdf-block="true" className="grid gap-4 lg:grid-cols-2">
+                        <Section title="Certifications">
+                          <TextBlock text={teacherDetail?.certifications} />
+                        </Section>
 
-                          <Section title="Teaching Style & Strengths">
-                            <TextBlock text={teacherDetail?.teaching_style} />
-                          </Section>
-                        </div>
+                        <Section title="Teaching Style & Strengths">
+                          <TextBlock text={teacherDetail?.teaching_style} />
+                        </Section>
+                      </div>
 
+                      <div data-pdf-block="true">
                         <Section title="Additional Info">
                           <TextBlock text={teacherDetail?.additional_info} />
                         </Section>
+                      </div>
 
+                      <div data-pdf-block="true">
                         <Section title="Admin Evaluation">
                           <TextBlock text={teacherDetail?.evaluation_result} />
                         </Section>
+                      </div>
 
-                        {/*{teacherDetail?.memo?.trim() ? (*/}
-                        {/*  <Section title="Admin Memo">*/}
-                        {/*    <TextBlock text={teacherDetail?.memo} />*/}
-                        {/*  </Section>*/}
-                        {/*) : null}*/}
-                      </>
-                    )}
-                  </div>
+                      {/*{teacherDetail?.memo?.trim() ? (*/}
+                      {/*  <Section title="Admin Memo">*/}
+                      {/*    <TextBlock text={teacherDetail?.memo} />*/}
+                      {/*  </Section>*/}
+                      {/*) : null}*/}
+                    </>
+                  )}
                 </div>
 
                 {/* Footer actions */}
-                <div className="flex items-center justify-end gap-2 rounded-b-3xl border-t border-gray-200 bg-white px-5 py-4 sm:px-6">
+                <div
+                  data-pdf-ignore="true"
+                  className="flex items-center justify-end gap-2 rounded-b-3xl border-t border-gray-200 bg-white px-5 py-4 sm:px-6">
                   <button
                     onClick={() => openTeacherDetail(selectedTeacherId)}
                     className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:cursor-pointer hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
