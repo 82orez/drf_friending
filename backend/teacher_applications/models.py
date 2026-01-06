@@ -564,6 +564,9 @@ class TeacherApplication(models.Model):
         verbose_name = "Teacher application"
         verbose_name_plural = "Teacher applications"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["latitude", "longitude"], name="ta_lat_lng_idx"),
+        ]
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"
