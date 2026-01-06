@@ -13,6 +13,9 @@ from urllib.parse import urlparse
 from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
 
+# ✅ added
+from django.core.validators import MinValueValidator, MaxValueValidator
+
 
 # === 공통 유효성 검사기 ===
 def validate_image_size_under_2mb(value):
@@ -238,6 +241,28 @@ class TeacherApplication(models.Model):
         max_length=20,
         blank=True,
         verbose_name="Postal code / 우편번호",
+    )
+
+    # ✅ added: 위치(좌표) - 추후 구글맵 등에서 세팅해서 "내 주변 강사(거리순)"에 사용
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        db_index=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+        verbose_name="Latitude / 위도",
+        help_text="e.g. 37.313313 (WGS84). Optional for now. / 예: 37.313313 (선택)",
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        db_index=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+        verbose_name="Longitude / 경도",
+        help_text="e.g. 127.081270 (WGS84). Optional for now. / 예: 127.081270 (선택)",
     )
 
     # --- 2. 비자 정보 (Visa Information / 비자 정보) ---
