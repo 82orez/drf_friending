@@ -239,6 +239,17 @@ export default function MyProfile() {
         <div className="text-center">
           <h1 className="mb-8 text-3xl font-bold text-gray-900">My Profile</h1>
 
+          <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+            <button onClick={() => router.push("/teacher/dispatches")} className="rounded-full border bg-white px-4 py-2 text-sm hover:bg-gray-50">
+              Dispatch Board / 공고 보기
+            </button>
+            <button
+              onClick={() => router.push("/teacher/dispatches/applications")}
+              className="rounded-full border bg-white px-4 py-2 text-sm hover:bg-gray-50">
+              My Applications / 내 지원
+            </button>
+          </div>
+
           <div className="space-y-4">
             <div className="text-lg text-gray-700">Welcome to Friending!</div>
             <div className="text-sm text-gray-500">Email: {user?.email}</div>

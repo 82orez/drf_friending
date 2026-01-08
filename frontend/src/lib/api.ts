@@ -86,3 +86,68 @@ export const teacherApplicationAPI = {
     return await api.delete("/teacher-applications/my/");
   },
 };
+// ================================
+// Culture Centers API (for manager/admin)
+// ================================
+export const cultureCentersAPI = {
+  // Manager: list only centers the manager is linked to (or all if admin)
+  listMy: async () => {
+    return await api.get("/culture-centers/my/");
+  },
+};
+
+// ================================
+// Dispatches API
+// ================================
+export const dispatchesAPI = {
+  manager: {
+    listRequests: async () => {
+      return await api.get("/dispatches/manager/requests/");
+    },
+    createRequest: async (data: any) => {
+      return await api.post("/dispatches/manager/requests/", data);
+    },
+    getRequest: async (id: number) => {
+      return await api.get(`/dispatches/manager/requests/${id}/`);
+    },
+    updateRequest: async (id: number, data: any) => {
+      return await api.patch(`/dispatches/manager/requests/${id}/`, data);
+    },
+  },
+
+  teacher: {
+    listPublishedRequests: async () => {
+      return await api.get("/dispatches/teacher/requests/");
+    },
+    apply: async (requestId: number, data: { message?: string }) => {
+      return await api.post(`/dispatches/teacher/requests/${requestId}/apply/`, data);
+    },
+    listMyApplications: async () => {
+      return await api.get("/dispatches/teacher/applications/");
+    },
+  },
+
+  admin: {
+    listRequests: async () => {
+      return await api.get("/dispatches/admin/requests/");
+    },
+    getRequest: async (id: number) => {
+      return await api.get(`/dispatches/admin/requests/${id}/`);
+    },
+    updateRequest: async (id: number, data: any) => {
+      return await api.patch(`/dispatches/admin/requests/${id}/`, data);
+    },
+    publish: async (id: number, data: { application_deadline?: string | null }) => {
+      return await api.post(`/dispatches/admin/requests/${id}/publish/`, data);
+    },
+    listApplications: async (id: number) => {
+      return await api.get(`/dispatches/admin/requests/${id}/applications/`);
+    },
+    assign: async (id: number, data: { application_id: number; admin_memo?: string }) => {
+      return await api.post(`/dispatches/admin/requests/${id}/assign/`, data);
+    },
+    updateAssignment: async (assignmentId: number, data: { status?: string; admin_memo?: string }) => {
+      return await api.patch(`/dispatches/admin/assignments/${assignmentId}/`, data);
+    },
+  },
+};

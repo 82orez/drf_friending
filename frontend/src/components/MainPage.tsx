@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import Link from "next/link";
 import clsx from "clsx";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -644,6 +645,21 @@ export default function MainPage() {
               <div className="text-xs text-gray-500">Teacher Directory</div>
             </div>
           </button>
+
+          {/* Quick actions */}
+          <div className="hidden items-center gap-2 lg:flex">
+            {user?.role === "manager" ? (
+              <Link href="/manager/dispatches" className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">
+                Dispatch Requests / 파견 요청
+              </Link>
+            ) : null}
+
+            {user?.role === "admin" ? (
+              <Link href="/admin/dispatches" className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">
+                Dispatch Admin / 파견 관리
+              </Link>
+            ) : null}
+          </div>
 
           {/* Center: Search */}
           <div className="flex w-full items-center gap-2">
