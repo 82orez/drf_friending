@@ -1,7 +1,7 @@
 from django.contrib import admin
 from import_export.admin import ImportExportModelAdmin
 
-from .models import Region, Center, CultureCenter, CultureCenterMembership
+from .models import Region, Center, CultureCenter
 from .resources import CultureCenterUpsertResource, CultureCenterInsertOnlyResource
 
 
@@ -32,14 +32,3 @@ class CultureCenterAdmin(ImportExportModelAdmin):
     )
     list_filter = ("center", "region")
     search_fields = ("center__name", "branch_name", "address_detail")
-
-
-@admin.register(CultureCenterMembership)
-class CultureCenterMembershipAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "culture_center", "role", "is_active", "created_at")
-    list_filter = ("role", "is_active", "culture_center")
-    search_fields = (
-        "user__email",
-        "culture_center__branch_name",
-        "culture_center__center__name",
-    )

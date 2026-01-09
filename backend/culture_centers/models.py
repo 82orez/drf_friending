@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db import models
 
 # ✅ added
@@ -111,46 +110,3 @@ class CultureCenter(models.Model):
 
     def __str__(self) -> str:
         return f"{self.center.name} - {self.branch_name} ({self.region.name})"
-
-
-class CultureCenterMembership(models.Model):
-    """문화센터 지점과 사용자(매니저/스태프)의 매핑 테이블."""
-
-    class MemberRole(models.TextChoices):
-        MANAGER = "MANAGER", "Manager / 매니저"
-        STAFF = "STAFF", "Staff / 스태프"
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="culture_center_memberships",
-        verbose_name="User",
-    )
-    culture_center = models.ForeignKey(
-        "culture_centers.CultureCenter",
-        on_delete=models.CASCADE,
-        related_name="memberships",
-        verbose_name="문화센터 지점",
-    )
-    role = models.CharField(
-        max_length=20,
-        choices=MemberRole.choices,
-        default=MemberRole.MANAGER,
-        verbose_name="역할",
-    )
-    is_active = models.BooleanField(default=True, verbose_name="활성")
-
-    created_at = models.DateTimeField("생성일", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "문화센터 지점 멤버십"
-        verbose_name_plural = "문화센터 지점 멤버십"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "culture_center"],
-                name="uniq_user_culture_center_membership",
-            )
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.user.email} -> {self.culture_center}"
