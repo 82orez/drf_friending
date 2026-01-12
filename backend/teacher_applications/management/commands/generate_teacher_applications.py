@@ -161,6 +161,58 @@ def _rand_korean_address():
     return city, district, address_line1, postal_code
 
 
+def _parse_coords(coords: str) -> tuple[Decimal, Decimal]:
+    """
+    Parse "lat,lng" (or "lat, lng") into (Decimal lat, Decimal lng).
+    Example: "37.313348, 127.081195"
+    """
+    if not coords:
+        raise ValueError("coords is empty")
+
+    parts = [p.strip() for p in coords.split(",")]
+    if len(parts) != 2:
+        raise ValueError(
+            "coords must be in format: 'lat,lng' (e.g. '37.313348, 127.081195')"
+        )
+
+    lat = Decimal(parts[0])
+    lng = Decimal(parts[1])
+    return lat, lng
+
+
+def _clamp_decimal(x: Decimal, lo: Decimal, hi: Decimal) -> Decimal:
+    return max(lo, min(hi, x))
+
+
+def _jitter_lat_lng(
+    *,
+    center_lat: Decimal,
+    center_lng: Decimal,
+    jitter_km: float,
+) -> tuple[Decimal, Decimal]:
+    """
+    Make a small random offset around center within ~jitter_km.
+    (Rough conversion: 1 deg lat ~= 111.32km, lng scales by cos(lat))
+    """
+    # Convert to Decimal for DB write; compute jitter in float then wrap into Decimal
+    lat_f = float(center_lat)
+    # Avoid extreme cos behavior; in KR it's safe anyway
+    cos_lat = max(1e-6, abs(__import__("math").cos(__import__("math").radians(lat_f))))
+    lat_delta = jitter_km / 111.32
+    lng_delta = jitter_km / (111.32 * cos_lat)
+
+    new_lat = Decimal(str(lat_f + random.uniform(-lat_delta, lat_delta)))
+    new_lng = Decimal(str(float(center_lng) + random.uniform(-lng_delta, lng_delta)))
+
+    # Model validators: lat [-90, 90], lng [-180, 180]
+    new_lat = _clamp_decimal(new_lat, Decimal("-90"), Decimal("90"))
+    new_lng = _clamp_decimal(new_lng, Decimal("-180"), Decimal("180"))
+
+    # Match model precision (decimal_places=6)
+    q = Decimal("0.000001")
+    return new_lat.quantize(q), new_lng.quantize(q)
+
+
 def fetch_dicebear_png(
     seed: str, style: str, dicebear_version: str = "9.x", size: int = 256
 ) -> bytes:
@@ -281,12 +333,37 @@ class Command(BaseCommand):
             "--sleep", type=float, default=0.15, help="Sleep between DiceBear requests"
         )
 
+        # ✅ added: latitude/longitude support
+        parser.add_argument(
+            "--coords",
+            type=str,
+            default="",
+            help="Set all applications coordinates as 'lat,lng' (e.g. '37.313348, 127.081195')",
+        )
+        parser.add_argument(
+            "--coords-jitter-km",
+            type=float,
+            default=0.0,
+            help="If --coords is set, add small random jitter within this radius (km). 0 means no jitter.",
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
         count = options["count"]
         style = options["style"]
         dicebear_version = options["dicebear_version"]
         sleep_s = options["sleep"]
+
+        coords = (options.get("coords") or "").strip()
+        coords_jitter_km = float(options.get("coords_jitter_km") or 0.0)
+
+        base_lat: Decimal | None = None
+        base_lng: Decimal | None = None
+        if coords:
+            try:
+                base_lat, base_lng = _parse_coords(coords)
+            except Exception as e:
+                raise RuntimeError(f"Invalid --coords value: {coords!r}. {e}")
 
         fake_en = Faker("en_US")
         fake_kr = Faker("ko_KR")
@@ -352,6 +429,21 @@ class Command(BaseCommand):
                 _rand_korean_address()
             )
 
+            # ✅ set latitude/longitude if requested
+            latitude: Decimal | None = None
+            longitude: Decimal | None = None
+            if base_lat is not None and base_lng is not None:
+                if coords_jitter_km > 0:
+                    latitude, longitude = _jitter_lat_lng(
+                        center_lat=base_lat,
+                        center_lng=base_lng,
+                        jitter_km=coords_jitter_km,
+                    )
+                else:
+                    q = Decimal("0.000001")
+                    latitude = base_lat.quantize(q)
+                    longitude = base_lng.quantize(q)
+
             seed = f"{first_name}-{last_name}-{user.pk}-{uuid.uuid4().hex[:8]}"
             try:
                 avatar_bytes = fetch_dicebear_png(
@@ -392,6 +484,8 @@ class Command(BaseCommand):
                 city=city_ko,
                 district=district_ko,
                 postal_code=postal_code_num,
+                latitude=latitude,
+                longitude=longitude,
                 visa_type=visa_type,
                 visa_expiry_date=visa_expiry,
                 teaching_languages=teaching_lang,
@@ -458,3 +552,4 @@ class Command(BaseCommand):
 
 
 # python manage.py generate_teacher_applications --count 50 --style avataaars
+# python manage.py generate_teacher_applications --count 50 --style avataaars --coords "37.313348, 127.081195" --coords-jitter-km 30
