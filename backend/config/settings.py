@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "import_export",
     "teacher_applications",
     "culture_centers",
+    "dispatch_requests",
 ]
 
 MIDDLEWARE = [
