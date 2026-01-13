@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import clsx from "clsx";
-import api from "@/lib/api";
+import api, { cultureCenterAPI, dispatchRequestAPI } from "@/lib/api";
+
 import { useAuth } from "@/contexts/AuthContext";
 import cityDistrictData from "@/lib/city_district.json";
 import WeeklyTimeTableReadOnly, { WeeklyTimeTableSummary } from "@/components/WeeklyTimeTableReadOnly";
@@ -66,6 +67,33 @@ type TeacherApplication = {
 };
 
 type AgeBracket = "ALL" | "20S" | "30S" | "40S" | "50S" | "60PLUS";
+
+type CultureCenterBranch = {
+  id: number;
+  center_name: string;
+  region_name: string;
+  branch_name: string;
+  address_detail: string;
+  center_phone?: string | null;
+  manager_name?: string | null;
+  manager_phone?: string | null;
+  manager_email?: string | null;
+  notes?: string | null;
+};
+
+type DayKey = "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+
+const DAY_OPTIONS: Array<{ key: DayKey; label: string }> = [
+  { key: "MON", label: "Mon / 월" },
+  { key: "TUE", label: "Tue / 화" },
+  { key: "WED", label: "Wed / 수" },
+  { key: "THU", label: "Thu / 목" },
+  { key: "FRI", label: "Fri / 금" },
+  { key: "SAT", label: "Sat / 토" },
+  { key: "SUN", label: "Sun / 일" },
+];
+
+const LANGUAGE_OPTIONS = ["English", "Japanese", "Chinese", "Spanish", "Korean", "Other"] as const;
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -631,6 +659,153 @@ export default function MainPage() {
   const detailThumb = toAbsoluteMediaUrl(teacherDetail?.profile_image_thumbnail);
   const detailFullName = `${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim();
 
+  // ====== Dispatch Request (Manager Request) ======
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchesError, setBranchesError] = useState<string | null>(null);
+  const [branches, setBranches] = useState<CultureCenterBranch[]>([]);
+
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+  const [reqError, setReqError] = useState<string | null>(null);
+  const [reqSuccess, setReqSuccess] = useState<string | null>(null);
+
+  const [reqCenterId, setReqCenterId] = useState<number | "">("");
+  const [reqLanguage, setReqLanguage] = useState<string>("English");
+  const [reqLanguageCustom, setReqLanguageCustom] = useState<string>("");
+
+  const [reqCourseTitle, setReqCourseTitle] = useState<string>("");
+  const [reqDays, setReqDays] = useState<DayKey[]>([]);
+  const [reqStartTime, setReqStartTime] = useState<string>("");
+  const [reqEndTime, setReqEndTime] = useState<string>("");
+
+  const [reqStartDate, setReqStartDate] = useState<string>("");
+  const [reqEndDate, setReqEndDate] = useState<string>("");
+
+  const [reqApplicantName, setReqApplicantName] = useState<string>("");
+  const [reqApplicantPhone, setReqApplicantPhone] = useState<string>("");
+  const [reqApplicantEmail, setReqApplicantEmail] = useState<string>(user?.email || "");
+
+  const [reqTeacherCount, setReqTeacherCount] = useState<number>(1);
+  const [reqStudentsCount, setReqStudentsCount] = useState<string>("");
+  const [reqExtra, setReqExtra] = useState<string>("");
+
+  const selectedBranch = useMemo(() => {
+    if (!reqCenterId) return null;
+    return branches.find((b) => b.id === reqCenterId) || null;
+  }, [reqCenterId, branches]);
+
+  const toggleDay = (d: DayKey) => {
+    setReqDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+  };
+
+  const resetDispatchForm = () => {
+    setReqError(null);
+    setReqSuccess(null);
+    setReqCenterId("");
+    setReqLanguage("English");
+    setReqLanguageCustom("");
+    setReqCourseTitle("");
+    setReqDays([]);
+    setReqStartTime("");
+    setReqEndTime("");
+    setReqStartDate("");
+    setReqEndDate("");
+    setReqApplicantName("");
+    setReqApplicantPhone("");
+    setReqApplicantEmail(user?.email || "");
+    setReqTeacherCount(1);
+    setReqStudentsCount("");
+    setReqExtra("");
+  };
+
+  const openDispatchModal = async () => {
+    setDispatchOpen(true);
+    setReqSuccess(null);
+    setReqError(null);
+
+    // 지점 목록 로딩 (최초 1회 or 비어있을 때만)
+    if (branches.length > 0) return;
+
+    setBranchesLoading(true);
+    setBranchesError(null);
+    try {
+      const res = await cultureCenterAPI.listBranches();
+      const data = Array.isArray(res.data) ? res.data : [];
+      setBranches(data);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 401) setBranchesError("로그인이 필요합니다. (401)");
+      else setBranchesError("문화센터 지점 목록을 불러오지 못했습니다.");
+      setBranches([]);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  const closeDispatchModal = () => {
+    setDispatchOpen(false);
+    setReqSubmitting(false);
+    setReqError(null);
+    // 성공 메시지는 닫아도 남겨도 되는데, UX상 닫으면 초기화
+  };
+
+  const submitDispatchRequest = async () => {
+    setReqSubmitting(true);
+    setReqError(null);
+    setReqSuccess(null);
+
+    try {
+      if (!reqCenterId) throw new Error("지점을 선택해 주세요.");
+      if (!reqCourseTitle.trim()) throw new Error("강좌명을 입력해 주세요.");
+      if (reqDays.length === 0) throw new Error("강의 요일을 1개 이상 선택해 주세요.");
+      if (!reqApplicantName.trim()) throw new Error("신청자 이름을 입력해 주세요.");
+      if (!reqApplicantPhone.trim()) throw new Error("연락처를 입력해 주세요.");
+      if (!reqApplicantEmail.trim()) throw new Error("이메일을 입력해 주세요.");
+
+      const finalLanguage = reqLanguage === "Other" ? reqLanguageCustom.trim() : reqLanguage;
+      if (!finalLanguage) throw new Error("강의 언어를 입력/선택해 주세요.");
+
+      // 선택 입력값 정리
+      const payload = {
+        culture_center_id: Number(reqCenterId),
+        teaching_language: finalLanguage,
+        course_title: reqCourseTitle.trim(),
+        class_days: reqDays,
+        start_time: reqStartTime || null,
+        end_time: reqEndTime || null,
+        start_date: reqStartDate || null,
+        end_date: reqEndDate || null,
+        applicant_name: reqApplicantName.trim(),
+        applicant_phone: reqApplicantPhone.trim(),
+        applicant_email: reqApplicantEmail.trim(),
+        expected_teacher_count: Math.max(1, Number(reqTeacherCount || 1)),
+        students_count: reqStudentsCount ? Number(reqStudentsCount) : null,
+        extra_requirements: reqExtra.trim() ? reqExtra.trim() : null,
+      };
+
+      await dispatchRequestAPI.create(payload);
+
+      setReqSuccess("강사 파견 요청이 제출되었습니다. 담당자가 검토 후 연락드릴 예정입니다.");
+      // 폼은 유지할 수도 있지만, 보통은 초기화가 깔끔함
+      resetDispatchForm();
+      setDispatchOpen(false);
+    } catch (e: any) {
+      const apiMsg = e?.response?.data;
+      const status = e?.response?.status;
+
+      if (typeof e?.message === "string" && !status) {
+        setReqError(e.message);
+      } else if (status === 400) {
+        setReqError("요청 값이 올바르지 않습니다. 입력 내용을 확인해 주세요.");
+        console.error("Dispatch request 400:", apiMsg);
+      } else if (status === 401) setReqError("로그인이 필요합니다. (401)");
+      else if (status === 403) setReqError("권한이 없습니다. (403)");
+      else setReqError("요청 제출에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setReqSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
       {/* Navbar */}
@@ -655,6 +830,13 @@ export default function MainPage() {
             {/*  Reset*/}
             {/*</button>*/}
           </div>
+
+          {/* Request for Teacher Button*/}
+          <button
+            onClick={openDispatchModal}
+            className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
+            강사 파견 요청
+          </button>
 
           {/* Right: Email + Logout */}
           <div className="flex flex-col items-center justify-end gap-3">
@@ -1022,6 +1204,282 @@ export default function MainPage() {
                     onClick={closeTeacherDetail}
                     className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
                     Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Dispatch Request Modal ===== */}
+      {dispatchOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+          <div
+            className="absolute inset-0 overflow-y-auto"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) closeDispatchModal();
+            }}>
+            <div className="mx-auto flex min-h-full max-w-3xl items-center px-4 py-10 sm:px-6">
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="w-full rounded-3xl border border-gray-200 bg-white shadow-2xl"
+                onMouseDown={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-gray-50 px-5 py-5 sm:px-6">
+                  <div>
+                    <div className="text-base font-semibold text-gray-900">강사 파견 요청 작성</div>
+                    <div className="mt-1 text-sm text-gray-600">지점/강의 정보/연락처를 입력하면 요청이 등록됩니다.</div>
+                  </div>
+
+                  <button
+                    onClick={closeDispatchModal}
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                    Close
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="space-y-4 px-5 py-5 sm:px-6">
+                  {branchesError && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{branchesError}</div>}
+
+                  {reqError && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{reqError}</div>}
+
+                  {/* Center select */}
+                  <div className="grid gap-3 rounded-2xl border border-gray-200 p-4">
+                    <div className="text-sm font-semibold text-gray-900">1) 지점 선택</div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <label className="text-sm text-gray-600">문화센터 지점</label>
+                        <select
+                          value={reqCenterId}
+                          onChange={(e) => setReqCenterId(e.target.value ? Number(e.target.value) : "")}
+                          disabled={branchesLoading}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 disabled:opacity-60">
+                          <option value="">지점을 선택해 주세요</option>
+                          {branches.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.center_name} / {b.region_name} / {b.branch_name}
+                            </option>
+                          ))}
+                        </select>
+                        {branchesLoading && <div className="mt-2 text-xs text-gray-500">지점 목록 로딩 중...</div>}
+                      </div>
+
+                      {selectedBranch && (
+                        <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200 sm:col-span-2">
+                          <div className="font-medium text-gray-900">
+                            {selectedBranch.center_name} · {selectedBranch.branch_name} ({selectedBranch.region_name})
+                          </div>
+                          <div className="mt-1 text-gray-600">{selectedBranch.address_detail}</div>
+                          <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                            <div>센터 연락처: {selectedBranch.center_phone || "-"}</div>
+                            <div>담당자: {selectedBranch.manager_name || "-"}</div>
+                            <div>담당자 연락처: {selectedBranch.manager_phone || "-"}</div>
+                            <div>담당자 이메일: {selectedBranch.manager_email || "-"}</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Class info */}
+                  <div className="grid gap-3 rounded-2xl border border-gray-200 p-4">
+                    <div className="text-sm font-semibold text-gray-900">2) 강의 정보</div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm text-gray-600">강의 언어</label>
+                        <select
+                          value={reqLanguage}
+                          onChange={(e) => setReqLanguage(e.target.value)}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100">
+                          {LANGUAGE_OPTIONS.map((x) => (
+                            <option key={x} value={x}>
+                              {x}
+                            </option>
+                          ))}
+                        </select>
+                        {reqLanguage === "Other" && (
+                          <input
+                            value={reqLanguageCustom}
+                            onChange={(e) => setReqLanguageCustom(e.target.value)}
+                            placeholder="예: French, German..."
+                            className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                          />
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">강좌명</label>
+                        <input
+                          value={reqCourseTitle}
+                          onChange={(e) => setReqCourseTitle(e.target.value)}
+                          placeholder="예: 성인 영어 회화 (초급)"
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-sm text-gray-600">강의 요일 (복수 선택)</label>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {DAY_OPTIONS.map((d) => {
+                            const active = reqDays.includes(d.key);
+                            return (
+                              <button
+                                type="button"
+                                key={d.key}
+                                onClick={() => toggleDay(d.key)}
+                                className={clsx(
+                                  "rounded-full px-3 py-1 text-sm font-medium ring-1 transition",
+                                  active ? "bg-gray-900 text-white ring-gray-900" : "bg-white text-gray-800 ring-gray-200 hover:bg-gray-50",
+                                )}>
+                                {d.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">시작 시간</label>
+                        <input
+                          type="time"
+                          value={reqStartTime}
+                          onChange={(e) => setReqStartTime(e.target.value)}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">종료 시간</label>
+                        <input
+                          type="time"
+                          value={reqEndTime}
+                          onChange={(e) => setReqEndTime(e.target.value)}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">시작일</label>
+                        <input
+                          type="date"
+                          value={reqStartDate}
+                          onChange={(e) => setReqStartDate(e.target.value)}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">종료일</label>
+                        <input
+                          type="date"
+                          value={reqEndDate}
+                          onChange={(e) => setReqEndDate(e.target.value)}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">필요 강사 수</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={reqTeacherCount}
+                          onChange={(e) => setReqTeacherCount(Number(e.target.value || 1))}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">예상 수강생 수 (선택)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={reqStudentsCount}
+                          onChange={(e) => setReqStudentsCount(e.target.value)}
+                          placeholder="예: 12"
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-sm text-gray-600">추가 요청사항 (선택)</label>
+                        <textarea
+                          value={reqExtra}
+                          onChange={(e) => setReqExtra(e.target.value)}
+                          placeholder="예: 원어민 선호, 교재/교안 여부, 수업 대상(성인/아동), 레벨 등"
+                          rows={4}
+                          className="mt-1 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Applicant info */}
+                  <div className="grid gap-3 rounded-2xl border border-gray-200 p-4">
+                    <div className="text-sm font-semibold text-gray-900">3) 신청자 정보</div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm text-gray-600">신청자 이름</label>
+                        <input
+                          value={reqApplicantName}
+                          onChange={(e) => setReqApplicantName(e.target.value)}
+                          placeholder="예: 홍길동"
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600">연락처</label>
+                        <input
+                          value={reqApplicantPhone}
+                          onChange={(e) => setReqApplicantPhone(e.target.value)}
+                          placeholder="예: 010-1234-5678"
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="text-sm text-gray-600">이메일</label>
+                        <input
+                          type="email"
+                          value={reqApplicantEmail}
+                          onChange={(e) => setReqApplicantEmail(e.target.value)}
+                          placeholder="예: manager@company.com"
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between gap-3 rounded-b-3xl border-t border-gray-200 bg-gray-50 px-5 py-4 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetDispatchForm();
+                      closeDispatchModal();
+                    }}
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={submitDispatchRequest}
+                    disabled={reqSubmitting}
+                    className={clsx(
+                      "inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition focus:ring-4 focus:outline-none",
+                      reqSubmitting ? "bg-gray-300 text-gray-700" : "bg-gray-900 text-white hover:bg-black focus:ring-gray-200",
+                    )}>
+                    {reqSubmitting ? "Submitting..." : "요청 제출"}
                   </button>
                 </div>
               </div>
