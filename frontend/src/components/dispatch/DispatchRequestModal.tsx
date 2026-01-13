@@ -138,6 +138,9 @@ export default function DispatchRequestModal({
   const [reqSubmitting, setReqSubmitting] = useState(false);
   const [reqError, setReqError] = useState<string | null>(null);
 
+  // ✅ NEW: start_date 필수 에러(필드 단위)
+  const [reqStartDateError, setReqStartDateError] = useState<string | null>(null);
+
   // ✅ 3-step selection: Center -> Region -> Branch
   const [reqCenterName, setReqCenterName] = useState<string>("");
   const [reqRegionName, setReqRegionName] = useState<string>("");
@@ -157,6 +160,7 @@ export default function DispatchRequestModal({
   const [reqStartTime, setReqStartTime] = useState<string>("");
   const [reqEndTime, setReqEndTime] = useState<string>("");
 
+  // ✅ start_date를 이제 "필수"로
   const [reqStartDate, setReqStartDate] = useState<string>("");
   const [reqEndDate, setReqEndDate] = useState<string>("");
 
@@ -170,6 +174,7 @@ export default function DispatchRequestModal({
 
   const resetDispatchForm = (emailOverride?: string) => {
     setReqError(null);
+    setReqStartDateError(null); // ✅ NEW
 
     setReqCenterName("");
     setReqRegionName("");
@@ -215,6 +220,11 @@ export default function DispatchRequestModal({
     setReqEndTime(derived.endTime);
   }, [reqWeeklySlots]);
 
+  // ✅ start_date 입력되면 필드 에러 해제
+  useEffect(() => {
+    if (reqStartDate?.trim()) setReqStartDateError(null);
+  }, [reqStartDate]);
+
   const centerOptions = useMemo(() => {
     const set = new Set<string>();
     branches.forEach((b) => b?.center_name && set.add(b.center_name));
@@ -254,6 +264,13 @@ export default function DispatchRequestModal({
       if (reqDays.length === 0) throw new Error("주간 타임테이블에서 강의 요일/시간을 1개 이상 선택해 주세요.");
       if (!reqStartTime || !reqEndTime) throw new Error("주간 타임테이블에서 시작/종료 시간을 선택해 주세요.");
 
+      // ✅ NEW: start_date 필수 검증
+      if (!reqStartDate?.trim()) {
+        const msg = "수업 시작일을 선택해 주세요.";
+        setReqStartDateError(msg);
+        throw new Error(msg);
+      }
+
       if (!reqApplicantName.trim()) throw new Error("신청자 이름을 입력해 주세요.");
       if (!reqApplicantPhone.trim()) throw new Error("연락처를 입력해 주세요.");
       if (!reqApplicantEmail.trim()) throw new Error("이메일을 입력해 주세요.");
@@ -268,7 +285,8 @@ export default function DispatchRequestModal({
         class_days: reqDays,
         start_time: reqStartTime || null,
         end_time: reqEndTime || null,
-        start_date: reqStartDate || null,
+        // ✅ start_date 필수: null로 보내지 않음
+        start_date: reqStartDate,
         end_date: reqEndDate || null,
         applicant_name: reqApplicantName.trim(),
         applicant_phone: reqApplicantPhone.trim(),
@@ -488,8 +506,19 @@ export default function DispatchRequestModal({
                       type="date"
                       value={reqStartDate}
                       onChange={(e) => setReqStartDate(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                      onBlur={() => {
+                        if (!reqStartDate?.trim()) setReqStartDateError("수업 시작일을 선택해 주세요.");
+                        else setReqStartDateError(null);
+                      }}
+                      aria-invalid={!!reqStartDateError}
+                      className={clsx(
+                        "mt-1 w-full rounded-xl bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:ring-4",
+                        reqStartDateError
+                          ? "border border-red-300 focus:border-red-400 focus:ring-red-100"
+                          : "border border-gray-200 focus:border-gray-300 focus:ring-gray-100",
+                      )}
                     />
+                    {reqStartDateError && <div className="mt-1 text-xs font-medium text-red-600">{reqStartDateError}</div>}
                   </div>
 
                   <div>
