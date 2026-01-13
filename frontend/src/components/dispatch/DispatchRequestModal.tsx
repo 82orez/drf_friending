@@ -65,6 +65,31 @@ function isContiguous(sortedUnique: number[]) {
 }
 
 /**
+ * yyyy-mm-dd -> DayKey
+ * (Date("yyyy-mm-dd")는 UTC로 해석될 수 있어, 로컬 날짜로 안전하게 파싱)
+ */
+function dayKeyFromDateInput(dateStr: string): DayKey | null {
+  const s = (dateStr || "").trim();
+  if (!s) return null;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
+
+  // 로컬 타임존 기준
+  const dt = new Date(y, mo - 1, d);
+  if (Number.isNaN(dt.getTime())) return null;
+
+  // 0=Sun,1=Mon,...6=Sat
+  const idx = dt.getDay();
+  const map: DayKey[] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  return map[idx] ?? null;
+}
+
+/**
  * WeeklyTimeTablePicker 선택값(요일별 slotIndex 배열) -> (class_days, start_time, end_time)로 변환
  * 정책(제약):
  * - 선택된 요일마다 "연속된 1개 구간"만 허용
@@ -124,6 +149,28 @@ function deriveClassScheduleFromWeeklySlots(v: AvailableTimeSlots | null) {
   };
 }
 
+function labelDayKey(k: DayKey) {
+  return DAY_OPTIONS.find((d) => d.key === k)?.label ?? k;
+}
+
+function validateStartDateAgainstSelectedDays(startDate: string, days: DayKey[]) {
+  const s = (startDate || "").trim();
+  if (!s) return "수업 시작일을 선택해 주세요.";
+
+  // 요일 선택이 아직 없다면(=타임테이블 미선택) 요일 불일치 검사는 보류
+  if (!days || days.length === 0) return null;
+
+  const startDay = dayKeyFromDateInput(s);
+  if (!startDay) return "수업 시작일 형식이 올바르지 않습니다.";
+
+  if (!days.includes(startDay)) {
+    const dayList = days.map(labelDayKey).join(", ");
+    return `선택한 수업 요일(${dayList})과 시작일의 실제 요일(${labelDayKey(startDay)})이 일치하지 않습니다. 시작일을 다시 선택해 주세요.`;
+  }
+
+  return null;
+}
+
 export default function DispatchRequestModal({
   open,
   onClose,
@@ -138,7 +185,7 @@ export default function DispatchRequestModal({
   const [reqSubmitting, setReqSubmitting] = useState(false);
   const [reqError, setReqError] = useState<string | null>(null);
 
-  // ✅ NEW: start_date 필수 에러(필드 단위)
+  // ✅ start_date 필수/요일불일치 에러(필드 단위)
   const [reqStartDateError, setReqStartDateError] = useState<string | null>(null);
 
   // ✅ 3-step selection: Center -> Region -> Branch
@@ -151,7 +198,7 @@ export default function DispatchRequestModal({
 
   const [reqCourseTitle, setReqCourseTitle] = useState<string>("");
 
-  // ✅ NEW: weekly timetable selection (요일+시간을 한 번에 선택)
+  // ✅ weekly timetable selection (요일+시간을 한 번에 선택)
   const [reqWeeklySlots, setReqWeeklySlots] = useState<AvailableTimeSlots | null>(null);
   const [reqScheduleError, setReqScheduleError] = useState<string | null>(null);
 
@@ -160,7 +207,7 @@ export default function DispatchRequestModal({
   const [reqStartTime, setReqStartTime] = useState<string>("");
   const [reqEndTime, setReqEndTime] = useState<string>("");
 
-  // ✅ start_date를 이제 "필수"로
+  // ✅ start_date 필수
   const [reqStartDate, setReqStartDate] = useState<string>("");
   const [reqEndDate, setReqEndDate] = useState<string>("");
 
@@ -174,7 +221,7 @@ export default function DispatchRequestModal({
 
   const resetDispatchForm = (emailOverride?: string) => {
     setReqError(null);
-    setReqStartDateError(null); // ✅ NEW
+    setReqStartDateError(null);
 
     setReqCenterName("");
     setReqRegionName("");
@@ -204,7 +251,6 @@ export default function DispatchRequestModal({
     setReqExtra("");
   };
 
-  // 모달 열릴 때 기본 이메일 반영 (유저가 변경했을 수도 있으니 "열릴 때"만 리셋)
   useEffect(() => {
     if (!open) return;
     resetDispatchForm(defaultApplicantEmail || "");
@@ -220,10 +266,16 @@ export default function DispatchRequestModal({
     setReqEndTime(derived.endTime);
   }, [reqWeeklySlots]);
 
-  // ✅ start_date 입력되면 필드 에러 해제
+  // ✅ 시작일(필수) + "시작일 요일"과 "선택 요일" 불일치 검증
   useEffect(() => {
-    if (reqStartDate?.trim()) setReqStartDateError(null);
-  }, [reqStartDate]);
+    // 시작일이 비어있을 때는, 사용자가 아직 입력 중일 수 있어 자동으로 에러 띄우지 않음(제출/블러 시점에 표시)
+    if (!reqStartDate?.trim()) {
+      setReqStartDateError(null);
+      return;
+    }
+    const err = validateStartDateAgainstSelectedDays(reqStartDate, reqDays);
+    setReqStartDateError(err);
+  }, [reqStartDate, reqDays]);
 
   const centerOptions = useMemo(() => {
     const set = new Set<string>();
@@ -264,11 +316,11 @@ export default function DispatchRequestModal({
       if (reqDays.length === 0) throw new Error("주간 타임테이블에서 강의 요일/시간을 1개 이상 선택해 주세요.");
       if (!reqStartTime || !reqEndTime) throw new Error("주간 타임테이블에서 시작/종료 시간을 선택해 주세요.");
 
-      // ✅ NEW: start_date 필수 검증
-      if (!reqStartDate?.trim()) {
-        const msg = "수업 시작일을 선택해 주세요.";
-        setReqStartDateError(msg);
-        throw new Error(msg);
+      // ✅ start_date 필수 + 요일 일치 검증 (제출 시 강제)
+      const startErr = validateStartDateAgainstSelectedDays(reqStartDate, reqDays);
+      if (startErr) {
+        setReqStartDateError(startErr);
+        throw new Error(startErr);
       }
 
       if (!reqApplicantName.trim()) throw new Error("신청자 이름을 입력해 주세요.");
@@ -285,8 +337,7 @@ export default function DispatchRequestModal({
         class_days: reqDays,
         start_time: reqStartTime || null,
         end_time: reqEndTime || null,
-        // ✅ start_date 필수: null로 보내지 않음
-        start_date: reqStartDate,
+        start_date: reqStartDate, // ✅ 필수
         end_date: reqEndDate || null,
         applicant_name: reqApplicantName.trim(),
         applicant_phone: reqApplicantPhone.trim(),
@@ -313,7 +364,7 @@ export default function DispatchRequestModal({
       else if (status === 403) msg = "권한이 없습니다. (403)";
 
       setReqError(msg);
-      onSubmitError?.(msg); // ✅ NEW: parent toast
+      onSubmitError?.(msg);
     } finally {
       setReqSubmitting(false);
     }
@@ -474,20 +525,17 @@ export default function DispatchRequestModal({
                     />
                   </div>
 
-                  {/* ✅ NEW: Weekly timetable picker (요일+시간 선택) */}
+                  {/* Weekly timetable picker */}
                   <div className="sm:col-span-2">
                     <label className="text-sm text-gray-600">강의 요일 및 시간 (주간 타임테이블에서 선택)</label>
                     <div className="mt-2">
                       <WeeklyTimeTablePicker value={reqWeeklySlots} onChange={setReqWeeklySlots} errorText={reqScheduleError} />
                     </div>
 
-                    {/* derived preview (read-only) */}
                     <div className="mt-2 grid gap-2 sm:grid-cols-3">
                       <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200">
                         <div className="text-xs font-semibold text-gray-600">선택 요일</div>
-                        <div className="mt-1 font-medium text-gray-900">
-                          {reqDays.length ? reqDays.map((k) => DAY_OPTIONS.find((d) => d.key === k)?.label ?? k).join(", ") : "-"}
-                        </div>
+                        <div className="mt-1 font-medium text-gray-900">{reqDays.length ? reqDays.map((k) => labelDayKey(k)).join(", ") : "-"}</div>
                       </div>
                       <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200">
                         <div className="text-xs font-semibold text-gray-600">시작 시간</div>
@@ -501,14 +549,16 @@ export default function DispatchRequestModal({
                   </div>
 
                   <div>
-                    <label className="text-sm text-gray-600">시작일</label>
+                    <label className="text-sm text-gray-600">
+                      시작일 <span className="ml-1 text-red-600">*</span>
+                    </label>
                     <input
                       type="date"
                       value={reqStartDate}
                       onChange={(e) => setReqStartDate(e.target.value)}
                       onBlur={() => {
-                        if (!reqStartDate?.trim()) setReqStartDateError("수업 시작일을 선택해 주세요.");
-                        else setReqStartDateError(null);
+                        const err = validateStartDateAgainstSelectedDays(reqStartDate, reqDays);
+                        setReqStartDateError(err);
                       }}
                       aria-invalid={!!reqStartDateError}
                       className={clsx(
