@@ -86,34 +86,3 @@ export const teacherApplicationAPI = {
     return await api.delete("/teacher-applications/my/");
   },
 };
-
-export const cultureCenterAPI = {
-  listBranches: async () => {
-    return await api.get("/culture-centers/branches/");
-  },
-};
-
-export const dispatchRequestAPI = {
-  create: async (data: {
-    culture_center_id: number;
-    teaching_language: string;
-    course_title: string;
-    class_days: string[];
-    start_time?: string | null; // "HH:MM"
-    end_time?: string | null;
-    start_date?: string | null; // "YYYY-MM-DD"
-    end_date?: string | null;
-    applicant_name: string;
-    applicant_phone: string;
-    applicant_email: string;
-    expected_teacher_count?: number;
-    students_count?: number | null;
-    extra_requirements?: string | null;
-  }) => {
-    return await api.post("/dispatch-requests/", data);
-  },
-
-  listMine: async () => {
-    return await api.get("/dispatch-requests/my/");
-  },
-};
