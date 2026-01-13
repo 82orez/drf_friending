@@ -2,8 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import clsx from "clsx";
-import api, { cultureCenterAPI, dispatchRequestAPI } from "@/lib/api";
-
+import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import cityDistrictData from "@/lib/city_district.json";
 import WeeklyTimeTableReadOnly, { WeeklyTimeTableSummary } from "@/components/WeeklyTimeTableReadOnly";
@@ -68,6 +67,7 @@ type TeacherApplication = {
 
 type AgeBracket = "ALL" | "20S" | "30S" | "40S" | "50S" | "60PLUS";
 
+// ===== Dispatch Request (Manager Request) types =====
 type CultureCenterBranch = {
   id: number;
   center_name: string;
@@ -268,6 +268,179 @@ export default function MainPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<TeacherApplication[]>([]);
+
+  // ====== Dispatch Request (Manager Request) ======
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchesError, setBranchesError] = useState<string | null>(null);
+  const [branches, setBranches] = useState<CultureCenterBranch[]>([]);
+
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+  const [reqError, setReqError] = useState<string | null>(null);
+  const [reqSuccess, setReqSuccess] = useState<string | null>(null);
+
+  // ✅ 3-step selection: Center -> Region -> Branch
+  const [reqCenterName, setReqCenterName] = useState<string>("");
+  const [reqRegionName, setReqRegionName] = useState<string>("");
+  const [reqCenterId, setReqCenterId] = useState<number | "">("");
+
+  const [reqLanguage, setReqLanguage] = useState<string>("English");
+  const [reqLanguageCustom, setReqLanguageCustom] = useState<string>("");
+
+  const [reqCourseTitle, setReqCourseTitle] = useState<string>("");
+  const [reqDays, setReqDays] = useState<DayKey[]>([]);
+  const [reqStartTime, setReqStartTime] = useState<string>("");
+  const [reqEndTime, setReqEndTime] = useState<string>("");
+
+  const [reqStartDate, setReqStartDate] = useState<string>("");
+  const [reqEndDate, setReqEndDate] = useState<string>("");
+
+  const [reqApplicantName, setReqApplicantName] = useState<string>("");
+  const [reqApplicantPhone, setReqApplicantPhone] = useState<string>("");
+  const [reqApplicantEmail, setReqApplicantEmail] = useState<string>(user?.email || "");
+
+  const [reqTeacherCount, setReqTeacherCount] = useState<number>(1);
+  const [reqStudentsCount, setReqStudentsCount] = useState<string>("");
+  const [reqExtra, setReqExtra] = useState<string>("");
+
+  const centerOptions = useMemo(() => {
+    const set = new Set<string>();
+    branches.forEach((b) => b?.center_name && set.add(b.center_name));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [branches]);
+
+  const regionOptions = useMemo(() => {
+    if (!reqCenterName) return [];
+    const set = new Set<string>();
+    branches.filter((b) => b.center_name === reqCenterName).forEach((b) => b?.region_name && set.add(b.region_name));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [branches, reqCenterName]);
+
+  const branchOptions = useMemo(() => {
+    if (!reqCenterName || !reqRegionName) return [];
+    return branches
+      .filter((b) => b.center_name === reqCenterName && b.region_name === reqRegionName)
+      .slice()
+      .sort((a, b) => a.branch_name.localeCompare(b.branch_name));
+  }, [branches, reqCenterName, reqRegionName]);
+
+  const selectedBranch = useMemo(() => {
+    if (!reqCenterId) return null;
+    return branches.find((b) => b.id === reqCenterId) || null;
+  }, [reqCenterId, branches]);
+
+  const toggleDay = (d: DayKey) => {
+    setReqDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+  };
+
+  const resetDispatchForm = () => {
+    setReqError(null);
+    setReqSuccess(null);
+
+    setReqCenterName("");
+    setReqRegionName("");
+    setReqCenterId("");
+
+    setReqLanguage("English");
+    setReqLanguageCustom("");
+
+    setReqCourseTitle("");
+    setReqDays([]);
+    setReqStartTime("");
+    setReqEndTime("");
+
+    setReqStartDate("");
+    setReqEndDate("");
+
+    setReqApplicantName("");
+    setReqApplicantPhone("");
+    setReqApplicantEmail(user?.email || "");
+
+    setReqTeacherCount(1);
+    setReqStudentsCount("");
+    setReqExtra("");
+  };
+
+  const openDispatchModal = async () => {
+    setDispatchOpen(true);
+    setReqError(null);
+
+    // 지점 목록 로딩 (최초 1회 or 비어있을 때만)
+    if (branches.length > 0) return;
+
+    setBranchesLoading(true);
+    setBranchesError(null);
+    try {
+      const res = await api.get("/culture-centers/branches/");
+      const data = Array.isArray(res.data) ? res.data : [];
+      setBranches(data);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 401) setBranchesError("로그인이 필요합니다. (401)");
+      else setBranchesError("문화센터 지점 목록을 불러오지 못했습니다.");
+      setBranches([]);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  const closeDispatchModal = () => {
+    setDispatchOpen(false);
+    setReqSubmitting(false);
+    setReqError(null);
+  };
+
+  const submitDispatchRequest = async () => {
+    setReqSubmitting(true);
+    setReqError(null);
+
+    try {
+      if (!reqCenterId) throw new Error("지점을 선택해 주세요.");
+      if (!reqCourseTitle.trim()) throw new Error("강좌명을 입력해 주세요.");
+      if (reqDays.length === 0) throw new Error("강의 요일을 1개 이상 선택해 주세요.");
+      if (!reqApplicantName.trim()) throw new Error("신청자 이름을 입력해 주세요.");
+      if (!reqApplicantPhone.trim()) throw new Error("연락처를 입력해 주세요.");
+      if (!reqApplicantEmail.trim()) throw new Error("이메일을 입력해 주세요.");
+
+      const finalLanguage = reqLanguage === "Other" ? reqLanguageCustom.trim() : reqLanguage;
+      if (!finalLanguage) throw new Error("강의 언어를 입력/선택해 주세요.");
+
+      const payload = {
+        culture_center_id: Number(reqCenterId),
+        teaching_language: finalLanguage,
+        course_title: reqCourseTitle.trim(),
+        class_days: reqDays,
+        start_time: reqStartTime || null,
+        end_time: reqEndTime || null,
+        start_date: reqStartDate || null,
+        end_date: reqEndDate || null,
+        applicant_name: reqApplicantName.trim(),
+        applicant_phone: reqApplicantPhone.trim(),
+        applicant_email: reqApplicantEmail.trim(),
+        expected_teacher_count: Math.max(1, Number(reqTeacherCount || 1)),
+        students_count: reqStudentsCount ? Number(reqStudentsCount) : null,
+        extra_requirements: reqExtra.trim() ? reqExtra.trim() : null,
+      };
+
+      await api.post("/dispatch-requests/", payload);
+
+      setReqSuccess("강사 파견 요청이 제출되었습니다.");
+      resetDispatchForm();
+      closeDispatchModal();
+    } catch (e: any) {
+      const status = e?.response?.status;
+
+      if (typeof e?.message === "string" && !status) {
+        setReqError(e.message);
+      } else if (status === 400) {
+        setReqError("요청 값이 올바르지 않습니다. 입력 내용을 확인해 주세요.");
+      } else if (status === 401) setReqError("로그인이 필요합니다. (401)");
+      else if (status === 403) setReqError("권한이 없습니다. (403)");
+      else setReqError("요청 제출에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setReqSubmitting(false);
+    }
+  };
 
   // 조건 검색(복합) UI 상태 (조건 검색창만 사용)
   // location: 시/도 -> 시/군/구 -> (선택) 구(일반구)
@@ -513,23 +686,37 @@ export default function MainPage() {
     fetchTeachers();
   }, []);
 
-  // 모달 열렸을 때: ESC 닫기 + body 스크롤 잠금
+  // 모달 열렸을 때: ESC 닫기 + body 스크롤 잠금 (Teacher Detail / Dispatch Request 공용)
+  const anyModalOpen = selectedTeacherId !== null || dispatchOpen;
+
   useEffect(() => {
-    if (selectedTeacherId === null) return;
+    if (!anyModalOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeTeacherDetail();
+      if (e.key !== "Escape") return;
+
+      // ✅ 우선순위: 현재 떠 있는(최상단) 모달부터 닫기
+      if (dispatchOpen) closeDispatchModal();
+      else if (selectedTeacherId !== null) closeTeacherDetail();
     };
+
     window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [anyModalOpen, dispatchOpen, selectedTeacherId]);
+
+  useEffect(() => {
+    if (!anyModalOpen) return;
 
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
     };
-  }, [selectedTeacherId]);
+  }, [anyModalOpen]);
 
   const filteredTeachers = useMemo(() => {
     return teachers.filter((t) => {
@@ -659,153 +846,6 @@ export default function MainPage() {
   const detailThumb = toAbsoluteMediaUrl(teacherDetail?.profile_image_thumbnail);
   const detailFullName = `${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim();
 
-  // ====== Dispatch Request (Manager Request) ======
-  const [dispatchOpen, setDispatchOpen] = useState(false);
-  const [branchesLoading, setBranchesLoading] = useState(false);
-  const [branchesError, setBranchesError] = useState<string | null>(null);
-  const [branches, setBranches] = useState<CultureCenterBranch[]>([]);
-
-  const [reqSubmitting, setReqSubmitting] = useState(false);
-  const [reqError, setReqError] = useState<string | null>(null);
-  const [reqSuccess, setReqSuccess] = useState<string | null>(null);
-
-  const [reqCenterId, setReqCenterId] = useState<number | "">("");
-  const [reqLanguage, setReqLanguage] = useState<string>("English");
-  const [reqLanguageCustom, setReqLanguageCustom] = useState<string>("");
-
-  const [reqCourseTitle, setReqCourseTitle] = useState<string>("");
-  const [reqDays, setReqDays] = useState<DayKey[]>([]);
-  const [reqStartTime, setReqStartTime] = useState<string>("");
-  const [reqEndTime, setReqEndTime] = useState<string>("");
-
-  const [reqStartDate, setReqStartDate] = useState<string>("");
-  const [reqEndDate, setReqEndDate] = useState<string>("");
-
-  const [reqApplicantName, setReqApplicantName] = useState<string>("");
-  const [reqApplicantPhone, setReqApplicantPhone] = useState<string>("");
-  const [reqApplicantEmail, setReqApplicantEmail] = useState<string>(user?.email || "");
-
-  const [reqTeacherCount, setReqTeacherCount] = useState<number>(1);
-  const [reqStudentsCount, setReqStudentsCount] = useState<string>("");
-  const [reqExtra, setReqExtra] = useState<string>("");
-
-  const selectedBranch = useMemo(() => {
-    if (!reqCenterId) return null;
-    return branches.find((b) => b.id === reqCenterId) || null;
-  }, [reqCenterId, branches]);
-
-  const toggleDay = (d: DayKey) => {
-    setReqDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
-  };
-
-  const resetDispatchForm = () => {
-    setReqError(null);
-    setReqSuccess(null);
-    setReqCenterId("");
-    setReqLanguage("English");
-    setReqLanguageCustom("");
-    setReqCourseTitle("");
-    setReqDays([]);
-    setReqStartTime("");
-    setReqEndTime("");
-    setReqStartDate("");
-    setReqEndDate("");
-    setReqApplicantName("");
-    setReqApplicantPhone("");
-    setReqApplicantEmail(user?.email || "");
-    setReqTeacherCount(1);
-    setReqStudentsCount("");
-    setReqExtra("");
-  };
-
-  const openDispatchModal = async () => {
-    setDispatchOpen(true);
-    setReqSuccess(null);
-    setReqError(null);
-
-    // 지점 목록 로딩 (최초 1회 or 비어있을 때만)
-    if (branches.length > 0) return;
-
-    setBranchesLoading(true);
-    setBranchesError(null);
-    try {
-      const res = await cultureCenterAPI.listBranches();
-      const data = Array.isArray(res.data) ? res.data : [];
-      setBranches(data);
-    } catch (e: any) {
-      const status = e?.response?.status;
-      if (status === 401) setBranchesError("로그인이 필요합니다. (401)");
-      else setBranchesError("문화센터 지점 목록을 불러오지 못했습니다.");
-      setBranches([]);
-    } finally {
-      setBranchesLoading(false);
-    }
-  };
-
-  const closeDispatchModal = () => {
-    setDispatchOpen(false);
-    setReqSubmitting(false);
-    setReqError(null);
-    // 성공 메시지는 닫아도 남겨도 되는데, UX상 닫으면 초기화
-  };
-
-  const submitDispatchRequest = async () => {
-    setReqSubmitting(true);
-    setReqError(null);
-    setReqSuccess(null);
-
-    try {
-      if (!reqCenterId) throw new Error("지점을 선택해 주세요.");
-      if (!reqCourseTitle.trim()) throw new Error("강좌명을 입력해 주세요.");
-      if (reqDays.length === 0) throw new Error("강의 요일을 1개 이상 선택해 주세요.");
-      if (!reqApplicantName.trim()) throw new Error("신청자 이름을 입력해 주세요.");
-      if (!reqApplicantPhone.trim()) throw new Error("연락처를 입력해 주세요.");
-      if (!reqApplicantEmail.trim()) throw new Error("이메일을 입력해 주세요.");
-
-      const finalLanguage = reqLanguage === "Other" ? reqLanguageCustom.trim() : reqLanguage;
-      if (!finalLanguage) throw new Error("강의 언어를 입력/선택해 주세요.");
-
-      // 선택 입력값 정리
-      const payload = {
-        culture_center_id: Number(reqCenterId),
-        teaching_language: finalLanguage,
-        course_title: reqCourseTitle.trim(),
-        class_days: reqDays,
-        start_time: reqStartTime || null,
-        end_time: reqEndTime || null,
-        start_date: reqStartDate || null,
-        end_date: reqEndDate || null,
-        applicant_name: reqApplicantName.trim(),
-        applicant_phone: reqApplicantPhone.trim(),
-        applicant_email: reqApplicantEmail.trim(),
-        expected_teacher_count: Math.max(1, Number(reqTeacherCount || 1)),
-        students_count: reqStudentsCount ? Number(reqStudentsCount) : null,
-        extra_requirements: reqExtra.trim() ? reqExtra.trim() : null,
-      };
-
-      await dispatchRequestAPI.create(payload);
-
-      setReqSuccess("강사 파견 요청이 제출되었습니다. 담당자가 검토 후 연락드릴 예정입니다.");
-      // 폼은 유지할 수도 있지만, 보통은 초기화가 깔끔함
-      resetDispatchForm();
-      setDispatchOpen(false);
-    } catch (e: any) {
-      const apiMsg = e?.response?.data;
-      const status = e?.response?.status;
-
-      if (typeof e?.message === "string" && !status) {
-        setReqError(e.message);
-      } else if (status === 400) {
-        setReqError("요청 값이 올바르지 않습니다. 입력 내용을 확인해 주세요.");
-        console.error("Dispatch request 400:", apiMsg);
-      } else if (status === 401) setReqError("로그인이 필요합니다. (401)");
-      else if (status === 403) setReqError("권한이 없습니다. (403)");
-      else setReqError("요청 제출에 실패했습니다. 잠시 후 다시 시도해 주세요.");
-    } finally {
-      setReqSubmitting(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
       {/* Navbar */}
@@ -831,13 +871,6 @@ export default function MainPage() {
             {/*</button>*/}
           </div>
 
-          {/* Request for Teacher Button*/}
-          <button
-            onClick={openDispatchModal}
-            className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
-            강사 파견 요청
-          </button>
-
           {/* Right: Email + Logout */}
           <div className="flex flex-col items-center justify-end gap-3">
             <button
@@ -855,6 +888,31 @@ export default function MainPage() {
 
       {/* Content */}
       <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+        {/* ===== Manager: Dispatch Request CTA ===== */}
+        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-base font-semibold text-gray-900">강사 파견 요청</div>
+              <div className="mt-1 text-sm text-gray-600">
+                문화센터 지점을 선택하고, 강의 정보(언어/강좌/요일/시간/기간)를 입력하여 강사 파견을 요청할 수 있습니다.
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {reqSuccess && (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+                  {reqSuccess}
+                </span>
+              )}
+              <button
+                onClick={openDispatchModal}
+                className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
+                요청 작성하기
+              </button>
+            </div>
+          </div>
+        </section>
+
         <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Registered Foreign Teachers</h1>
@@ -907,105 +965,57 @@ export default function MainPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredTeachers.map((t) => {
               const thumb = toAbsoluteMediaUrl(t.profile_image_thumbnail);
-              const fullName = `${t.first_name || ""} ${t.last_name || ""}`.trim();
-              const ageText = typeof t.age === "number" ? `${t.age}` : "-";
-              const locationText = [t.city, t.district].filter(Boolean).join(" · ") || "-";
-
+              const fullName = `${t.first_name} ${t.last_name}`.trim();
               return (
-                <article
+                <button
                   key={t.id}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => openTeacherDetail(t.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") openTeacherDetail(t.id);
-                  }}
-                  className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:ring-4 focus:ring-gray-100 focus:outline-none">
-                  <div className="flex items-start gap-3">
+                  className="group w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                  <div className="flex items-center gap-3">
                     <div className="h-14 w-14 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
                       {thumb ? (
-                        <img src={thumb} alt={`${fullName} thumbnail`} className="h-full w-full object-cover" crossOrigin="anonymous" />
+                        <img src={thumb} alt={`${fullName} thumbnail`} className="h-full w-full object-cover" />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
                       )}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-base font-semibold">{fullName || "Unknown name"}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <span
-                              className={clsx(
-                                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
-                                badgeClassByGender(t.gender),
-                              )}>
-                              {labelGender(t.gender)}
-                            </span>
-                            <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                              Age: {ageText}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 rounded-xl bg-gray-900/5 px-2 py-1 text-xs font-medium text-gray-700">#{t.id}</div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="truncate text-base font-semibold text-gray-900 group-hover:text-black">{fullName || `Teacher #${t.id}`}</div>
+                        <span
+                          className={clsx(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
+                            badgeClassByGender(t.gender),
+                          )}>
+                          {labelGender(t.gender)}
+                        </span>
                       </div>
 
-                      <dl className="mt-4 space-y-2 text-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <dt className="text-gray-500">Nationality</dt>
-                          <dd className="text-right font-medium text-gray-900">{renderNationalityWithFlag(t.nationality)}</dd>
-                        </div>
-
-                        <div className="flex items-start justify-between gap-3">
-                          <dt className="text-gray-500">Teaching</dt>
-                          <dd className="text-right font-medium text-gray-900">{t.teaching_languages || "-"}</dd>
-                        </div>
-
-                        <div className="flex items-start justify-between gap-3">
-                          <dt className="text-gray-500">Location</dt>
-                          <dd className="text-right font-medium text-gray-900">{locationText}</dd>
-                        </div>
-
-                        {/* ✅ NEW: Availability(카드/리스트용 요약) */}
-                        {/*<div className="flex items-start justify-between gap-3">*/}
-                        {/*  <dt className="text-gray-500">Availability</dt>*/}
-                        {/*  <dd className="text-right">*/}
-                        {/*    <WeeklyTimeTableSummary value={t.available_time_slots} />*/}
-                        {/*  </dd>*/}
-                        {/*</div>*/}
-
-                        <div className="flex items-start justify-between gap-3">
-                          <dt className="text-gray-500">Intro video</dt>
-                          <dd className="text-right font-medium text-gray-900">
-                            {t.introduction_youtube_url ? (
-                              <a
-                                href={t.introduction_youtube_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="italic underline underline-offset-2 hover:text-gray-700"
-                                onClick={(e) => e.stopPropagation()}>
-                                Click to watch!
-                              </a>
-                            ) : (
-                              "-"
-                            )}
-                          </dd>
-                        </div>
-                      </dl>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <div className="truncate text-sm text-gray-600">{renderNationalityWithFlag(t.nationality)}</div>
+                        <div className="text-xs text-gray-500">Age {typeof t.age === "number" ? t.age : "-"}</div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold text-gray-700">Evaluation</div>
-                      <div className="text-xs font-medium text-gray-500">Click to view details</div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <div className="text-gray-500">Language</div>
+                      <div className="font-medium text-gray-900">{t.teaching_languages || "-"}</div>
                     </div>
-                    <div className="mt-1 line-clamp-3 text-sm text-gray-700">
-                      {t.evaluation_result?.trim() ? t.evaluation_result : "No evaluation result yet."}
+
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <div className="text-gray-500">Location</div>
+                      <div className="font-medium text-gray-900">{[t.city, t.district].filter(Boolean).join(" · ") || "-"}</div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <div className="text-gray-500">Experience</div>
+                      <div className="font-medium text-gray-900">{t.total_teaching_experience_years ?? "-"} yrs</div>
                     </div>
                   </div>
-                </article>
+                </button>
               );
             })}
           </div>
@@ -1019,164 +1029,162 @@ export default function MainPage() {
           <div
             className="absolute inset-0 overflow-y-auto"
             onMouseDown={(e) => {
-              // 스크롤 레이어(=모달 바깥)를 직접 클릭한 경우에만 닫기
               if (e.target === e.currentTarget) closeTeacherDetail();
             }}>
-            <div className="mx-auto flex min-h-full max-w-4xl items-center px-4 py-10 sm:px-6">
+            <div className="mx-auto flex min-h-full max-w-5xl items-center px-4 py-10 sm:px-6">
               <div
-                ref={pdfRef}
-                data-pdf-root="true"
                 role="dialog"
                 aria-modal="true"
-                className="w-full rounded-3xl border border-gray-200 bg-gray-50 shadow-2xl"
-                onMouseDown={(e) => {
-                  // 모달 내부 클릭은 바깥 클릭 핸들러로 전파되지 않게 막기
-                  e.stopPropagation();
-                }}>
-                {/* Header */}
-                <div
-                  data-pdf-block="true"
-                  className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-24 w-24 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
-                      {detailThumb ? (
-                        <img src={detailThumb} alt={`${detailFullName} thumbnail`} className="h-full w-full object-cover" crossOrigin="anonymous" />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-base font-semibold text-gray-900">
-                        {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
+                className="w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl"
+                onMouseDown={(e) => e.stopPropagation()}>
+                {/* ✅ PDF 캡처 루트 */}
+                <div ref={pdfRef} data-pdf-root="true">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-white px-5 pt-8 pb-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-24 w-24 overflow-hidden rounded-2xl bg-gray-100 ring-1 ring-gray-200">
+                        {detailThumb ? (
+                          <img src={detailThumb} alt={`${detailFullName} thumbnail`} className="h-full w-full object-cover" crossOrigin="anonymous" />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-xs font-medium text-gray-500">No Image</div>
+                        )}
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span
-                          className={clsx(
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
-                            badgeClassByGender(teacherDetail?.gender),
-                          )}>
-                          {labelGender(teacherDetail?.gender)}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                          Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
-                        </span>
+                      <div>
+                        <div className="text-base font-semibold text-gray-900">
+                          {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span
+                            className={clsx(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
+                              badgeClassByGender(teacherDetail?.gender),
+                            )}>
+                            {labelGender(teacherDetail?.gender)}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                            Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <button
+                      data-pdf-ignore="true"
+                      onClick={closeTeacherDetail}
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
+                      Close (Esc)
+                    </button>
                   </div>
 
-                  <button
-                    data-pdf-ignore="true"
-                    onClick={closeTeacherDetail}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
-                    Close (Esc)
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="space-y-4 px-5 py-5 sm:px-6">
-                  {detailError ? (
-                    <div data-pdf-block="true" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                      {detailError}
-                      <div className="mt-3" data-pdf-ignore="true">
-                        <button
-                          onClick={() => openTeacherDetail(selectedTeacherId)}
-                          className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
-                          Retry
-                        </button>
+                  {/* Body */}
+                  <div className="space-y-4 px-5 py-5 sm:px-6">
+                    {detailError ? (
+                      <div data-pdf-block="true" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                        {detailError}
+                        <div className="mt-3" data-pdf-ignore="true">
+                          <button
+                            onClick={() => openTeacherDetail(selectedTeacherId)}
+                            className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
+                            Retry
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : detailLoading ? (
-                    <div data-pdf-block="true" className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
-                      상세 정보를 불러오는 중입니다...
-                    </div>
-                  ) : (
-                    <>
-                      <div data-pdf-block="true" className="mb-10 grid gap-4 lg:grid-cols-2">
-                        <Section title="Basic Info">
-                          <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
-                          <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
-                          <Field label="Nationality" value={renderNationalityWithFlag(teacherDetail?.nationality)} />
-                          <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
-                          <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
-                          <Field
-                            label="Intro video"
-                            value={
-                              teacherDetail?.introduction_youtube_url ? (
-                                <a
-                                  href={teacherDetail.introduction_youtube_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="italic underline underline-offset-2 hover:text-gray-700">
-                                  Click to watch!
-                                </a>
-                              ) : (
-                                "-"
-                              )
-                            }
-                          />
-                        </Section>
-
-                        <Section title="Location & Experience">
-                          <Field label="City / District" value={[teacherDetail?.city, teacherDetail?.district].filter(Boolean).join(" · ") || "-"} />
-                          <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />
-                          <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
-                        </Section>
+                    ) : detailLoading ? (
+                      <div data-pdf-block="true" className="rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
+                        상세 정보를 불러오는 중입니다...
                       </div>
+                    ) : (
+                      <>
+                        <div data-pdf-block="true" className="mb-10 grid gap-4 lg:grid-cols-2">
+                          <Section title="Basic Info">
+                            <Field label="Full name" value={`${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim() || "-"} />
+                            <Field label="Korean name" value={teacherDetail?.korean_name || "-"} />
+                            <Field label="Nationality" value={renderNationalityWithFlag(teacherDetail?.nationality)} />
+                            <Field label="Teaching language" value={teacherDetail?.teaching_languages || "-"} />
+                            <Field label="Preferred subjects" value={teacherDetail?.preferred_subjects || "-"} />
+                            <Field
+                              label="Intro video"
+                              value={
+                                teacherDetail?.introduction_youtube_url ? (
+                                  <a
+                                    href={teacherDetail.introduction_youtube_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="italic underline underline-offset-2 hover:text-gray-700">
+                                    Click to watch!
+                                  </a>
+                                ) : (
+                                  "-"
+                                )
+                              }
+                            />
+                          </Section>
 
-                      {/* ✅ Availability 섹션(상세 모달용) */}
-                      <div data-pdf-block="true">
-                        <Section title="Availability / 강의 가능 시간대">
-                          <WeeklyTimeTableReadOnly value={teacherDetail?.available_time_slots} showMiniGrid={true} />
-                        </Section>
-                      </div>
+                          <Section title="Location & Experience">
+                            <Field
+                              label="City / District"
+                              value={[teacherDetail?.city, teacherDetail?.district].filter(Boolean).join(" · ") || "-"}
+                            />
+                            <Field label="Total experience (years)" value={teacherDetail?.total_teaching_experience_years ?? "-"} />
+                            <Field label="Korea experience (years)" value={teacherDetail?.korea_teaching_experience_years ?? "-"} />
+                          </Section>
+                        </div>
 
-                      <div data-pdf-block="true">
-                        <Section title="Self Introduction">
-                          <TextBlock text={teacherDetail?.self_introduction} />
-                        </Section>
-                      </div>
+                        {/* ✅ Availability 섹션(상세 모달용) */}
+                        <div data-pdf-block="true">
+                          <Section title="Availability / 강의 가능 시간대">
+                            <WeeklyTimeTableReadOnly value={teacherDetail?.available_time_slots} showMiniGrid={true} />
+                          </Section>
+                        </div>
 
-                      <div data-pdf-block="true">
-                        <Section title="Education History">
-                          <TextBlock text={teacherDetail?.education_history} />
-                        </Section>
-                      </div>
+                        <div data-pdf-block="true">
+                          <Section title="Self Introduction">
+                            <TextBlock text={teacherDetail?.self_introduction} />
+                          </Section>
+                        </div>
 
-                      <div data-pdf-block="true">
-                        <Section title="Experience History">
-                          <TextBlock text={teacherDetail?.experience_history} />
-                        </Section>
-                      </div>
+                        <div data-pdf-block="true">
+                          <Section title="Education History">
+                            <TextBlock text={teacherDetail?.education_history} />
+                          </Section>
+                        </div>
 
-                      <div data-pdf-block="true" className="grid gap-4 lg:grid-cols-2">
-                        <Section title="Certifications">
-                          <TextBlock text={teacherDetail?.certifications} />
-                        </Section>
+                        <div data-pdf-block="true">
+                          <Section title="Experience History">
+                            <TextBlock text={teacherDetail?.experience_history} />
+                          </Section>
+                        </div>
 
-                        <Section title="Teaching Style & Strengths">
-                          <TextBlock text={teacherDetail?.teaching_style} />
-                        </Section>
-                      </div>
+                        <div data-pdf-block="true" className="grid gap-4 lg:grid-cols-2">
+                          <Section title="Certifications">
+                            <TextBlock text={teacherDetail?.certifications} />
+                          </Section>
 
-                      <div data-pdf-block="true">
-                        <Section title="Additional Info">
-                          <TextBlock text={teacherDetail?.additional_info} />
-                        </Section>
-                      </div>
+                          <Section title="Teaching Style & Strengths">
+                            <TextBlock text={teacherDetail?.teaching_style} />
+                          </Section>
+                        </div>
 
-                      <div data-pdf-block="true">
-                        <Section title="Admin Evaluation">
-                          <TextBlock text={teacherDetail?.evaluation_result} />
-                        </Section>
-                      </div>
+                        <div data-pdf-block="true">
+                          <Section title="Additional Info">
+                            <TextBlock text={teacherDetail?.additional_info} />
+                          </Section>
+                        </div>
 
-                      {/*{teacherDetail?.memo?.trim() ? (*/}
-                      {/*  <Section title="Admin Memo">*/}
-                      {/*    <TextBlock text={teacherDetail?.memo} />*/}
-                      {/*  </Section>*/}
-                      {/*) : null}*/}
-                    </>
-                  )}
+                        <div data-pdf-block="true">
+                          <Section title="Admin Evaluation">
+                            <TextBlock text={teacherDetail?.evaluation_result} />
+                          </Section>
+                        </div>
+
+                        {/*{teacherDetail?.memo?.trim() ? (*/}
+                        {/*  <Section title="Admin Memo">*/}
+                        {/*    <TextBlock text={teacherDetail?.memo} />*/}
+                        {/*  </Section>*/}
+                        {/*) : null}*/}
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Footer actions */}
@@ -1231,13 +1239,13 @@ export default function MainPage() {
                 <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-gray-200 bg-gray-50 px-5 py-5 sm:px-6">
                   <div>
                     <div className="text-base font-semibold text-gray-900">강사 파견 요청 작성</div>
-                    <div className="mt-1 text-sm text-gray-600">지점/강의 정보/연락처를 입력하면 요청이 등록됩니다.</div>
+                    <div className="mt-1 text-sm text-gray-600">문화센터 지점과 강의 정보를 입력해 주세요.</div>
                   </div>
 
                   <button
                     onClick={closeDispatchModal}
                     className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 focus:outline-none">
-                    Close
+                    Close (Esc)
                   </button>
                 </div>
 
@@ -1251,26 +1259,68 @@ export default function MainPage() {
                   <div className="grid gap-3 rounded-2xl border border-gray-200 p-4">
                     <div className="text-sm font-semibold text-gray-900">1) 지점 선택</div>
 
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="sm:col-span-2">
-                        <label className="text-sm text-gray-600">문화센터 지점</label>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="sm:col-span-1">
+                        <label className="text-sm text-gray-600">문화센터 이름</label>
                         <select
-                          value={reqCenterId}
-                          onChange={(e) => setReqCenterId(e.target.value ? Number(e.target.value) : "")}
+                          value={reqCenterName}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setReqCenterName(v);
+                            setReqRegionName("");
+                            setReqCenterId("");
+                          }}
                           disabled={branchesLoading}
                           className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 disabled:opacity-60">
-                          <option value="">지점을 선택해 주세요</option>
-                          {branches.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.center_name} / {b.region_name} / {b.branch_name}
+                          <option value="">선택</option>
+                          {centerOptions.map((name) => (
+                            <option key={name} value={name}>
+                              {name}
                             </option>
                           ))}
                         </select>
-                        {branchesLoading && <div className="mt-2 text-xs text-gray-500">지점 목록 로딩 중...</div>}
                       </div>
 
+                      <div className="sm:col-span-1">
+                        <label className="text-sm text-gray-600">지역</label>
+                        <select
+                          value={reqRegionName}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setReqRegionName(v);
+                            setReqCenterId("");
+                          }}
+                          disabled={!reqCenterName || branchesLoading}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 disabled:opacity-60">
+                          <option value="">선택</option>
+                          {regionOptions.map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-1">
+                        <label className="text-sm text-gray-600">지점명</label>
+                        <select
+                          value={reqCenterId}
+                          onChange={(e) => setReqCenterId(e.target.value ? Number(e.target.value) : "")}
+                          disabled={!reqCenterName || !reqRegionName || branchesLoading}
+                          className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100 disabled:opacity-60">
+                          <option value="">선택</option>
+                          {branchOptions.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.branch_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-3">{branchesLoading && <div className="mt-1 text-xs text-gray-500">지점 목록 로딩 중...</div>}</div>
+
                       {selectedBranch && (
-                        <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200 sm:col-span-2">
+                        <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200 sm:col-span-3">
                           <div className="font-medium text-gray-900">
                             {selectedBranch.center_name} · {selectedBranch.branch_name} ({selectedBranch.region_name})
                           </div>
