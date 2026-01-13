@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import api from "@/lib/api";
+import WeeklyTimeTablePicker, { type AvailableTimeSlots } from "@/components/WeeklyTimeTablePicker"; // ✅ NEW
 
 export type CultureCenterBranch = {
   id: number;
@@ -46,6 +47,83 @@ type Props = {
   onSubmitError?: (message: string) => void; // ✅ NEW
 };
 
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function minutesToHHMM(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${pad2(h)}:${pad2(m)}`;
+}
+
+function isContiguous(sortedUnique: number[]) {
+  for (let i = 1; i < sortedUnique.length; i++) {
+    if (sortedUnique[i] !== sortedUnique[i - 1] + 1) return false;
+  }
+  return true;
+}
+
+/**
+ * WeeklyTimeTablePicker 선택값(요일별 slotIndex 배열) -> (class_days, start_time, end_time)로 변환
+ * 정책(제약):
+ * - 선택된 요일마다 "연속된 1개 구간"만 허용
+ * - 모든 선택 요일의 시작/종료 시간이 동일해야 함
+ */
+function deriveClassScheduleFromWeeklySlots(v: AvailableTimeSlots | null) {
+  if (!v) {
+    return { days: [] as DayKey[], startTime: "", endTime: "", error: null as string | null };
+  }
+
+  const step = v.stepMinutes ?? 30;
+  const pickedDays: DayKey[] = [];
+  let commonStartMin: number | null = null;
+  let commonEndMin: number | null = null;
+
+  for (const d of DAY_OPTIONS) {
+    const slotsRaw = v.days?.[d.key] ?? [];
+    const slots = Array.from(new Set(slotsRaw)).sort((a, b) => a - b);
+    if (!slots.length) continue;
+
+    if (!isContiguous(slots)) {
+      return {
+        days: [],
+        startTime: "",
+        endTime: "",
+        error: "요일별로 연속된 시간대 1개만 선택해 주세요. (예: 19:00-20:30)",
+      };
+    }
+
+    const startMin = slots[0] * step;
+    const endMin = (slots[slots.length - 1] + 1) * step;
+
+    if (commonStartMin === null || commonEndMin === null) {
+      commonStartMin = startMin;
+      commonEndMin = endMin;
+    } else if (commonStartMin !== startMin || commonEndMin !== endMin) {
+      return {
+        days: [],
+        startTime: "",
+        endTime: "",
+        error: "선택한 모든 요일의 시작/종료 시간이 동일해야 합니다.",
+      };
+    }
+
+    pickedDays.push(d.key);
+  }
+
+  if (pickedDays.length === 0) {
+    return { days: [], startTime: "", endTime: "", error: null };
+  }
+
+  return {
+    days: pickedDays,
+    startTime: minutesToHHMM(commonStartMin ?? 0),
+    endTime: minutesToHHMM(commonEndMin ?? 0),
+    error: null,
+  };
+}
+
 export default function DispatchRequestModal({
   open,
   onClose,
@@ -69,6 +147,12 @@ export default function DispatchRequestModal({
   const [reqLanguageCustom, setReqLanguageCustom] = useState<string>("");
 
   const [reqCourseTitle, setReqCourseTitle] = useState<string>("");
+
+  // ✅ NEW: weekly timetable selection (요일+시간을 한 번에 선택)
+  const [reqWeeklySlots, setReqWeeklySlots] = useState<AvailableTimeSlots | null>(null);
+  const [reqScheduleError, setReqScheduleError] = useState<string | null>(null);
+
+  // 서버 payload 필드(기존 유지): class_days + start/end_time
   const [reqDays, setReqDays] = useState<DayKey[]>([]);
   const [reqStartTime, setReqStartTime] = useState<string>("");
   const [reqEndTime, setReqEndTime] = useState<string>("");
@@ -95,6 +179,10 @@ export default function DispatchRequestModal({
     setReqLanguageCustom("");
 
     setReqCourseTitle("");
+
+    setReqWeeklySlots(null);
+    setReqScheduleError(null);
+
     setReqDays([]);
     setReqStartTime("");
     setReqEndTime("");
@@ -117,6 +205,15 @@ export default function DispatchRequestModal({
     resetDispatchForm(defaultApplicantEmail || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultApplicantEmail]);
+
+  // ✅ weekly timetable -> (days, start/end time) 동기화
+  useEffect(() => {
+    const derived = deriveClassScheduleFromWeeklySlots(reqWeeklySlots);
+    setReqScheduleError(derived.error);
+    setReqDays(derived.days);
+    setReqStartTime(derived.startTime);
+    setReqEndTime(derived.endTime);
+  }, [reqWeeklySlots]);
 
   const centerOptions = useMemo(() => {
     const set = new Set<string>();
@@ -144,10 +241,6 @@ export default function DispatchRequestModal({
     return branches.find((b) => b.id === reqCenterId) || null;
   }, [reqCenterId, branches]);
 
-  const toggleDay = (d: DayKey) => {
-    setReqDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
-  };
-
   const submitDispatchRequest = async () => {
     setReqSubmitting(true);
     setReqError(null);
@@ -155,7 +248,12 @@ export default function DispatchRequestModal({
     try {
       if (!reqCenterId) throw new Error("지점을 선택해 주세요.");
       if (!reqCourseTitle.trim()) throw new Error("강좌명을 입력해 주세요.");
-      if (reqDays.length === 0) throw new Error("강의 요일을 1개 이상 선택해 주세요.");
+
+      // ✅ weekly schedule validation
+      if (reqScheduleError) throw new Error(reqScheduleError);
+      if (reqDays.length === 0) throw new Error("주간 타임테이블에서 강의 요일/시간을 1개 이상 선택해 주세요.");
+      if (!reqStartTime || !reqEndTime) throw new Error("주간 타임테이블에서 시작/종료 시간을 선택해 주세요.");
+
       if (!reqApplicantName.trim()) throw new Error("신청자 이름을 입력해 주세요.");
       if (!reqApplicantPhone.trim()) throw new Error("연락처를 입력해 주세요.");
       if (!reqApplicantEmail.trim()) throw new Error("이메일을 입력해 주세요.");
@@ -358,45 +456,30 @@ export default function DispatchRequestModal({
                     />
                   </div>
 
+                  {/* ✅ NEW: Weekly timetable picker (요일+시간 선택) */}
                   <div className="sm:col-span-2">
-                    <label className="text-sm text-gray-600">강의 요일 (복수 선택)</label>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {DAY_OPTIONS.map((d) => {
-                        const active = reqDays.includes(d.key);
-                        return (
-                          <button
-                            type="button"
-                            key={d.key}
-                            onClick={() => toggleDay(d.key)}
-                            className={clsx(
-                              "rounded-full px-3 py-1 text-sm font-medium ring-1 transition",
-                              active ? "bg-gray-900 text-white ring-gray-900" : "bg-white text-gray-800 ring-gray-200 hover:bg-gray-50",
-                            )}>
-                            {d.label}
-                          </button>
-                        );
-                      })}
+                    <label className="text-sm text-gray-600">강의 요일 및 시간 (주간 타임테이블에서 선택)</label>
+                    <div className="mt-2">
+                      <WeeklyTimeTablePicker value={reqWeeklySlots} onChange={setReqWeeklySlots} errorText={reqScheduleError} />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="text-sm text-gray-600">시작 시간</label>
-                    <input
-                      type="time"
-                      value={reqStartTime}
-                      onChange={(e) => setReqStartTime(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-gray-600">종료 시간</label>
-                    <input
-                      type="time"
-                      value={reqEndTime}
-                      onChange={(e) => setReqEndTime(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
-                    />
+                    {/* derived preview (read-only) */}
+                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200">
+                        <div className="text-xs font-semibold text-gray-600">선택 요일</div>
+                        <div className="mt-1 font-medium text-gray-900">
+                          {reqDays.length ? reqDays.map((k) => DAY_OPTIONS.find((d) => d.key === k)?.label ?? k).join(", ") : "-"}
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200">
+                        <div className="text-xs font-semibold text-gray-600">시작 시간</div>
+                        <div className="mt-1 font-medium text-gray-900">{reqStartTime || "-"}</div>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200">
+                        <div className="text-xs font-semibold text-gray-600">종료 시간</div>
+                        <div className="mt-1 font-medium text-gray-900">{reqEndTime || "-"}</div>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
