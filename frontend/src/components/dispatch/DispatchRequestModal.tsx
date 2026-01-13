@@ -1,3 +1,4 @@
+// frontend/src/components/dispatch/DispatchRequestModal.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -42,6 +43,7 @@ type Props = {
   defaultApplicantEmail?: string;
 
   onSubmitSuccess?: (message: string) => void;
+  onSubmitError?: (message: string) => void; // ✅ NEW
 };
 
 export default function DispatchRequestModal({
@@ -52,6 +54,7 @@ export default function DispatchRequestModal({
   branchesError,
   defaultApplicantEmail = "",
   onSubmitSuccess,
+  onSubmitError, // ✅ NEW
 }: Props) {
   // ====== form state ======
   const [reqSubmitting, setReqSubmitting] = useState(false);
@@ -184,13 +187,17 @@ export default function DispatchRequestModal({
     } catch (e: any) {
       const status = e?.response?.status;
 
+      let msg = "요청 제출에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+
       if (typeof e?.message === "string" && !status) {
-        setReqError(e.message);
+        msg = e.message;
       } else if (status === 400) {
-        setReqError("요청 값이 올바르지 않습니다. 입력 내용을 확인해 주세요.");
-      } else if (status === 401) setReqError("로그인이 필요합니다. (401)");
-      else if (status === 403) setReqError("권한이 없습니다. (403)");
-      else setReqError("요청 제출에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        msg = "요청 값이 올바르지 않습니다. 입력 내용을 확인해 주세요.";
+      } else if (status === 401) msg = "로그인이 필요합니다. (401)";
+      else if (status === 403) msg = "권한이 없습니다. (403)";
+
+      setReqError(msg);
+      onSubmitError?.(msg); // ✅ NEW: parent toast
     } finally {
       setReqSubmitting(false);
     }

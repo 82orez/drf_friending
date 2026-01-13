@@ -1,3 +1,4 @@
+// frontend/src/components/MainPage.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -8,6 +9,7 @@ import cityDistrictData from "@/lib/city_district.json";
 import WeeklyTimeTableReadOnly, { WeeklyTimeTableSummary } from "@/components/WeeklyTimeTableReadOnly";
 import Flag from "@/components/Flag";
 import DispatchRequestModal, { CultureCenterBranch } from "@/components/dispatch/DispatchRequestModal";
+import { Toaster, toast } from "react-hot-toast"; // ✅ NEW
 
 type TeacherApplication = {
   id: number;
@@ -644,6 +646,10 @@ export default function MainPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
+      {/* ✅ Toast container */}
+      {/* 기본값은 top-center 이지만 모달창 특성에 따라 top-right 로 위치 변경 */}
+      <Toaster position="top-right" />
+
       {/* Navbar */}
       <header className="sticky top-0 z-20 border-b border-gray-200/70 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
@@ -979,12 +985,6 @@ export default function MainPage() {
                           <TextBlock text={teacherDetail?.evaluation_result} />
                         </Section>
                       </div>
-
-                      {/*{teacherDetail?.memo?.trim() ? (*/}
-                      {/*  <Section title="Admin Memo">*/}
-                      {/*    <TextBlock text={teacherDetail?.memo} />*/}
-                      {/*  </Section>*/}
-                      {/*) : null}*/}
                     </>
                   )}
                 </div>
@@ -1030,7 +1030,13 @@ export default function MainPage() {
         branchesLoading={branchesLoading}
         branchesError={branchesError}
         defaultApplicantEmail={user?.email || ""}
-        onSubmitSuccess={(msg) => setReqSuccess(msg)}
+        onSubmitSuccess={(msg) => {
+          setReqSuccess(msg);
+          toast.success(msg, { id: "dispatch-success" }); // ✅ optional
+        }}
+        onSubmitError={(msg) => {
+          toast.error(msg, { id: "dispatch-error" }); // ✅ NEW
+        }}
       />
 
       {/* Footer */}
