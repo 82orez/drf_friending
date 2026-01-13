@@ -801,6 +801,16 @@ export default function MainPage() {
                       <div className="text-gray-500">Experience</div>
                       <div className="font-medium text-gray-900">{t.total_teaching_experience_years ?? "-"} yrs</div>
                     </div>
+
+                    <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs font-semibold text-gray-700">Evaluation</div>
+                        <div className="text-xs font-medium text-gray-500">Click to view details</div>
+                      </div>
+                      <div className="mt-1 line-clamp-3 text-sm text-gray-700">
+                        {t.evaluation_result?.trim() ? t.evaluation_result : "No evaluation result yet."}
+                      </div>
+                    </div>
                   </div>
                 </button>
               );
@@ -856,6 +866,9 @@ export default function MainPage() {
                         </span>
                         <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
                           Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                          Teacher_ID: #{teacherDetail?.id}
                         </span>
                       </div>
                     </div>
