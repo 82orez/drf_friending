@@ -893,6 +893,9 @@ export default function MainPage() {
                         {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200">
+                          {teacherDetail?.teaching_languages}
+                        </span>
                         <span
                           className={clsx(
                             "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
