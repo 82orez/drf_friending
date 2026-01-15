@@ -273,10 +273,11 @@ export default function MainPage() {
   const [sigungu, setSigungu] = useState<string>(ALL_VALUE);
   const [gu, setGu] = useState<string>(ALL_VALUE);
 
-  // 조건 검색: language / gender / age
+  // 조건 검색: language / gender / age / nationality
   const [advLanguage, setAdvLanguage] = useState<string>(ALL_VALUE);
   const [advGender, setAdvGender] = useState<string>(ALL_VALUE);
   const [advAgeBracket, setAdvAgeBracket] = useState<AgeBracket>("ALL");
+  const [advNationality, setAdvNationality] = useState<string>(ALL_VALUE); // ✅ NEW
 
   const resetFilters = () => {
     setSido(ALL_VALUE);
@@ -285,6 +286,7 @@ export default function MainPage() {
     setAdvLanguage(ALL_VALUE);
     setAdvGender(ALL_VALUE);
     setAdvAgeBracket("ALL");
+    setAdvNationality(ALL_VALUE); // ✅ NEW
   };
 
   const sidoOptions = useMemo(() => {
@@ -312,6 +314,12 @@ export default function MainPage() {
     if (!Array.isArray(inner)) return [];
     return inner.map((g: any) => String(g?.name)).filter(Boolean);
   }, [sido, sigungu]);
+
+  // ✅ NEW: 국적 옵션(고정 choices 기반)
+  const nationalityOptions = useMemo(() => {
+    const keys = Object.keys(NATIONALITY_META) as NationalityKey[];
+    return keys.map((k) => ({ key: k, label: NATIONALITY_META[k].label }));
+  }, []);
 
   useEffect(() => {
     setSigungu(ALL_VALUE);
@@ -534,9 +542,15 @@ export default function MainPage() {
       if (advGender !== ALL_VALUE && (t.gender || "") !== advGender) return false;
       if (advAgeBracket !== "ALL" && getAgeBracket(t.age ?? null) !== advAgeBracket) return false;
 
+      // ✅ NEW: nationality filter
+      if (advNationality !== ALL_VALUE) {
+        const tKey = normalizeNationalityKey(t.nationality);
+        if (tKey !== advNationality) return false;
+      }
+
       return true;
     });
-  }, [teachers, sido, sigungu, gu, advLanguage, advGender, advAgeBracket]);
+  }, [teachers, sido, sigungu, gu, advLanguage, advGender, advAgeBracket, advNationality]);
 
   const handleLogout = async () => {
     try {
@@ -593,6 +607,7 @@ export default function MainPage() {
         </div>
 
         <div className="flex w-full flex-wrap items-center justify-center gap-2">
+          <div></div>
           <select
             value={advLanguage}
             onChange={(e) => setAdvLanguage(e.target.value)}
@@ -603,6 +618,19 @@ export default function MainPage() {
             <option value="Japanese">Japanese</option>
             <option value="Chinese">Chinese</option>
             <option value="Spanish">Spanish</option>
+          </select>
+
+          <select
+            value={advNationality}
+            onChange={(e) => setAdvNationality(e.target.value)}
+            className="w-[190px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+            title="Nationality">
+            <option value={ALL_VALUE}>전체 국적</option>
+            {nationalityOptions.map((n) => (
+              <option key={n.key} value={n.key}>
+                {n.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -638,11 +666,13 @@ export default function MainPage() {
     const locParts = [sido !== ALL_VALUE ? sido : null, sigungu !== ALL_VALUE ? sigungu : null, gu !== ALL_VALUE ? gu : null].filter(Boolean);
     const locText = locParts.length ? locParts.join(" / ") : "지역 전체";
     const langText = advLanguage === ALL_VALUE ? "전체 언어" : advLanguage;
+    const natText =
+      advNationality === ALL_VALUE ? "전체 국적" : NATIONALITY_META[(advNationality as NationalityKey) ?? "OTHER"]?.label || advNationality;
     const genderText = advGender === ALL_VALUE ? "전체 성별" : labelGender(advGender);
     const ageText = advAgeBracket === "ALL" ? "전체 연령대" : labelAgeBracket(advAgeBracket);
 
-    return `${locText} - ${langText} - ${genderText} - ${ageText}`;
-  }, [sido, sigungu, gu, advLanguage, advGender, advAgeBracket]);
+    return `${locText} - ${langText} - ${natText} - ${genderText} - ${ageText}`;
+  }, [sido, sigungu, gu, advLanguage, advNationality, advGender, advAgeBracket]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
