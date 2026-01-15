@@ -33,6 +33,13 @@ const DAY_OPTIONS: Array<{ key: DayKey; label: string }> = [
 
 const LANGUAGE_OPTIONS = ["English", "Japanese", "Chinese", "Spanish", "Korean", "Other"] as const;
 
+type InstructorType = "KOREAN" | "FOREIGN" | "ANY";
+const INSTRUCTOR_TYPE_OPTIONS: Array<{ value: InstructorType; label: string }> = [
+  { value: "KOREAN", label: "한국인" },
+  { value: "FOREIGN", label: "외국인" },
+  { value: "ANY", label: "상관 없음" },
+];
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -250,6 +257,9 @@ export default function DispatchRequestModal({
 
   const [reqCourseTitle, setReqCourseTitle] = useState<string>("");
 
+  // ✅ NEW: 강사 형태 (한국인/외국인/상관없음)
+  const [reqInstructorType, setReqInstructorType] = useState<InstructorType>("ANY");
+
   // ✅ weekly timetable selection (요일+시간을 한 번에 선택)
   const [reqWeeklySlots, setReqWeeklySlots] = useState<AvailableTimeSlots | null>(null);
   const [reqScheduleError, setReqScheduleError] = useState<string | null>(null);
@@ -288,6 +298,9 @@ export default function DispatchRequestModal({
     setReqLanguageCustom("");
 
     setReqCourseTitle("");
+
+    // ✅ NEW
+    setReqInstructorType("ANY");
 
     setReqWeeklySlots(null);
     setReqScheduleError(null);
@@ -413,6 +426,10 @@ export default function DispatchRequestModal({
         culture_center_id: Number(reqCenterId),
         teaching_language: finalLanguage,
         course_title: reqCourseTitle.trim(),
+
+        // ✅ NEW
+        instructor_type: reqInstructorType,
+
         class_days: reqDays,
         start_time: reqStartTime || null,
         end_time: reqEndTime || null,
@@ -603,6 +620,39 @@ export default function DispatchRequestModal({
                       className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
                     />
                   </div>
+
+                  {/* ✅ NEW: 강사 형태 */}
+                  <div className="sm:col-span-2">
+                    <div className="text-sm text-gray-600">강사 형태</div>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {INSTRUCTOR_TYPE_OPTIONS.map((opt) => {
+                        const checked = reqInstructorType === opt.value;
+                        return (
+                          <label
+                            key={opt.value}
+                            className={clsx(
+                              "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-sm transition select-none",
+                              checked ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                            )}>
+                            <input
+                              type="radio"
+                              name="instructor_type"
+                              value={opt.value}
+                              checked={checked}
+                              onChange={() => setReqInstructorType(opt.value)}
+                              className="h-4 w-4"
+                            />
+                            <span className="font-medium">{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-1 text-xs text-gray-500">요청하시는 강사 국적 유형을 선택해 주세요. “상관 없음”이면 제한 없이 매칭합니다.</div>
+                  </div>
+
+                  <div></div>
 
                   {/* Weekly timetable picker */}
                   <div className="sm:col-span-2">

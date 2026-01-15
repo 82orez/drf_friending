@@ -8,9 +8,9 @@ class DispatchRequestAdmin(admin.ModelAdmin):
         "id",
         "culture_center",
         "teaching_language",
+        "instructor_type",
         "course_title",
         "status",
-        "applicant_name",
         "created_at",
     )
     list_filter = ("status", "teaching_language", "culture_center__center__name")

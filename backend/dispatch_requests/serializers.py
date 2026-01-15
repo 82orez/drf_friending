@@ -21,6 +21,7 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
             "culture_center_id",
             "teaching_language",
             "course_title",
+            "instructor_type",
             "class_days",
             "start_time",
             "end_time",

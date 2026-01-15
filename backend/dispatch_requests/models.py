@@ -17,6 +17,12 @@ class DispatchRequestStatusChoices(models.TextChoices):
 DAY_KEYS = {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"}
 
 
+class InstructorTypeChoices(models.TextChoices):
+    KOREAN = "KOREAN", "한국인 강사"
+    FOREIGN = "FOREIGN", "외국인 강사"
+    ANY = "ANY", "Any"
+
+
 class DispatchRequest(models.Model):
     requester = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -34,6 +40,14 @@ class DispatchRequest(models.Model):
 
     teaching_language = models.CharField("강의 언어", max_length=50)
     course_title = models.CharField("강좌명", max_length=120)
+
+    # ✅ NEW: 강사 형태
+    instructor_type = models.CharField(
+        "강사 형태",
+        max_length=10,
+        choices=InstructorTypeChoices.choices,
+        default=InstructorTypeChoices.ANY,
+    )
 
     # 여러 요일 선택 가능 (SQLite/PG 모두 호환: JSONField)
     class_days = models.JSONField("강의 요일", default=list, blank=True)

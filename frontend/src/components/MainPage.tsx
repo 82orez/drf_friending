@@ -6,7 +6,7 @@ import clsx from "clsx";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import cityDistrictData from "@/lib/city_district.json";
-import WeeklyTimeTableReadOnly, { WeeklyTimeTableSummary } from "@/components/WeeklyTimeTableReadOnly";
+import WeeklyTimeTableReadOnly from "@/components/WeeklyTimeTableReadOnly";
 import Flag from "@/components/Flag";
 import DispatchRequestModal, { CultureCenterBranch } from "@/components/dispatch/DispatchRequestModal";
 import { Toaster, toast } from "react-hot-toast"; // ✅ NEW
