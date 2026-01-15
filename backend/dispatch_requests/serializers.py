@@ -29,7 +29,7 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
             "applicant_name",
             "applicant_phone",
             "applicant_email",
-            "expected_teacher_count",
+            "lecture_count",
             "students_count",
             "extra_requirements",
             "status",

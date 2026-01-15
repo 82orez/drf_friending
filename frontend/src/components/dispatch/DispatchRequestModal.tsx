@@ -215,7 +215,7 @@ export default function DispatchRequestModal({
   const [reqApplicantPhone, setReqApplicantPhone] = useState<string>("");
   const [reqApplicantEmail, setReqApplicantEmail] = useState<string>(defaultApplicantEmail || "");
 
-  const [reqTeacherCount, setReqTeacherCount] = useState<number>(1);
+  const [reqLectureCount, setReqLectureCount] = useState<number>(1);
   const [reqStudentsCount, setReqStudentsCount] = useState<string>("");
   const [reqExtra, setReqExtra] = useState<string>("");
 
@@ -246,7 +246,7 @@ export default function DispatchRequestModal({
     setReqApplicantPhone("");
     setReqApplicantEmail(emailOverride ?? defaultApplicantEmail ?? "");
 
-    setReqTeacherCount(1);
+    setReqLectureCount(1);
     setReqStudentsCount("");
     setReqExtra("");
   };
@@ -342,7 +342,7 @@ export default function DispatchRequestModal({
         applicant_name: reqApplicantName.trim(),
         applicant_phone: reqApplicantPhone.trim(),
         applicant_email: reqApplicantEmail.trim(),
-        expected_teacher_count: Math.max(1, Number(reqTeacherCount || 1)),
+        lecture_count: Math.max(1, Number(reqLectureCount || 1)),
         students_count: reqStudentsCount ? Number(reqStudentsCount) : null,
         extra_requirements: reqExtra.trim() ? reqExtra.trim() : null,
       };
@@ -582,12 +582,12 @@ export default function DispatchRequestModal({
                   </div>
 
                   <div>
-                    <label className="text-sm text-gray-600">필요 강사 수</label>
+                    <label className="text-sm text-gray-600">강의 횟수</label>
                     <input
                       type="number"
                       min={1}
-                      value={reqTeacherCount}
-                      onChange={(e) => setReqTeacherCount(Number(e.target.value || 1))}
+                      value={reqLectureCount}
+                      onChange={(e) => setReqLectureCount(Number(e.target.value || 1))}
                       className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
                     />
                   </div>

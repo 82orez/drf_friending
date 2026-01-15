@@ -6,9 +6,9 @@ from .models import DispatchRequest
 class DispatchRequestAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "course_title",
-        "teaching_language",
         "culture_center",
+        "teaching_language",
+        "course_title",
         "status",
         "applicant_name",
         "created_at",

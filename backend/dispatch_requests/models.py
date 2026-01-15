@@ -47,7 +47,7 @@ class DispatchRequest(models.Model):
     applicant_phone = models.CharField("연락처", max_length=50)
     applicant_email = models.EmailField("이메일")
 
-    expected_teacher_count = models.PositiveIntegerField("필요 강사 수", default=1)
+    lecture_count = models.PositiveIntegerField("강의 횟수", default=1)
     students_count = models.PositiveIntegerField(
         "수강생 수(예상)", null=True, blank=True
     )
