@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from culture_centers.models import CultureCenter
+from datetime import timedelta
 
 
 class DispatchRequestStatusChoices(models.TextChoices):
@@ -75,6 +76,50 @@ class DispatchRequest(models.Model):
             models.Index(fields=["requester"]),
         ]
 
+    def _calculate_end_date_from_start_days_and_count(self):
+        """
+        start_date부터 시작해 class_days에 해당하는 날짜를 세어서
+        lecture_count번째 수업 날짜를 end_date로 반환
+        """
+        if not self.start_date:
+            return None
+
+        count = int(self.lecture_count or 0)
+        if count <= 0:
+            return None
+
+        days = self.class_days or []
+        if not isinstance(days, list) or not days:
+            return None
+
+        # Python weekday(): Mon=0 ... Sun=6
+        key_to_weekday = {
+            "MON": 0,
+            "TUE": 1,
+            "WED": 2,
+            "THU": 3,
+            "FRI": 4,
+            "SAT": 5,
+            "SUN": 6,
+        }
+        try:
+            allowed_weekdays = {key_to_weekday[str(d).upper()] for d in days}
+        except KeyError:
+            return None
+
+        dt = self.start_date
+        hits = 0
+
+        # 안전장치(무한루프 방지): 최대 3년 범위에서 탐색
+        for _ in range(366 * 3):
+            if dt.weekday() in allowed_weekdays:
+                hits += 1
+                if hits == count:
+                    return dt
+            dt = dt + timedelta(days=1)
+
+        return None
+
     def clean(self):
         super().clean()
 
@@ -89,6 +134,12 @@ class DispatchRequest(models.Model):
         # 시간 검증
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError({"end_time": "end_time must be after start_time."})
+
+        # ✅ 종료일 자동 계산: end_date가 비어있으면 계산해서 채움
+        if self.end_date is None:
+            computed = self._calculate_end_date_from_start_days_and_count()
+            if computed is not None:
+                self.end_date = computed
 
         # 기간 검증
         if self.start_date and self.end_date and self.start_date > self.end_date:

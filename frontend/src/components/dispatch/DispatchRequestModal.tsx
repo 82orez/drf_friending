@@ -89,6 +89,50 @@ function dayKeyFromDateInput(dateStr: string): DayKey | null {
   return map[idx] ?? null;
 }
 
+function formatDateInput(d: Date) {
+  const y = d.getFullYear();
+  const m = pad2(d.getMonth() + 1);
+  const dd = pad2(d.getDate());
+  return `${y}-${m}-${dd}`;
+}
+
+function parseDateInput(dateStr: string): Date | null {
+  const s = (dateStr || "").trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt;
+}
+
+/**
+ * ✅ 프론트 미리보기용 종료일 자동 계산
+ * start_date부터 class_days에 해당하는 날짜를 세어서 lecture_count번째 날짜를 반환
+ */
+function calculateEndDatePreview(startDateStr: string, days: DayKey[], lectureCount: number): string | null {
+  const start = parseDateInput(startDateStr);
+  const cnt = Math.max(1, Number(lectureCount || 1));
+  if (!start || !days?.length) return null;
+
+  const allowed = new Set(days);
+  let hits = 0;
+
+  const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  for (let i = 0; i < 366 * 3; i++) {
+    const dk = (["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as DayKey[])[dt.getDay()];
+    if (allowed.has(dk)) {
+      hits += 1;
+      if (hits === cnt) return formatDateInput(dt);
+    }
+    dt.setDate(dt.getDate() + 1);
+  }
+
+  return null;
+}
+
 /**
  * WeeklyTimeTablePicker 선택값(요일별 slotIndex 배열) -> (class_days, start_time, end_time)로 변환
  * 정책(제약):
@@ -209,7 +253,9 @@ export default function DispatchRequestModal({
 
   // ✅ start_date 필수
   const [reqStartDate, setReqStartDate] = useState<string>("");
-  const [reqEndDate, setReqEndDate] = useState<string>("");
+
+  // ✅ 종료일 자동(입력 제거) - 미리보기 텍스트
+  const [reqEndDatePreview, setReqEndDatePreview] = useState<string>("");
 
   const [reqApplicantName, setReqApplicantName] = useState<string>("");
   const [reqApplicantPhone, setReqApplicantPhone] = useState<string>("");
@@ -240,7 +286,7 @@ export default function DispatchRequestModal({
     setReqEndTime("");
 
     setReqStartDate("");
-    setReqEndDate("");
+    setReqEndDatePreview("");
 
     setReqApplicantName("");
     setReqApplicantPhone("");
@@ -268,7 +314,6 @@ export default function DispatchRequestModal({
 
   // ✅ 시작일(필수) + "시작일 요일"과 "선택 요일" 불일치 검증
   useEffect(() => {
-    // 시작일이 비어있을 때는, 사용자가 아직 입력 중일 수 있어 자동으로 에러 띄우지 않음(제출/블러 시점에 표시)
     if (!reqStartDate?.trim()) {
       setReqStartDateError(null);
       return;
@@ -276,6 +321,12 @@ export default function DispatchRequestModal({
     const err = validateStartDateAgainstSelectedDays(reqStartDate, reqDays);
     setReqStartDateError(err);
   }, [reqStartDate, reqDays]);
+
+  // ✅ 종료일 미리보기 자동 계산
+  useEffect(() => {
+    const preview = calculateEndDatePreview(reqStartDate, reqDays, reqLectureCount);
+    setReqEndDatePreview(preview || "");
+  }, [reqStartDate, reqDays, reqLectureCount]);
 
   const centerOptions = useMemo(() => {
     const set = new Set<string>();
@@ -338,7 +389,7 @@ export default function DispatchRequestModal({
         start_time: reqStartTime || null,
         end_time: reqEndTime || null,
         start_date: reqStartDate, // ✅ 필수
-        end_date: reqEndDate || null,
+        // ✅ end_date는 서버에서 자동 계산하도록 보내지 않음
         applicant_name: reqApplicantName.trim(),
         applicant_phone: reqApplicantPhone.trim(),
         applicant_email: reqApplicantEmail.trim(),
@@ -572,13 +623,11 @@ export default function DispatchRequestModal({
                   </div>
 
                   <div>
-                    <label className="text-sm text-gray-600">종료일</label>
-                    <input
-                      type="date"
-                      value={reqEndDate}
-                      onChange={(e) => setReqEndDate(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
-                    />
+                    <label className="text-sm text-gray-600">예상 종료일 (자동 계산)</label>
+                    <div className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 shadow-sm">
+                      {reqEndDatePreview || "-"}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">시작일 + 강의 요일 + 강의 횟수로 자동 계산됩니다.</div>
                   </div>
 
                   <div>
@@ -643,7 +692,7 @@ export default function DispatchRequestModal({
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="text-sm text-gray-600">이메일</label>
+                    <label className="text-sm text-gray-600">연락 받으실 이메일 주소</label>
                     <input
                       type="email"
                       value={reqApplicantEmail}
