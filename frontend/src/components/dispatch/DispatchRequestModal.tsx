@@ -64,6 +64,14 @@ function isContiguous(sortedUnique: number[]) {
   return true;
 }
 
+// ✅ 이메일 검증 (너무 과하게 엄격하지 않은 형태)
+function isValidEmail(email: string) {
+  const v = (email || "").trim();
+  if (!v) return false;
+  // 공백 없음 + @ 앞뒤/도메인 최소 요건
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
 /**
  * yyyy-mm-dd -> DayKey
  * (Date("yyyy-mm-dd")는 UTC로 해석될 수 있어, 로컬 날짜로 안전하게 파싱)
@@ -261,6 +269,9 @@ export default function DispatchRequestModal({
   const [reqApplicantPhone, setReqApplicantPhone] = useState<string>("");
   const [reqApplicantEmail, setReqApplicantEmail] = useState<string>(defaultApplicantEmail || "");
 
+  // ✅ applicant_email 형식 에러(필드 단위)
+  const [reqApplicantEmailError, setReqApplicantEmailError] = useState<string | null>(null);
+
   const [reqLectureCount, setReqLectureCount] = useState<number>(1);
   const [reqStudentsCount, setReqStudentsCount] = useState<string>("");
   const [reqExtra, setReqExtra] = useState<string>("");
@@ -354,6 +365,16 @@ export default function DispatchRequestModal({
     return branches.find((b) => b.id === reqCenterId) || null;
   }, [reqCenterId, branches]);
 
+  // ✅ 이메일 입력 시 실시간 검증(값이 비어있으면 '필수' 에러는 submit에서 처리, 여기서는 "형식"만 처리)
+  useEffect(() => {
+    const v = (reqApplicantEmail || "").trim();
+    if (!v) {
+      setReqApplicantEmailError(null);
+      return;
+    }
+    setReqApplicantEmailError(isValidEmail(v) ? null : "올바른 이메일 주소를 입력해 주세요.");
+  }, [reqApplicantEmail]);
+
   const submitDispatchRequest = async () => {
     setReqSubmitting(true);
     setReqError(null);
@@ -377,6 +398,13 @@ export default function DispatchRequestModal({
       if (!reqApplicantName.trim()) throw new Error("신청자 이름을 입력해 주세요.");
       if (!reqApplicantPhone.trim()) throw new Error("연락처를 입력해 주세요.");
       if (!reqApplicantEmail.trim()) throw new Error("이메일을 입력해 주세요.");
+
+      // ✅ 이메일 형식 검증 (제출 시 강제)
+      if (!isValidEmail(reqApplicantEmail)) {
+        const msg = "올바른 이메일 주소를 입력해 주세요.";
+        setReqApplicantEmailError(msg);
+        throw new Error(msg);
+      }
 
       const finalLanguage = reqLanguage === "Other" ? reqLanguageCustom.trim() : reqLanguage;
       if (!finalLanguage) throw new Error("강의 언어를 입력/선택해 주세요.");
@@ -697,8 +725,22 @@ export default function DispatchRequestModal({
                       type="email"
                       value={reqApplicantEmail}
                       onChange={(e) => setReqApplicantEmail(e.target.value)}
+                      onBlur={() => {
+                        const v = (reqApplicantEmail || "").trim();
+                        if (!v) {
+                          setReqApplicantEmailError(null);
+                          return;
+                        }
+                        setReqApplicantEmailError(isValidEmail(v) ? null : "올바른 이메일 주소를 입력해 주세요.");
+                      }}
+                      aria-invalid={!!reqApplicantEmailError}
                       placeholder="예: manager@company.com"
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+                      className={clsx(
+                        "mt-1 w-full rounded-xl bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:ring-4",
+                        reqApplicantEmailError
+                          ? "border border-red-300 focus:border-red-400 focus:ring-red-100"
+                          : "border border-gray-200 focus:border-gray-300 focus:ring-gray-100",
+                      )}
                     />
                   </div>
                 </div>
