@@ -37,10 +37,16 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "requester", "status", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "requester",
+            "status",
+            "created_at",
+            "updated_at",
+            "end_date",
+        ]
 
     def validate(self, attrs):
-        # 모델 clean()과 비슷하게 DRF 레벨에서도 한번 더 방어
         start_time = attrs.get("start_time")
         end_time = attrs.get("end_time")
         if start_time and end_time and start_time >= end_time:

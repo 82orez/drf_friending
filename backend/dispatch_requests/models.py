@@ -151,11 +151,8 @@ class DispatchRequest(models.Model):
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError({"end_time": "end_time must be after start_time."})
 
-        # ✅ 종료일 자동 계산: end_date가 비어있으면 계산해서 채움
-        if self.end_date is None:
-            computed = self._calculate_end_date_from_start_days_and_count()
-            if computed is not None:
-                self.end_date = computed
+        # ✅ 정책: end_date는 파생값이므로 항상 재계산해서 덮어쓴다
+        self.end_date = self._calculate_end_date_from_start_days_and_count()
 
         if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValidationError({"end_date": "end_date must be on/after start_date."})
