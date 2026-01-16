@@ -419,6 +419,9 @@ export default function DispatchRequestModal({
         throw new Error(msg);
       }
 
+      const confirmed = window.confirm(`연락 받으실 이메일 주소가 "${reqApplicantEmail.trim()}"이(가) 맞습니까?`);
+      if (!confirmed) return;
+
       const finalLanguage = reqLanguage === "Other" ? reqLanguageCustom.trim() : reqLanguage;
       if (!finalLanguage) throw new Error("강의 언어를 입력/선택해 주세요.");
 

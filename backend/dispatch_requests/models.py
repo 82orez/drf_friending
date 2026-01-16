@@ -41,7 +41,6 @@ class DispatchRequest(models.Model):
     teaching_language = models.CharField("강의 언어", max_length=50)
     course_title = models.CharField("강좌명", max_length=120)
 
-    # ✅ NEW: 강사 형태
     instructor_type = models.CharField(
         "강사 형태",
         max_length=10,
@@ -49,7 +48,6 @@ class DispatchRequest(models.Model):
         default=InstructorTypeChoices.ANY,
     )
 
-    # 여러 요일 선택 가능 (SQLite/PG 모두 호환: JSONField)
     class_days = models.JSONField("강의 요일", default=list, blank=True)
 
     start_time = models.TimeField("시작 시간", null=True, blank=True)
@@ -90,6 +88,14 @@ class DispatchRequest(models.Model):
             models.Index(fields=["requester"]),
         ]
 
+    def save(self, *args, **kwargs):
+        """
+        DRF serializer.save()는 model.clean()을 자동 호출하지 않기 때문에,
+        저장 전에 full_clean()을 호출해서 end_date 자동 계산/검증이 항상 적용되게 한다.
+        """
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def _calculate_end_date_from_start_days_and_count(self):
         """
         start_date부터 시작해 class_days에 해당하는 날짜를 세어서
@@ -106,7 +112,6 @@ class DispatchRequest(models.Model):
         if not isinstance(days, list) or not days:
             return None
 
-        # Python weekday(): Mon=0 ... Sun=6
         key_to_weekday = {
             "MON": 0,
             "TUE": 1,
@@ -124,7 +129,6 @@ class DispatchRequest(models.Model):
         dt = self.start_date
         hits = 0
 
-        # 안전장치(무한루프 방지): 최대 3년 범위에서 탐색
         for _ in range(366 * 3):
             if dt.weekday() in allowed_weekdays:
                 hits += 1
@@ -137,7 +141,6 @@ class DispatchRequest(models.Model):
     def clean(self):
         super().clean()
 
-        # 요일 검증
         days = self.class_days or []
         if not isinstance(days, list):
             raise ValidationError({"class_days": "class_days must be a list."})
@@ -145,7 +148,6 @@ class DispatchRequest(models.Model):
         if bad:
             raise ValidationError({"class_days": f"Invalid day(s): {bad}"})
 
-        # 시간 검증
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError({"end_time": "end_time must be after start_time."})
 
@@ -155,7 +157,6 @@ class DispatchRequest(models.Model):
             if computed is not None:
                 self.end_date = computed
 
-        # 기간 검증
         if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValidationError({"end_date": "end_date must be on/after start_date."})
 
