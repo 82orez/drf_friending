@@ -2,6 +2,10 @@ from rest_framework import generics, permissions
 from .models import DispatchRequest
 from .serializers import DispatchRequestSerializer
 
+# ✅ NEW
+from django.db import transaction
+from .emails import send_dispatch_request_received_email
+
 
 class DispatchRequestCreateView(generics.CreateAPIView):
     """
@@ -14,7 +18,12 @@ class DispatchRequestCreateView(generics.CreateAPIView):
     queryset = DispatchRequest.objects.select_related("culture_center", "requester")
 
     def perform_create(self, serializer):
-        serializer.save(requester=self.request.user)
+        dispatch_request = serializer.save(requester=self.request.user)
+
+        # ✅ 트랜잭션 커밋 이후 메일 발송(요청 생성 성공을 방해하지 않음)
+        transaction.on_commit(
+            lambda: send_dispatch_request_received_email(dispatch_request)
+        )
 
 
 class DispatchRequestMyListView(generics.ListAPIView):
