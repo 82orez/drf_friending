@@ -716,9 +716,7 @@ export default function MainPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-base font-semibold text-gray-900">강사 파견 요청</div>
-              <div className="mt-1 text-sm text-gray-600">
-                문화센터 지점을 선택하고, 강의 정보(언어/강좌/요일/시간/기간)를 입력하여 강사 파견을 요청할 수 있습니다.
-              </div>
+              <div className="mt-1 text-sm text-gray-600">강좌 개설 정보를 입력하여 주시면 강사 파견을 요청하실 수 있습니다.</div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -730,7 +728,7 @@ export default function MainPage() {
               <button
                 onClick={openDispatchModal}
                 className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
-                요청 작성하기
+                요청서 작성하기
               </button>
             </div>
           </div>

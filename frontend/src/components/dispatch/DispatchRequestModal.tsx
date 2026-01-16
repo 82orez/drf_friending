@@ -622,7 +622,7 @@ export default function DispatchRequestModal({
                   </div>
 
                   {/* ✅ NEW: 강사 형태 */}
-                  <div className="sm:col-span-2">
+                  <div className="mt-2 sm:col-span-2">
                     <div className="text-sm text-gray-600">강사 형태</div>
 
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -633,7 +633,7 @@ export default function DispatchRequestModal({
                             key={opt.value}
                             className={clsx(
                               "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-sm transition select-none",
-                              checked ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                              checked ? "border-gray-900" : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
                             )}>
                             <input
                               type="radio"
@@ -655,7 +655,7 @@ export default function DispatchRequestModal({
                   <div></div>
 
                   {/* Weekly timetable picker */}
-                  <div className="sm:col-span-2">
+                  <div className="mb-2 sm:col-span-2">
                     <label className="text-sm text-gray-600">강의 요일 및 시간 (주간 타임테이블에서 선택)</label>
                     <div className="mt-2">
                       <WeeklyTimeTablePicker value={reqWeeklySlots} onChange={setReqWeeklySlots} errorText={reqScheduleError} />
