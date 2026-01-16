@@ -6,6 +6,8 @@ from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
+from django.contrib.auth.models import Group
+
 from .models import DispatchRequest
 
 
@@ -22,9 +24,11 @@ def build_dispatch_request_email_text(dr: DispatchRequest) -> tuple[str, str]:
     """
     returns (subject, body_text)
     """
-    center = getattr(dr.culture_center, "branch_name", None) or str(dr.culture_center)
-    center_region = getattr(dr.culture_center, "region_name", "") or ""
-    center_name = getattr(dr.culture_center, "center_name", "") or ""
+    cc = getattr(dr, "culture_center", None)
+
+    branch_name = getattr(cc, "branch_name", None) or str(cc) if cc else "-"
+    center_name = getattr(getattr(cc, "center", None), "name", "") or ""
+    center_region = getattr(getattr(cc, "region", None), "name", "") or ""
 
     subject = f"[Friending] 강사 파견 요청 접수 완료 (요청 #{dr.id})"
 
@@ -36,7 +40,7 @@ def build_dispatch_request_email_text(dr: DispatchRequest) -> tuple[str, str]:
 [문화센터]
 - 센터: {center_name}
 - 지역: {center_region}
-- 지점: {center}
+- 지점: {branch_name}
 
 [강의 정보]
 - 강의 언어: {dr.teaching_language}
@@ -62,18 +66,39 @@ def build_dispatch_request_email_text(dr: DispatchRequest) -> tuple[str, str]:
 
 def get_dispatch_request_recipients(dr: DispatchRequest) -> list[str]:
     User = get_user_model()
+    recipients: set[str] = set()
 
-    recipients = set()
+    def add_email(v: str | None):
+        s = (v or "").strip()
+        if s:
+            recipients.add(s)
 
-    # superuser들에게 발송
-    for u in User.objects.filter(is_superuser=True, is_active=True).only("email"):
-        if u.email:
-            recipients.add(u.email.strip())
+    # (A) superuser 전체
+    superuser_emails = (
+        User.objects.filter(is_superuser=True, is_active=True)
+        .exclude(email__isnull=True)
+        .exclude(email__exact="")
+        .values_list("email", flat=True)
+    )
+    for e in superuser_emails:
+        add_email(e)
 
-    # 요청을 만든 사용자(로그인 계정)에게 발송
-    requester_email = getattr(dr.requester, "email", "") or ""
-    if requester_email.strip():
-        recipients.add(requester_email.strip())
+    # (B) Sub_admins 그룹 전체
+    try:
+        sub_admins = Group.objects.get(name="Sub_admins")
+        group_emails = (
+            sub_admins.user_set.filter(is_active=True)
+            .exclude(email__isnull=True)
+            .exclude(email__exact="")
+            .values_list("email", flat=True)
+        )
+        for e in group_emails:
+            add_email(e)
+    except Group.DoesNotExist:
+        pass
+
+    # (C) 요청서 폼에 입력한 applicant_email (접수 안내 대상)
+    add_email(getattr(dr, "applicant_email", None))
 
     return sorted(recipients)
 
@@ -82,6 +107,13 @@ def send_dispatch_request_received_email(dr: DispatchRequest) -> None:
     """
     DB에 이미 저장된 DispatchRequest 기준으로 이메일 발송.
     """
+    # ✅ 최적화: email 본문 생성 전에 관련 FK들을 한 번에 로딩
+    dr = DispatchRequest.objects.select_related(
+        "culture_center__center",
+        "culture_center__region",
+        "requester",
+    ).get(pk=dr.pk)
+
     recipients = get_dispatch_request_recipients(dr)
     if not recipients:
         return
