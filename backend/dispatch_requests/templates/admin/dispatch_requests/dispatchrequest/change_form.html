@@ -1,0 +1,20 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+{{ block.super }}
+
+{% if send_teacher_emails_url %}
+<div class="submit-row">
+    <form action="{{ send_teacher_emails_url }}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <input
+                type="submit"
+                class="button"
+                value="이메일 발송"
+                onclick="return confirm('반경 5/15/20km 내 (ACCEPTED + 언어일치) 강사에게 이메일을 발송합니다. 진행할까요?');"
+        />
+    </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
+from django.core.mail import send_mail
 
 from django.contrib.auth.models import Group
 
@@ -129,3 +130,78 @@ def send_dispatch_request_received_email(dr: DispatchRequest) -> None:
         to=recipients,
     )
     msg.send(fail_silently=True)
+
+
+def _build_teacher_dispatch_email(dispatch_request) -> tuple[str, str]:
+    cc = dispatch_request.culture_center
+    subject = f"[Friending] New Dispatch Request: {dispatch_request.course_title} ({dispatch_request.teaching_language})"
+
+    # 필요 시 더 상세한 문구/템플릿으로 확장 가능
+    message = f"""
+Hello,
+
+A new teaching dispatch request is available near you.
+
+- Culture Center: {cc}
+- Language: {dispatch_request.teaching_language}
+- Course Title: {dispatch_request.course_title}
+- Instructor Type: {dispatch_request.instructor_type}
+- Class Days: {", ".join(dispatch_request.class_days or [])}
+- Start Date: {dispatch_request.start_date or ""}
+- End Date: {dispatch_request.end_date or ""}
+- Time: {dispatch_request.start_time or ""} ~ {dispatch_request.end_time or ""}
+- Lecture Count: {dispatch_request.lecture_count}
+- Students (expected): {dispatch_request.students_count or ""}
+- Extra Requirements: {dispatch_request.extra_requirements or ""}
+
+If you are interested, please contact us.
+
+Best regards,
+Friending Team
+""".strip()
+
+    return subject, message
+
+
+def send_dispatch_request_to_teachers(
+    *, dispatch_request, buckets: dict[int, list]
+) -> dict:
+    """
+    buckets: {5: [TeacherApplication...], 15: [...], 20: [...]}
+    - 버킷(5→15→20) 순서로 처리
+    - 개별 발송(수신자 이메일 노출 방지)
+    """
+    subject, message = _build_teacher_dispatch_email(dispatch_request)
+
+    # 중복 이메일 제거(혹시 모를 중복 레코드/데이터 이슈 방어)
+    seen = set()
+
+    target_count = 0
+    sent_count = 0
+    failed_count = 0
+
+    for r in (5, 15, 20):
+        for teacher in buckets.get(r, []):
+            email = (getattr(teacher, "email", None) or "").strip()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+
+            target_count += 1
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                sent_count += 1
+            except Exception:
+                failed_count += 1
+
+    return {
+        "target_count": target_count,
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+    }
