@@ -136,7 +136,6 @@ def _build_teacher_dispatch_email(dispatch_request) -> tuple[str, str]:
     cc = dispatch_request.culture_center
     subject = f"[Friending] New Dispatch Request: {dispatch_request.course_title} ({dispatch_request.teaching_language})"
 
-    # 필요 시 더 상세한 문구/템플릿으로 확장 가능
     message = f"""
 Hello,
 
@@ -163,42 +162,37 @@ Friending Team
     return subject, message
 
 
-def send_dispatch_request_to_teachers(
-    *, dispatch_request, buckets: dict[int, list]
+def send_dispatch_request_to_selected_teachers(
+    *, dispatch_request, teachers: list
 ) -> dict:
     """
-    buckets: {5: [TeacherApplication...], 15: [...], 20: [...]}
-    - 버킷(5→15→20) 순서로 처리
-    - 개별 발송(수신자 이메일 노출 방지)
+    선택된 teachers에게만 개별 발송(수신자 이메일 노출 방지)
     """
     subject, message = _build_teacher_dispatch_email(dispatch_request)
 
-    # 중복 이메일 제거(혹시 모를 중복 레코드/데이터 이슈 방어)
     seen = set()
-
     target_count = 0
     sent_count = 0
     failed_count = 0
 
-    for r in (5, 15, 20):
-        for teacher in buckets.get(r, []):
-            email = (getattr(teacher, "email", None) or "").strip()
-            if not email or email in seen:
-                continue
-            seen.add(email)
+    for teacher in teachers:
+        email = (getattr(teacher, "email", None) or "").strip()
+        if not email or email in seen:
+            continue
+        seen.add(email)
 
-            target_count += 1
-            try:
-                send_mail(
-                    subject=subject,
-                    message=message,
-                    from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-                    recipient_list=[email],
-                    fail_silently=False,
-                )
-                sent_count += 1
-            except Exception:
-                failed_count += 1
+        target_count += 1
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            sent_count += 1
+        except Exception:
+            failed_count += 1
 
     return {
         "target_count": target_count,

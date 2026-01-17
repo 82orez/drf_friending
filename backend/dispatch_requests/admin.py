@@ -5,6 +5,7 @@ from django.contrib import admin, messages
 from django.urls import path, reverse
 from django.shortcuts import redirect
 from django.utils.html import format_html
+from django.template.response import TemplateResponse
 
 from .models import DAY_KEYS, DispatchRequest
 from teacher_applications.admin_widgets import WeeklyTimeTableWidget
@@ -12,7 +13,7 @@ from teacher_applications.admin_widgets import WeeklyTimeTableWidget
 # ✅ 추가 import
 from teacher_applications.geo import teachers_within_radius
 from teacher_applications.models import TeacherApplication, ApplicationStatusChoices
-from .emails import send_dispatch_request_to_teachers
+from .emails import send_dispatch_request_to_selected_teachers
 
 
 def _time_to_slot_index(t: time, step_minutes: int) -> int:
@@ -263,24 +264,13 @@ class DispatchRequestAdmin(admin.ModelAdmin):
             request, object_id, form_url, extra_context=extra_context
         )
 
-    # ✅ 버튼 클릭 시 실행되는 실제 로직 (※ 반드시 클래스 안에 있어야 함)
-    def send_teacher_emails_view(self, request, object_id):
-        if request.method != "POST":
-            messages.error(request, "잘못된 요청입니다(POST만 허용).")
-            return redirect("..")
-
-        obj = self.get_object(request, object_id)
-        if obj is None:
-            messages.error(request, "요청서를 찾을 수 없습니다.")
-            return redirect("..")
-
+    def _get_candidates(self, *, obj: DispatchRequest, radius_km: float):
         cc = obj.culture_center
         if not cc or cc.latitude is None or cc.longitude is None:
-            messages.error(
-                request,
+            return (
+                None,
                 "문화센터 지점의 위도/경도가 설정되지 않아 거리 계산을 할 수 없습니다.",
             )
-            return redirect("..")
 
         center_lat = float(cc.latitude)
         center_lng = float(cc.longitude)
@@ -288,40 +278,88 @@ class DispatchRequestAdmin(admin.ModelAdmin):
         qs = teachers_within_radius(
             center_lat=center_lat,
             center_lng=center_lng,
-            radius_km=20.0,
-        )
-
-        qs = qs.filter(
+            radius_km=float(radius_km),
+        ).filter(
             status=ApplicationStatusChoices.ACCEPTED,
             teaching_languages=obj.teaching_language,
         )
 
-        buckets = {5: [], 15: [], 20: []}
-        for t in qs:
-            d = float(getattr(t, "distance_km", 10**9))
-            if d <= 5:
-                buckets[5].append(t)
-            elif d <= 15:
-                buckets[15].append(t)
-            elif d <= 20:
-                buckets[20].append(t)
+        # teachers_within_radius가 distance_km를 붙인다는 전제 하에 거리순 정렬
+        teachers = sorted(qs, key=lambda t: float(getattr(t, "distance_km", 10**9)))
+        return teachers, None
 
-        total_targets = sum(len(v) for v in buckets.values())
-        if total_targets == 0:
-            messages.warning(
-                request,
-                "조건(ACCEPTED + 언어일치) 및 반경(20km) 내에 대상 강사가 없습니다.",
-            )
+    # ✅ 버튼 클릭 후: (GET) 선택 화면, (POST) 선택된 강사에게 발송
+    def send_teacher_emails_view(self, request, object_id):
+        obj = self.get_object(request, object_id)
+        if obj is None:
+            messages.error(request, "요청서를 찾을 수 없습니다.")
             return redirect("..")
 
-        result = send_dispatch_request_to_teachers(
-            dispatch_request=obj, buckets=buckets
+        # 반경 기본값 5km
+        try:
+            radius = int(request.GET.get("radius") or request.POST.get("radius") or 5)
+        except Exception:
+            radius = 5
+        if radius not in (5, 15, 20):
+            radius = 5
+
+        if request.method == "GET":
+            teachers, err = self._get_candidates(obj=obj, radius_km=radius)
+            if err:
+                messages.error(request, err)
+                return redirect("..")
+
+            context = dict(
+                self.admin_site.each_context(request),
+                opts=self.model._meta,
+                original=obj,
+                title="강사 이메일 발송 대상 선택",
+                radius=radius,
+                teachers=teachers,
+                teaching_language=obj.teaching_language,
+            )
+            return TemplateResponse(
+                request,
+                "admin/dispatch_requests/dispatchrequest/send_teacher_emails.html",
+                context,
+            )
+
+        if request.method != "POST":
+            messages.error(request, "잘못된 요청입니다(GET/POST만 허용).")
+            return redirect("..")
+
+        selected_ids = request.POST.getlist("teacher_ids")
+        if not selected_ids:
+            messages.warning(request, "선택된 강사가 없습니다.")
+            return redirect(request.path + f"?radius={radius}")
+
+        teachers, err = self._get_candidates(obj=obj, radius_km=radius)
+        if err:
+            messages.error(request, err)
+            return redirect("..")
+
+        # 보안/정합성: 현재 조건/반경 후보에 포함되는 강사만 허용
+        candidate_by_id = {str(t.pk): t for t in teachers}
+        selected_teachers = [
+            candidate_by_id[tid] for tid in selected_ids if tid in candidate_by_id
+        ]
+
+        if not selected_teachers:
+            messages.warning(
+                request,
+                "선택된 강사가 현재 조건/반경 후보에 없습니다. 다시 선택해주세요.",
+            )
+            return redirect(request.path + f"?radius={radius}")
+
+        result = send_dispatch_request_to_selected_teachers(
+            dispatch_request=obj,
+            teachers=selected_teachers,
         )
 
         messages.success(
             request,
             format_html(
-                "이메일 발송 완료: 대상 {}명 / 성공 {}건 / 실패 {}건",
+                "이메일 발송 완료: 선택 {}명 / 성공 {}건 / 실패 {}건",
                 result["target_count"],
                 result["sent_count"],
                 result["failed_count"],

@@ -1,0 +1,92 @@
+send_teacher_emails# 파일: backend/dispatch_requests/templates/admin/dispatch_requests/dispatchrequest/send_teacher_emails.html
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div style="margin: 12px 0;">
+    <strong>요청 #{{ original.id }}</strong>
+    <div>언어: {{ teaching_language }}</div>
+</div>
+
+<form method="get" style="margin: 16px 0; padding: 12px; border: 1px solid #ddd;">
+    <div style="margin-bottom: 8px;"><strong>반경 선택</strong></div>
+
+    <label style="margin-right: 12px;">
+        <input type="radio" name="radius" value="5" {% if radius == 5 %}checked{% endif %} onchange="this.form.submit()" />
+        5km
+    </label>
+    <label style="margin-right: 12px;">
+        <input type="radio" name="radius" value="15" {% if radius == 15 %}checked{% endif %} onchange="this.form.submit()" />
+        15km
+    </label>
+    <label style="margin-right: 12px;">
+        <input type="radio" name="radius" value="20" {% if radius == 20 %}checked{% endif %} onchange="this.form.submit()" />
+        20km
+    </label>
+
+    <noscript>
+        <div style="margin-top: 8px;">
+            <button class="button" type="submit">반경 적용</button>
+        </div>
+    </noscript>
+</form>
+
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="radius" value="{{ radius }}" />
+
+    <div style="margin: 8px 0;">
+        <strong>대상 강사 목록 (거리순)</strong> — {{ teachers|length }}명
+    </div>
+
+    {% if teachers %}
+    <div style="margin: 8px 0;">
+        <button type="button" class="button" onclick="
+        document.querySelectorAll('input[name=teacher_ids]').forEach(el => el.checked = true);
+      ">전체 선택</button>
+
+        <button type="button" class="button" onclick="
+        document.querySelectorAll('input[name=teacher_ids]').forEach(el => el.checked = false);
+      ">전체 해제</button>
+    </div>
+
+    <table class="adminlist" style="width: 100%; border-collapse: collapse;">
+        <thead>
+        <tr>
+            <th style="text-align:left;">선택</th>
+            <th style="text-align:left;">강사</th>
+            <th style="text-align:left;">이메일</th>
+            <th style="text-align:left;">거리(km)</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for t in teachers %}
+        <tr>
+            <td>
+                <input type="checkbox" name="teacher_ids" value="{{ t.id }}" />
+            </td>
+            <td>{{ t }}</td>
+            <td>{{ t.email }}</td>
+            <td>{{ t.distance_km|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 16px;">
+        <input
+                type="submit"
+                class="button default"
+                value="선택된 강사에게 이메일 발송"
+                onclick="return confirm('선택된 강사에게 이메일을 발송합니다. 진행할까요?');"
+        />
+        <a class="button" href="..">취소</a>
+    </div>
+    {% else %}
+    <p>조건(ACCEPTED + 언어일치) 및 반경({{ radius }}km) 내 대상 강사가 없습니다.</p>
+    <a class="button" href="..">돌아가기</a>
+    {% endif %}
+</form>
+{% endblock %}
