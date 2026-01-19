@@ -3,6 +3,8 @@ from culture_centers.models import CultureCenter
 from culture_centers.serializers import CultureCenterBranchSerializer
 from .models import DispatchRequest
 
+from teacher_applications.models import TeacherApplication, ApplicationStatusChoices
+
 
 class DispatchRequestSerializer(serializers.ModelSerializer):
     culture_center_id = serializers.PrimaryKeyRelatedField(
@@ -11,6 +13,21 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     culture_center = CultureCenterBranchSerializer(read_only=True)
+
+    # ✅ write: teacher_name_id로 받기 (ACCEPTED만 허용)
+    teacher_name_id = serializers.PrimaryKeyRelatedField(
+        source="teacher_name",
+        queryset=TeacherApplication.objects.filter(
+            status=ApplicationStatusChoices.ACCEPTED
+        ),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
+    # ✅ read: teacher_name은 pk(또는 null)로 내려감 (ModelSerializer 기본 동작)
+    # ✅ read: 사람이 보기 쉬운 표시값 추가
+    teacher_name_display = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = DispatchRequest
@@ -22,6 +39,9 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
             "teaching_language",
             "course_title",
             "instructor_type",
+            "teacher_name",
+            "teacher_name_id",
+            "teacher_name_display",
             "class_days",
             "start_time",
             "end_time",
@@ -44,7 +64,16 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "end_date",
+            "teacher_name",
+            "teacher_name_display",
         ]
+
+    def get_teacher_name_display(self, obj: DispatchRequest):
+        ta = getattr(obj, "teacher_name", None)
+        if not ta:
+            return None
+        # __str__가 이미 "First Last (email)" 형태이므로 그대로 사용
+        return str(ta)
 
     def validate(self, attrs):
         start_time = attrs.get("start_time")

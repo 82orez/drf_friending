@@ -106,6 +106,12 @@ class DispatchRequestAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # ✅ teacher_name: ACCEPTED(채용 확정) 강사만 선택 가능하게 제한
+        if "teacher_name" in self.fields:
+            self.fields["teacher_name"].queryset = TeacherApplication.objects.filter(
+                status=ApplicationStatusChoices.ACCEPTED
+            )
+
         obj = self.instance
         if obj and obj.pk:
             self.initial["weekly_timetable"] = _build_payload_from_instance(obj)
@@ -172,6 +178,7 @@ class DispatchRequestAdmin(admin.ModelAdmin):
         "culture_center",
         "teaching_language",
         "instructor_type",
+        "teacher_name",
         "course_title",
         "status",
         "created_at",
@@ -192,6 +199,7 @@ class DispatchRequestAdmin(admin.ModelAdmin):
                     "teaching_language",
                     "course_title",
                     "instructor_type",
+                    "teacher_name",
                     "status",
                 )
             },

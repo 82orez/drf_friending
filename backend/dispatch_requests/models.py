@@ -4,6 +4,8 @@ from django.db import models
 from culture_centers.models import CultureCenter
 from datetime import timedelta
 
+from teacher_applications.models import TeacherApplication, ApplicationStatusChoices
+
 
 class DispatchRequestStatusChoices(models.TextChoices):
     NEW = "NEW", "New"
@@ -46,6 +48,18 @@ class DispatchRequest(models.Model):
         max_length=10,
         choices=InstructorTypeChoices.choices,
         default=InstructorTypeChoices.ANY,
+    )
+
+    # ✅ added: accepted(채용 확정) 강사만 선택 가능
+    teacher_name = models.ForeignKey(
+        TeacherApplication,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="dispatch_requests",
+        limit_choices_to={"status": ApplicationStatusChoices.ACCEPTED},
+        verbose_name="등록 강사",
+        help_text="TeacherApplication 중 status=ACCEPTED(채용 확정)인 강사만 선택 가능",
     )
 
     class_days = models.JSONField("강의 요일", default=list, blank=True)
@@ -150,6 +164,15 @@ class DispatchRequest(models.Model):
 
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError({"end_time": "end_time must be after start_time."})
+
+        # ✅ teacher_name은 accepted 강사만 허용(폼 외의 경로로 값이 들어오는 것도 방지)
+        if (
+            self.teacher_name
+            and self.teacher_name.status != ApplicationStatusChoices.ACCEPTED
+        ):
+            raise ValidationError(
+                {"teacher_name": "ACCEPTED(채용 확정) 강사만 선택할 수 있습니다."}
+            )
 
         # ✅ 정책: end_date는 파생값이므로 항상 재계산해서 덮어쓴다
         self.end_date = self._calculate_end_date_from_start_days_and_count()
