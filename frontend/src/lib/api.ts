@@ -91,8 +91,10 @@ export const teacherApplicationAPI = {
 export const dispatchRequestsAPI = {
   create: (data: any) => api.post("/dispatch-requests/", data),
   myList: () => api.get("/dispatch-requests/my/"),
+  detail: (id: number) => api.get(`/dispatch-requests/${id}/`), // ✅ NEW
   adminList: () => api.get("/dispatch-requests/admin/list/"),
   adminDetail: (id: number) => api.get(`/dispatch-requests/admin/${id}/`),
+  adminUpdate: (id: number, data: any) => api.patch(`/dispatch-requests/admin/${id}/`, data), // ✅ NEW(상태변경용)
 };
 
 // === Course Posts (Recruiting) API ===

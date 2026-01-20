@@ -2,7 +2,6 @@ from rest_framework import generics, permissions
 from .models import DispatchRequest
 from .serializers import DispatchRequestSerializer
 
-# ✅ NEW
 from django.db import transaction
 from .emails import send_dispatch_request_received_email
 
@@ -41,6 +40,27 @@ class DispatchRequestMyListView(generics.ListAPIView):
             .filter(requester=self.request.user)
             .order_by("-created_at")
         )
+
+
+class DispatchRequestDetailView(generics.RetrieveAPIView):
+    """
+    ✅ 매니저/관리자 공통 상세 조회
+    GET /api/dispatch-requests/<id>/
+
+    - admin(또는 staff/superuser)은 전체 접근
+    - 그 외에는 본인(requester) 것만 접근
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DispatchRequestSerializer
+
+    def get_queryset(self):
+        qs = DispatchRequest.objects.select_related("culture_center", "requester")
+        user = self.request.user
+        role = getattr(user, "role", "") or ""
+        if user.is_staff or user.is_superuser or role == "admin":
+            return qs
+        return qs.filter(requester=user)
 
 
 class DispatchRequestAdminListView(generics.ListAPIView):

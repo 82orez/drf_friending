@@ -25,6 +25,11 @@ export default function AdminHome() {
         <div className="mt-1 text-sm text-zinc-600">공고(CoursePost)와 강좌(Course)를 관리합니다.</div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <Link href="/admin/dispatch-requests" className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:bg-zinc-50">
+            <div className="text-sm font-semibold text-zinc-900">파견요청 관리</div>
+            <div className="mt-1 text-sm text-zinc-600">매니저 요청 생성/목록/상세 확인</div>
+          </Link>
+
           <Link href="/admin/posts" className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:bg-zinc-50">
             <div className="text-sm font-semibold text-zinc-900">공고 관리</div>
             <div className="mt-1 text-sm text-zinc-600">파견요청 기반 공고 생성/게시/지원자 관리</div>
