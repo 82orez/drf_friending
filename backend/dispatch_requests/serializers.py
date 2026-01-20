@@ -86,4 +86,25 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
         if start_date and end_date and start_date > end_date:
             raise serializers.ValidationError("end_date must be on/after start_date.")
 
+        # ✅ start_date 요일이 class_days에 포함되어야 함
+        days = attrs.get("class_days")
+        if start_date and days:
+            key_to_weekday = {
+                "MON": 0,
+                "TUE": 1,
+                "WED": 2,
+                "THU": 3,
+                "FRI": 4,
+                "SAT": 5,
+                "SUN": 6,
+            }
+            try:
+                allowed_weekdays = {key_to_weekday[str(d).upper()] for d in days}
+            except Exception:
+                allowed_weekdays = set()
+            if allowed_weekdays and start_date.weekday() not in allowed_weekdays:
+                raise serializers.ValidationError(
+                    {"start_date": "start_date weekday must be included in class_days."}
+                )
+
         return attrs

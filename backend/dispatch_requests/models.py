@@ -67,7 +67,7 @@ class DispatchRequest(models.Model):
     start_time = models.TimeField("시작 시간", null=True, blank=True)
     end_time = models.TimeField("종료 시간", null=True, blank=True)
 
-    start_date = models.DateField("시작일", null=True, blank=True)
+    start_date = models.DateField("시작일")
     end_date = models.DateField("종료일", null=True, blank=True)
 
     applicant_name = models.CharField("신청자 이름", max_length=100)
@@ -161,6 +161,23 @@ class DispatchRequest(models.Model):
         bad = [d for d in days if str(d).upper() not in DAY_KEYS]
         if bad:
             raise ValidationError({"class_days": f"Invalid day(s): {bad}"})
+
+        # ✅ start_date의 실제 요일이 class_days에 포함되어야 함
+        if self.start_date and days:
+            key_to_weekday = {
+                "MON": 0,
+                "TUE": 1,
+                "WED": 2,
+                "THU": 3,
+                "FRI": 4,
+                "SAT": 5,
+                "SUN": 6,
+            }
+            allowed_weekdays = {key_to_weekday[str(d).upper()] for d in days}
+            if self.start_date.weekday() not in allowed_weekdays:
+                raise ValidationError(
+                    {"start_date": "start_date weekday must be included in class_days."}
+                )
 
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError({"end_time": "end_time must be after start_time."})
