@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import CoursePost, CourseApplication
 
 
@@ -15,8 +16,8 @@ class CoursePostAdmin(admin.ModelAdmin):
     )
     list_filter = ("status",)
     search_fields = (
-        "dispatch_request__course_name",
-        "dispatch_request__culture_center_branch__branch_name",
+        "dispatch_request__course_title",
+        "dispatch_request__culture_center__branch_name",
     )
 
 
@@ -28,5 +29,5 @@ class CourseApplicationAdmin(admin.ModelAdmin):
         "teacher__first_name",
         "teacher__last_name",
         "teacher__korean_name",
-        "post__dispatch_request__course_name",
+        "post__dispatch_request__course_title",
     )

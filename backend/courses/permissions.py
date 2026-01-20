@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import BasePermission
 
 
 def _role(user) -> str:
@@ -7,13 +7,15 @@ def _role(user) -> str:
 
 class IsAdminOrManager(BasePermission):
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
             return False
-        return _role(request.user) in ["admin", "manager"] or request.user.is_superuser
+        return user.is_superuser or _role(user) in ["admin", "manager"]
 
 
 class IsTeacher(BasePermission):
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
             return False
-        return _role(request.user) == "teacher"
+        return _role(user) == "teacher"

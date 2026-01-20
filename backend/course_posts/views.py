@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.utils import timezone
 
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
 from teacher_applications.models import TeacherApplication
 
@@ -18,112 +17,171 @@ from .models import (
     CoursePostStatusChoices,
     CourseApplicationStatusChoices,
 )
+from .permissions import IsAdminOrManager, IsTeacher
 from .serializers import (
     CoursePostSerializer,
     CoursePostCreateSerializer,
     CourseApplicationSerializer,
+    CoursePostApplySerializer,
+    CourseApplicationStatusUpdateSerializer,
 )
-from .permissions import IsAdminOrManager, IsTeacher
 
 
 def _role(user) -> str:
     return getattr(user, "role", "") or ""
 
 
-class CoursePostViewSet(viewsets.ModelViewSet):
-    queryset = (
-        CoursePost.objects.all()
-        .select_related("dispatch_request", "dispatch_request__culture_center_branch")
-        .annotate(applications_count=Count("applications", distinct=True))
-    )
-    permission_classes = [IsAuthenticated]
+def _get_my_teacher_application_or_error(user) -> TeacherApplication:
+    """
+    ✅ 핵심: teacher_application_id를 받지 않고,
+    로그인 사용자(user)의 OneToOne TeacherApplication을 사용한다.
+    """
+    try:
+        return user.teacher_application
+    except Exception:
+        # OneToOne가 아직 없으면(이력서 제출 전) 지원 불가
+        raise ValidationError(
+            "먼저 강사 이력서(TeacherApplication)를 제출한 뒤 지원할 수 있습니다."
+        )
+
+
+class CoursePostListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/course-posts/          (teacher: PUBLISHED만)
+    POST /api/course-posts/          (admin/manager)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = (
+            CoursePost.objects.select_related(
+                "dispatch_request", "dispatch_request__culture_center"
+            )
+            .annotate(applications_count=Count("applications"))
+            .order_by("-created_at")
+        )
+
+        if _role(self.request.user) == "teacher":
+            qs = qs.filter(status=CoursePostStatusChoices.PUBLISHED)
+
+        return qs
 
     def get_serializer_class(self):
-        if self.action in ["create"]:
+        if self.request.method == "POST":
             return CoursePostCreateSerializer
         return CoursePostSerializer
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        role = _role(self.request.user)
-
-        # teacher는 게시된 공고만
-        if role == "teacher":
-            qs = qs.filter(status=CoursePostStatusChoices.PUBLISHED)
-            # 마감일이 지난 공고는 숨기고 싶으면 아래 주석 해제
-            # qs = qs.filter(Q(application_deadline__isnull=True) | Q(application_deadline__gte=timezone.now()))
-        return qs
-
     def create(self, request, *args, **kwargs):
-        if (
-            _role(request.user) not in ["admin", "manager"]
-            and not request.user.is_superuser
+        if not (
+            request.user.is_superuser or _role(request.user) in ["admin", "manager"]
         ):
             raise PermissionDenied("권한이 없습니다.")
         return super().create(request, *args, **kwargs)
 
-    @action(
-        detail=True,
-        methods=["patch"],
-        permission_classes=[IsAuthenticated, IsAdminOrManager],
+
+class CoursePostDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/course-posts/<id>/
+    teacher는 PUBLISHED만 접근 가능
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CoursePostSerializer
+
+    def get_queryset(self):
+        qs = CoursePost.objects.select_related(
+            "dispatch_request", "dispatch_request__culture_center"
+        ).annotate(applications_count=Count("applications"))
+        if _role(self.request.user) == "teacher":
+            qs = qs.filter(status=CoursePostStatusChoices.PUBLISHED)
+        return qs
+
+
+class CoursePostAdminListView(generics.ListAPIView):
+    """
+    GET /api/course-posts/admin/list/
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    serializer_class = CoursePostSerializer
+    queryset = (
+        CoursePost.objects.select_related(
+            "dispatch_request", "dispatch_request__culture_center"
+        )
+        .annotate(applications_count=Count("applications"))
+        .order_by("-created_at")
     )
-    def publish(self, request, pk=None):
-        post = self.get_object()
+
+
+class CoursePostAdminDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET/PATCH /api/course-posts/admin/<id>/
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    serializer_class = CoursePostSerializer
+    queryset = CoursePost.objects.select_related(
+        "dispatch_request", "dispatch_request__culture_center"
+    ).annotate(applications_count=Count("applications"))
+
+
+class CoursePostPublishView(APIView):
+    """
+    POST /api/course-posts/admin/<id>/publish/
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+
+    def post(self, request, pk: int):
+        post = CoursePost.objects.get(pk=pk)
         post.publish()
         post.save()
-        return Response(CoursePostSerializer(post, context={"request": request}).data)
+        data = CoursePostSerializer(
+            post,
+            context={"request": request},
+        ).data
+        return Response(data, status=status.HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=["patch"],
-        permission_classes=[IsAuthenticated, IsAdminOrManager],
-    )
-    def close(self, request, pk=None):
-        post = self.get_object()
+
+class CoursePostCloseView(APIView):
+    """
+    POST /api/course-posts/admin/<id>/close/
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+
+    def post(self, request, pk: int):
+        post = CoursePost.objects.get(pk=pk)
         post.close()
         post.save()
-        return Response(CoursePostSerializer(post, context={"request": request}).data)
+        data = CoursePostSerializer(post, context={"request": request}).data
+        return Response(data, status=status.HTTP_200_OK)
 
-    @action(
-        detail=True,
-        methods=["get"],
-        permission_classes=[IsAuthenticated, IsAdminOrManager],
-    )
-    def applications(self, request, pk=None):
-        post = self.get_object()
-        qs = post.applications.select_related("teacher").all()
-        return Response(
-            CourseApplicationSerializer(
-                qs, many=True, context={"request": request}
-            ).data
-        )
 
-    @action(
-        detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsTeacher]
-    )
-    def apply(self, request, pk=None):
-        post = self.get_object()
+class CoursePostApplyView(APIView):
+    """
+    ✅ teacher 자동 매핑
+    POST /api/course-posts/<id>/apply/
+    body: { message?: string }
+    """
 
-        # 마감 체크
+    permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+    def post(self, request, pk: int):
+        post = CoursePost.objects.select_related("dispatch_request").get(pk=pk)
+
+        if post.status != CoursePostStatusChoices.PUBLISHED:
+            raise ValidationError("게시된 공고에만 지원할 수 있습니다.")
+
         if post.application_deadline and post.application_deadline < timezone.now():
             raise ValidationError("지원 마감된 공고입니다.")
 
-        # 현재 로그인 user와 TeacherApplication 연결 방식은 프로젝트마다 다를 수 있어서,
-        # 여기서는 가장 흔한 패턴(teacher_application_id를 body로 받음)을 사용합니다.
-        teacher_application_id = request.data.get("teacher_application_id")
-        if not teacher_application_id:
-            raise ValidationError(
-                {"teacher_application_id": "teacher_application_id가 필요합니다."}
-            )
+        teacher = _get_my_teacher_application_or_error(request.user)
 
-        try:
-            teacher = TeacherApplication.objects.get(id=teacher_application_id)
-        except TeacherApplication.DoesNotExist:
-            raise ValidationError("강사 정보를 찾을 수 없습니다.")
-
-        # TODO: teacher가 request.user의 소유인지(본인 이력서인지) 검증 로직을 프로젝트 방식에 맞게 추가 권장
-
-        message = request.data.get("message", "")
+        body = CoursePostApplySerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        message = body.validated_data.get("message", "")
 
         app, created = CourseApplication.objects.get_or_create(
             post=post,
@@ -133,8 +191,8 @@ class CoursePostViewSet(viewsets.ModelViewSet):
                 "status": CourseApplicationStatusChoices.APPLIED,
             },
         )
+
         if not created:
-            # 재지원 허용 정책: WITHDRAWN이면 APPLIED로 되돌릴지 결정
             if app.status == CourseApplicationStatusChoices.WITHDRAWN:
                 app.status = CourseApplicationStatusChoices.APPLIED
                 app.message = message
@@ -143,64 +201,84 @@ class CoursePostViewSet(viewsets.ModelViewSet):
                 raise ValidationError("이미 지원한 공고입니다.")
 
         return Response(
-            CourseApplicationSerializer(app, context={"request": request}).data,
-            status=status.HTTP_201_CREATED,
+            CourseApplicationSerializer(app).data, status=status.HTTP_201_CREATED
         )
 
-    @action(
-        detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsTeacher]
-    )
-    def withdraw(self, request, pk=None):
-        post = self.get_object()
-        teacher_application_id = request.data.get("teacher_application_id")
-        if not teacher_application_id:
-            raise ValidationError(
-                {"teacher_application_id": "teacher_application_id가 필요합니다."}
-            )
+
+class CoursePostWithdrawView(APIView):
+    """
+    ✅ teacher 자동 매핑
+    POST /api/course-posts/<id>/withdraw/
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+    def post(self, request, pk: int):
+        post = CoursePost.objects.get(pk=pk)
+        teacher = _get_my_teacher_application_or_error(request.user)
 
         try:
-            app = CourseApplication.objects.get(
-                post=post, teacher_id=teacher_application_id
-            )
+            app = CourseApplication.objects.get(post=post, teacher=teacher)
         except CourseApplication.DoesNotExist:
             raise ValidationError("지원 내역이 없습니다.")
 
         app.withdraw()
         app.save()
         return Response(
-            CourseApplicationSerializer(app, context={"request": request}).data
+            CourseApplicationSerializer(app).data, status=status.HTTP_200_OK
         )
 
-    @action(
-        detail=True,
-        methods=["patch"],
-        permission_classes=[IsAuthenticated, IsAdminOrManager],
-    )
-    def set_application_status(self, request, pk=None):
-        post = self.get_object()
-        application_id = request.data.get("application_id")
-        new_status = request.data.get("status")
 
-        if not application_id or not new_status:
-            raise ValidationError({"application_id": "필수", "status": "필수"})
+class CoursePostApplicationsView(generics.ListAPIView):
+    """
+    GET /api/course-posts/admin/<id>/applications/
+    """
 
-        try:
-            app = CourseApplication.objects.get(id=application_id, post=post)
-        except CourseApplication.DoesNotExist:
-            raise ValidationError("지원서를 찾을 수 없습니다.")
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    serializer_class = CourseApplicationSerializer
+
+    def get_queryset(self):
+        return (
+            CourseApplication.objects.select_related("teacher", "post")
+            .filter(post_id=self.kwargs["pk"])
+            .order_by("-created_at")
+        )
+
+
+class CoursePostSetApplicationStatusView(APIView):
+    """
+    PATCH /api/course-posts/admin/<id>/set-application-status/
+    body: { application_id: number, status: string }
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+
+    def patch(self, request, pk: int):
+        post = CoursePost.objects.get(pk=pk)
+
+        body = CourseApplicationStatusUpdateSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        application_id = body.validated_data["application_id"]
+        new_status = body.validated_data["status"]
 
         if new_status not in dict(CourseApplicationStatusChoices.choices):
             raise ValidationError("유효하지 않은 status 입니다.")
 
-        # 선택(SELECTED)은 1명만 허용 (정석 운영)
+        try:
+            app = CourseApplication.objects.get(pk=application_id, post=post)
+        except CourseApplication.DoesNotExist:
+            raise ValidationError("지원서를 찾을 수 없습니다.")
+
         if new_status == CourseApplicationStatusChoices.SELECTED:
+            # SELECTED 1명 보장
             with transaction.atomic():
                 CourseApplication.objects.filter(
                     post=post,
                     status=CourseApplicationStatusChoices.SELECTED,
-                ).exclude(id=app.id).update(
+                ).exclude(pk=app.pk).update(
                     status=CourseApplicationStatusChoices.SHORTLISTED
                 )
+
                 app.status = new_status
                 app.save()
         else:
@@ -208,5 +286,5 @@ class CoursePostViewSet(viewsets.ModelViewSet):
             app.save()
 
         return Response(
-            CourseApplicationSerializer(app, context={"request": request}).data
+            CourseApplicationSerializer(app).data, status=status.HTTP_200_OK
         )

@@ -26,8 +26,8 @@ class CourseApplicationStatusChoices(models.TextChoices):
 
 class CoursePost(models.Model):
     """
-    '모집 공고'
-    - DispatchRequest(내부 요청)와 1:1로 연결하는 정석 버전
+    모집 공고 (정석)
+    - DispatchRequest(내부 요청)와 1:1 연결
     """
 
     dispatch_request = models.OneToOneField(
@@ -40,6 +40,7 @@ class CoursePost(models.Model):
         max_length=20,
         choices=CoursePostStatusChoices.choices,
         default=CoursePostStatusChoices.DRAFT,
+        db_index=True,
     )
 
     application_deadline = models.DateTimeField(null=True, blank=True)
@@ -60,16 +61,20 @@ class CoursePost(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "Course post"
+        verbose_name_plural = "Course posts"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["published_at"]),
+        ]
 
     def __str__(self):
         dr = self.dispatch_request
-        return f"[{self.status}] {dr.course_name} / {dr.culture_center_branch}"
+        return f"[{self.status}] {dr.course_title} / {dr.teaching_language} @ {dr.culture_center}"
 
     def clean(self):
         super().clean()
-
-        # 마감일이 있으면 published 이후여야 자연스러움(완전 강제는 아님, 최소한의 검증만)
         if (
             self.application_deadline
             and self.published_at
@@ -99,8 +104,9 @@ class CoursePost(models.Model):
 
 class CourseApplication(models.Model):
     """
-    '지원서'
-    - (post, teacher) 1인 1지원 unique
+    지원서
+    - (post, teacher) 유니크
+    - 강사는 본인 계정의 teacher_application으로 자동 매핑 (views에서 처리)
     """
 
     post = models.ForeignKey(
@@ -114,6 +120,7 @@ class CourseApplication(models.Model):
         max_length=20,
         choices=CourseApplicationStatusChoices.choices,
         default=CourseApplicationStatusChoices.APPLIED,
+        db_index=True,
     )
     message = models.TextField(blank=True, default="")
 
@@ -121,11 +128,18 @@ class CourseApplication(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "Course application"
+        verbose_name_plural = "Course applications"
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["post", "teacher"], name="uniq_course_application_post_teacher"
-            )
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["post"]),
+            models.Index(fields=["teacher"]),
+            models.Index(fields=["status"]),
         ]
 
     def __str__(self):
@@ -133,8 +147,21 @@ class CourseApplication(models.Model):
 
     def clean(self):
         super().clean()
+
         if self.post.status != CoursePostStatusChoices.PUBLISHED:
             raise ValidationError("게시된 공고에만 지원할 수 있습니다.")
+
+        # SELECTED는 1명만 허용
+        if self.status == CourseApplicationStatusChoices.SELECTED:
+            exists = (
+                CourseApplication.objects.filter(
+                    post=self.post, status=CourseApplicationStatusChoices.SELECTED
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            )
+            if exists:
+                raise ValidationError("이미 SELECTED 된 지원자가 존재합니다.")
 
     def withdraw(self):
         if self.status not in [

@@ -1,61 +1,35 @@
-from __future__ import annotations
-
 from rest_framework import serializers
 
+from culture_centers.serializers import CultureCenterBranchSerializer
 from dispatch_requests.models import DispatchRequest
-from teacher_applications.models import TeacherApplication
 
-from .models import (
-    CoursePost,
-    CourseApplication,
-    CoursePostStatusChoices,
-    CourseApplicationStatusChoices,
-)
+from .models import CoursePost, CourseApplication
 
 
 class DispatchRequestSummarySerializer(serializers.ModelSerializer):
-    culture_center_branch_name = serializers.CharField(
-        source="culture_center_branch.branch_name", read_only=True
-    )
-    culture_center_center_name = serializers.CharField(
-        source="culture_center_branch.center.center_name", read_only=True
-    )
-    culture_center_region_name = serializers.CharField(
-        source="culture_center_branch.region.region_name", read_only=True
-    )
+    culture_center = CultureCenterBranchSerializer(read_only=True)
 
     class Meta:
         model = DispatchRequest
         fields = [
             "id",
-            "course_name",
+            "culture_center",
+            "teaching_language",
+            "course_title",
+            "instructor_type",
+            "class_days",
+            "start_time",
+            "end_time",
             "start_date",
             "end_date",
-            "class_days",
-            "class_time",
             "lecture_count",
-            "culture_center_branch",
-            "culture_center_region_name",
-            "culture_center_center_name",
-            "culture_center_branch_name",
-        ]
-
-
-class TeacherSummarySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TeacherApplication
-        fields = [
-            "id",
-            "first_name",
-            "last_name",
-            "korean_name",
-            "teaching_language",
-            "available_time_slots",
+            "students_count",
+            "extra_requirements",
         ]
 
 
 class CourseApplicationSerializer(serializers.ModelSerializer):
-    teacher = TeacherSummarySerializer(read_only=True)
+    teacher_display = serializers.CharField(source="teacher.__str__", read_only=True)
 
     class Meta:
         model = CourseApplication
@@ -63,12 +37,21 @@ class CourseApplicationSerializer(serializers.ModelSerializer):
             "id",
             "post",
             "teacher",
+            "teacher_display",
             "status",
             "message",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "teacher", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "post",
+            "teacher",
+            "teacher_display",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class CoursePostSerializer(serializers.ModelSerializer):
@@ -92,6 +75,8 @@ class CoursePostSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "dispatch_request",
+            "status",
             "published_at",
             "closed_at",
             "created_by",
@@ -102,7 +87,11 @@ class CoursePostSerializer(serializers.ModelSerializer):
 
 
 class CoursePostCreateSerializer(serializers.ModelSerializer):
-    dispatch_request_id = serializers.IntegerField(write_only=True)
+    dispatch_request_id = serializers.PrimaryKeyRelatedField(
+        source="dispatch_request",
+        queryset=DispatchRequest.objects.all(),
+        write_only=True,
+    )
 
     class Meta:
         model = CoursePost
@@ -114,19 +103,23 @@ class CoursePostCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
-    def validate_dispatch_request_id(self, value):
-        if CoursePost.objects.filter(dispatch_request_id=value).exists():
+    def validate(self, attrs):
+        dr = attrs.get("dispatch_request")
+        if dr and CoursePost.objects.filter(dispatch_request=dr).exists():
             raise serializers.ValidationError(
                 "이미 해당 파견요청으로 공고가 생성되어 있습니다."
             )
-        return value
+        return attrs
 
     def create(self, validated_data):
-        dr_id = validated_data.pop("dispatch_request_id")
         request = self.context["request"]
-        post = CoursePost.objects.create(
-            dispatch_request_id=dr_id,
-            created_by=request.user if request.user.is_authenticated else None,
-            **validated_data,
-        )
-        return post
+        return CoursePost.objects.create(created_by=request.user, **validated_data)
+
+
+class CoursePostApplySerializer(serializers.Serializer):
+    message = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class CourseApplicationStatusUpdateSerializer(serializers.Serializer):
+    application_id = serializers.IntegerField(required=True)
+    status = serializers.CharField(required=True)

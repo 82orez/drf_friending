@@ -3,34 +3,47 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Iterable
 
+DAY_TO_WEEKDAY = {
+    "MON": 0,
+    "TUE": 1,
+    "WED": 2,
+    "THU": 3,
+    "FRI": 4,
+    "SAT": 5,
+    "SUN": 6,
+}
+
 
 def calculate_end_date(
     start_date: date, class_days: Iterable[str], lecture_count: int
 ) -> date:
     """
-    start_date부터 class_days(예: ["MON","WED"])에 해당하는 날짜를 수업일로 카운트해서
-    lecture_count회차 수업이 열리는 '마지막 수업일'을 반환.
+    DispatchRequest와 동일한 정책으로 종료일 계산:
+    start_date부터 class_days에 해당하는 날짜를 세어서 lecture_count번째 수업 날짜를 반환.
     """
     if not start_date:
-        raise ValueError("start_date is required.")
-    if not class_days:
-        raise ValueError("class_days is required.")
-    if lecture_count is None or lecture_count < 1:
-        raise ValueError("lecture_count must be >= 1.")
+        raise ValueError("start_date is required")
 
-    day_map = {"MON": 0, "TUE": 1, "WED": 2, "THU": 3, "FRI": 4, "SAT": 5, "SUN": 6}
-    wanted = {day_map[d] for d in class_days}
+    days = list(class_days or [])
+    if not days:
+        raise ValueError("class_days is required")
 
-    current = start_date
-    count = 0
-    last = start_date
-    # 안전장치: 무한루프 방지 (lecture_count가 비정상적으로 큰 경우)
-    for _ in range(0, 3660):  # 최대 10년치 탐색
-        if current.weekday() in wanted and current >= start_date:
-            count += 1
-            last = current
-            if count >= lecture_count:
-                return last
-        current += timedelta(days=1)
+    if lecture_count is None or int(lecture_count) < 1:
+        raise ValueError("lecture_count must be >= 1")
 
-    return last
+    try:
+        allowed_weekdays = {DAY_TO_WEEKDAY[str(d).upper()] for d in days}
+    except KeyError:
+        raise ValueError("class_days contains invalid day key")
+
+    dt = start_date
+    hits = 0
+
+    for _ in range(366 * 3):
+        if dt.weekday() in allowed_weekdays:
+            hits += 1
+            if hits == int(lecture_count):
+                return dt
+        dt = dt + timedelta(days=1)
+
+    return dt
