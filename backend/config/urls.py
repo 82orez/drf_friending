@@ -12,8 +12,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("accounts.urls")),
     path("api/teacher-applications/", include("teacher_applications.urls")),
-    path("api/culture-centers/", include("culture_centers.urls")),  # ✅ 추가
-    path("api/dispatch-requests/", include("dispatch_requests.urls")),  # ✅ 추가
+    path("api/culture-centers/", include("culture_centers.urls")),
+    path("api/dispatch-requests/", include("dispatch_requests.urls")),
+    path("api/", include("course_posts.urls")),
+    path("api/", include("courses.urls")),
 ]
 
 # 배포 환경에서는 AWS S3 에 연결 설정

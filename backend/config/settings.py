@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "teacher_applications",
     "culture_centers",
     "dispatch_requests",
+    "course_posts",
+    "courses",
 ]
 
 MIDDLEWARE = [
