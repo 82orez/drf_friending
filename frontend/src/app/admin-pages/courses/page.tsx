@@ -87,7 +87,7 @@ export default function AdminCoursesPage() {
   const actions = (
     <>
       <Link
-        href="/admin/posts"
+        href="/admin-pages/posts"
         className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
         공고 관리
       </Link>
@@ -204,6 +204,10 @@ export default function AdminCoursesPage() {
             </div>
           );
         })}
+      </div>
+
+      <div className={"mt-6 flex justify-center text-sm text-zinc-600"}>
+        <Link href={"/"}>Back to Home</Link>
       </div>
     </PageShell>
   );

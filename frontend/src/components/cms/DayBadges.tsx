@@ -30,7 +30,7 @@ export default function DayBadges({ days, className }: { days?: any; className?:
   return (
     <div className={clsx("flex flex-wrap gap-1.5", className)}>
       {norm.map((d, i) => (
-        <span key={`${d}-${i}`} className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-medium text-zinc-800">
+        <span key={`${d}-${i}`} className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-sm font-medium text-zinc-800">
           {DAY_LABEL[d]}
         </span>
       ))}
