@@ -109,17 +109,34 @@ class CoursePostDetailView(generics.RetrieveAPIView):
 class CoursePostAdminListView(generics.ListAPIView):
     """
     GET /api/course-posts/admin/list/
+    optional query:
+      - ?dispatch_request_id=<int>
+      - ?dispatch_request=<int>  (호환)
     """
 
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     serializer_class = CoursePostSerializer
-    queryset = (
-        CoursePost.objects.select_related(
-            "dispatch_request", "dispatch_request__culture_center"
+
+    def get_queryset(self):
+        qs = (
+            CoursePost.objects.select_related(
+                "dispatch_request", "dispatch_request__culture_center"
+            )
+            .annotate(applications_count=Count("applications"))
+            .order_by("-created_at")
         )
-        .annotate(applications_count=Count("applications"))
-        .order_by("-created_at")
-    )
+
+        drid = self.request.query_params.get(
+            "dispatch_request_id"
+        ) or self.request.query_params.get("dispatch_request")
+        if drid:
+            try:
+                drid_int = int(drid)
+                qs = qs.filter(dispatch_request_id=drid_int)
+            except ValueError:
+                pass
+
+        return qs
 
 
 class CoursePostAdminDetailView(generics.RetrieveUpdateAPIView):

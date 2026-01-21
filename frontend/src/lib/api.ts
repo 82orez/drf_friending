@@ -105,8 +105,7 @@ export const coursePostsAPI = {
   withdraw: (id: number) => api.post(`/course-posts/${id}/withdraw/`),
 
   // admin/manager
-  adminList: (params?: { dispatch_request_id?: number }) => api.get("/course-posts/admin/list/", params ? { params } : undefined),
-
+  adminList: (params?: Record<string, any>) => api.get("/course-posts/admin/list/", { params }),
   adminDetail: (id: number) => api.get(`/course-posts/admin/${id}/`),
   create: (data: { dispatch_request_id: number; application_deadline?: string | null; notes_for_teachers?: string }) =>
     api.post("/course-posts/", data),

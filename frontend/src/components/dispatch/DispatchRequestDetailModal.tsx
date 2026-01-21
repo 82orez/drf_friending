@@ -174,16 +174,26 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   const fetchRelatedPost = async (rid: number) => {
     if (!isAdmin) {
       setRelatedPost(null);
+      setCreatedPostId(null);
       return;
     }
 
     try {
       setRelatedPostLoading(true);
-      const res = await coursePostsAPI.adminList({ dispatch_request_id: rid } as any);
-      const list = Array.isArray(res.data) ? res.data : [];
-      if (list.length > 0) {
-        const pid = Number(list[0].id);
-        const pst = String(list[0].status);
+
+      // ✅ 서버에 필터 요청
+      const res = await coursePostsAPI.adminList({ dispatch_request_id: rid });
+
+      // DRF pagination 대비: [..] 또는 { results: [..] } 모두 대응
+      const raw = res.data;
+      const list = Array.isArray(raw) ? raw : Array.isArray(raw?.results) ? raw.results : [];
+
+      // ✅ 혹시 서버 필터가 아직 미적용이어도 안전하게 한번 더 클라이언트에서 매칭
+      const matched = list.find((p: any) => Number(p?.dispatch_request?.id) === rid);
+
+      if (matched) {
+        const pid = Number(matched.id);
+        const pst = String(matched.status);
         setRelatedPost({ id: pid, status: pst });
         setCreatedPostId(pid);
       } else {
