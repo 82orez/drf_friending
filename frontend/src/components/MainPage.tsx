@@ -698,7 +698,7 @@ export default function MainPage() {
 
           {user?.role === "admin" && (
             <Link
-              href="/admin"
+              href="/admin-pages"
               className="inline-flex items-center justify-center rounded-xl bg-blue-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-blue-500 focus:ring-4 focus:ring-blue-200 focus:outline-none">
               Admin
             </Link>

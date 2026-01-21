@@ -102,7 +102,7 @@ export default function DispatchRequestsPage() {
       <PageShell
         title="파견요청"
         subtitle={subtitle}
-        backHref="/admin"
+        backHref="/admin-pages"
         actions={
           <button
             onClick={() => setModalOpen(true)}
@@ -156,7 +156,9 @@ export default function DispatchRequestsPage() {
                       <td className="px-4 py-3">{it.teaching_language}</td>
                       <td className="px-4 py-3">{it.instructor_type}</td>
                       <td className="px-4 py-3">
-                        <Link href={`/admin/dispatch-requests/${it.id}`} className="font-semibold text-zinc-900 hover:underline">
+                        <Link
+                          href={`/frontend/src/app/admin-pages/dispatch-requests/${it.id}`}
+                          className="font-semibold text-zinc-900 hover:underline">
                           {it.course_title}
                         </Link>
                       </td>

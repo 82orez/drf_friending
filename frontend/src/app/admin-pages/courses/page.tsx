@@ -100,7 +100,7 @@ export default function AdminCoursesPage() {
   );
 
   return (
-    <PageShell title="강좌 관리" subtitle="확정된 강좌 목록과 상태를 관리합니다." backHref="/admin" actions={actions}>
+    <PageShell title="강좌 관리" subtitle="확정된 강좌 목록과 상태를 관리합니다." backHref="/admin-pages" actions={actions}>
       <div className="space-y-3">
         {fetching && <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>}
 

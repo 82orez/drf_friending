@@ -121,7 +121,11 @@ export default function AdminPostsPage() {
   );
 
   return (
-    <PageShell title="공고 관리" subtitle="파견요청(DispatchRequest) 기반으로 공고를 생성/게시/마감하고 지원자를 관리합니다." backHref="/admin" actions={actions}>
+    <PageShell
+      title="공고 관리"
+      subtitle="파견요청(DispatchRequest) 기반으로 공고를 생성/게시/마감하고 지원자를 관리합니다."
+      backHref="/admin-pages"
+      actions={actions}>
       <div className="space-y-3">
         {/* Create */}
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -192,7 +196,7 @@ export default function AdminPostsPage() {
               }}
               className={clsx(
                 "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700",
-                (creating || dispatchRequestId === "") && "cursor-not-allowed opacity-60"
+                (creating || dispatchRequestId === "") && "cursor-not-allowed opacity-60",
               )}>
               {creating ? "생성 중..." : "공고 생성"}
             </button>
@@ -229,7 +233,7 @@ export default function AdminPostsPage() {
 
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Link
-                    href={`/admin/posts/${p.id}`}
+                    href={`/frontend/src/app/admin-pages/posts/${p.id}`}
                     className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
                     상세/지원자
                   </Link>
@@ -246,7 +250,7 @@ export default function AdminPostsPage() {
                     }}
                     className={clsx(
                       "inline-flex items-center rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700",
-                      p.status === "PUBLISHED" && "opacity-60"
+                      p.status === "PUBLISHED" && "opacity-60",
                     )}>
                     게시
                   </button>
@@ -263,7 +267,7 @@ export default function AdminPostsPage() {
                     }}
                     className={clsx(
                       "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50",
-                      p.status === "CLOSED" && "opacity-60"
+                      p.status === "CLOSED" && "opacity-60",
                     )}>
                     마감
                   </button>
@@ -296,7 +300,11 @@ export default function AdminPostsPage() {
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
                   <div className="text-xs font-semibold text-zinc-700">메모</div>
                   <div className="mt-2 text-sm text-zinc-700">
-                    {p.notes_for_teachers?.trim() ? <div className="whitespace-pre-wrap">{p.notes_for_teachers}</div> : <span className="text-zinc-500">-</span>}
+                    {p.notes_for_teachers?.trim() ? (
+                      <div className="whitespace-pre-wrap">{p.notes_for_teachers}</div>
+                    ) : (
+                      <span className="text-zinc-500">-</span>
+                    )}
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="text-xs text-zinc-500">지원 마감</span>
