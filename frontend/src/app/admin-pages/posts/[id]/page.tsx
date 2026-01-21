@@ -161,7 +161,11 @@ export default function AdminPostDetailPage() {
   const time = dr?.start_time && dr?.end_time ? `${dr.start_time} ~ ${dr.end_time}` : "-";
 
   return (
-    <PageShell title="공고 상세/지원자" subtitle="지원자 상태를 관리하고 선정된 강사로 강좌를 확정하세요." backHref="/admin/posts" actions={actions}>
+    <PageShell
+      title="공고 상세/지원자"
+      subtitle="지원자 상태를 관리하고 선정된 강사로 강좌를 확정하세요."
+      backHref="/admin-pages/posts"
+      actions={actions}>
       {fetching && <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>}
 
       {!fetching && !post && (

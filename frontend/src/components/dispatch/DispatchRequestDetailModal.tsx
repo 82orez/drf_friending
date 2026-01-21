@@ -68,6 +68,12 @@ function fmtTimeRange(s?: string | null, e?: string | null) {
   return s || e || "-";
 }
 
+function normalizeStatus(v?: string | null) {
+  return String(v || "")
+    .trim()
+    .toUpperCase();
+}
+
 export default function DispatchRequestDetailModal({ open, requestId, isAdmin, onClose, onPostCreated }: Props) {
   const [fetching, setFetching] = useState(false);
   const [item, setItem] = useState<DispatchRequestDetail | null>(null);
@@ -79,6 +85,8 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   const [deadline, setDeadline] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [createdPostId, setCreatedPostId] = useState<number | null>(null);
+
+  const [postActionLoading, setPostActionLoading] = useState<"publish" | "close" | null>(null);
 
   const fetchRelatedPost = async (rid: number) => {
     if (!isAdmin) {
@@ -92,13 +100,14 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
       const list = Array.isArray(res.data) ? res.data : [];
       if (list.length > 0) {
         setRelatedPost({ id: Number(list[0].id), status: String(list[0].status) });
-        setCreatedPostId(Number(list[0].id)); // ✅ 링크 버튼에서 그대로 재사용
+        setCreatedPostId(Number(list[0].id));
       } else {
         setRelatedPost(null);
+        setCreatedPostId(null);
       }
     } catch (e) {
-      // 네트워크/권한 등: 조용히 무시(UX)
       setRelatedPost(null);
+      setCreatedPostId(null);
     } finally {
       setRelatedPostLoading(false);
     }
@@ -142,6 +151,10 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
     return item ? `파견요청 #${item.id}` : `파견요청 #${requestId}`;
   }, [item, requestId]);
 
+  const relatedPostStatus = normalizeStatus(relatedPost?.status);
+  const canPublish = !!relatedPost && relatedPostStatus === "DRAFT";
+  const canClose = !!relatedPost && relatedPostStatus === "PUBLISHED";
+
   if (!open) return null;
 
   return (
@@ -162,7 +175,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
             <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-zinc-200 bg-zinc-50 px-5 py-5 sm:px-6">
               <div>
                 <div className="text-base font-semibold text-zinc-900">{headerTitle}</div>
-                <div className="mt-1 text-sm text-zinc-600">파견요청 상세 확인 및 공고 생성</div>
+                <div className="mt-1 text-sm text-zinc-600">파견요청 상세 확인 및 공고 생성/관리</div>
               </div>
 
               <button
@@ -181,6 +194,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
               {item && (
                 <>
+                  {/* Detail */}
                   <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -222,6 +236,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                     </div>
                   </div>
 
+                  {/* Applicant */}
                   <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                     <div className="text-sm font-semibold text-zinc-900">신청자 정보</div>
                     <div className="mt-3 grid gap-2 text-sm text-zinc-900 sm:grid-cols-2">
@@ -245,12 +260,13 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                     </div>
                   </div>
 
+                  {/* Create / Manage Post */}
                   {isAdmin ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-sm font-semibold text-zinc-900">공고 생성</div>
-                          <div className="mt-1 text-xs text-zinc-600">이 파견요청(#{item.id})을 기반으로 공고를 생성합니다.</div>
+                          <div className="text-sm font-semibold text-zinc-900">공고 생성 / 관리</div>
+                          <div className="mt-1 text-xs text-zinc-600">이 파견요청(#{item.id})을 기반으로 공고를 생성/게시/마감합니다.</div>
 
                           {relatedPostLoading ? (
                             <div className="mt-1 text-xs text-zinc-500">공고 존재 여부 확인 중...</div>
@@ -270,7 +286,71 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                         )}
                       </div>
 
-                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {/* ✅ existing post actions */}
+                      {relatedPost && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {canPublish && (
+                            <button
+                              disabled={postActionLoading !== null}
+                              onClick={async () => {
+                                if (!relatedPost) return;
+                                setPostActionLoading("publish");
+                                try {
+                                  const res = await coursePostsAPI.publish(relatedPost.id);
+                                  const newStatus = res?.data?.status ? String(res.data.status) : "PUBLISHED";
+                                  setRelatedPost({ id: relatedPost.id, status: newStatus });
+                                  toast.success("공고가 게시되었습니다. (PUBLISHED)");
+                                  onPostCreated?.(relatedPost.id);
+                                } catch (e: any) {
+                                  const msg = e?.response?.data?.detail || e?.response?.data?.message || "공고 게시(publish)에 실패했습니다.";
+                                  toast.error(msg);
+                                } finally {
+                                  setPostActionLoading(null);
+                                }
+                              }}
+                              className={clsx(
+                                "inline-flex items-center rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700",
+                                postActionLoading && "cursor-not-allowed opacity-60",
+                              )}>
+                              {postActionLoading === "publish" ? "게시 중..." : "게시(Publish)"}
+                            </button>
+                          )}
+
+                          {canClose && (
+                            <button
+                              disabled={postActionLoading !== null}
+                              onClick={async () => {
+                                if (!relatedPost) return;
+                                setPostActionLoading("close");
+                                try {
+                                  const res = await coursePostsAPI.close(relatedPost.id);
+                                  const newStatus = res?.data?.status ? String(res.data.status) : "CLOSED";
+                                  setRelatedPost({ id: relatedPost.id, status: newStatus });
+                                  toast.success("공고가 마감되었습니다. (CLOSED)");
+                                  onPostCreated?.(relatedPost.id);
+                                } catch (e: any) {
+                                  const msg = e?.response?.data?.detail || e?.response?.data?.message || "공고 마감(close)에 실패했습니다.";
+                                  toast.error(msg);
+                                } finally {
+                                  setPostActionLoading(null);
+                                }
+                              }}
+                              className={clsx(
+                                "inline-flex items-center rounded-2xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-black",
+                                postActionLoading && "cursor-not-allowed opacity-60",
+                              )}>
+                              {postActionLoading === "close" ? "마감 중..." : "마감(Close)"}
+                            </button>
+                          )}
+
+                          {!canPublish && !canClose && (
+                            <div className="text-xs text-zinc-500">현재 상태({relatedPost.status})에서는 추가 액션이 없습니다.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* create form */}
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <div>
                           <label className="text-xs font-medium text-zinc-600">지원 마감(선택)</label>
                           <input
@@ -283,7 +363,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               relatedPost && "cursor-not-allowed bg-zinc-50 text-zinc-500",
                             )}
                           />
-                          <p className="mt-1 text-xs text-zinc-500">예: 2026-02-01T18:00 (시간대는 서버 설정에 따름)</p>
+                          <p className="mt-1 text-xs text-zinc-500">예: 2026-02-01T18:00</p>
                         </div>
 
                         <div className="md:col-span-2">
@@ -320,8 +400,11 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                                 notes_for_teachers: notes || "",
                               });
                               const newId = res?.data?.id ? Number(res.data.id) : null;
-                              if (newId) setCreatedPostId(newId);
-                              if (newId) setRelatedPost({ id: newId, status: String(res?.data?.status || "DRAFT") });
+                              const newStatus = res?.data?.status ? String(res.data.status) : "DRAFT";
+                              if (newId) {
+                                setCreatedPostId(newId);
+                                setRelatedPost({ id: newId, status: newStatus });
+                              }
                               toast.success("공고가 생성되었습니다. (DRAFT)");
                               onPostCreated?.(newId || undefined);
                             } catch (e: any) {
@@ -352,7 +435,9 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                       <div className="mt-3 text-xs text-zinc-500">* 공고 존재 여부는 서버에서 확인합니다. (CoursePost는 DispatchRequest와 1:1)</div>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">공고 생성은 관리자만 가능합니다.</div>
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+                      공고 생성/관리는 관리자만 가능합니다.
+                    </div>
                   )}
                 </>
               )}
