@@ -105,7 +105,7 @@ export default function DispatchRequestsPage() {
       const res = isAdmin ? await dispatchRequestsAPI.adminList() : await dispatchRequestsAPI.myList();
       setItems(res.data || []);
     } catch (e: any) {
-      toast.error("파견요청 목록을 불러오지 못했습니다.");
+      toast.error("강사 파견 요청 목록을 불러오지 못했습니다.");
     } finally {
       setFetching(false);
     }
@@ -119,20 +119,20 @@ export default function DispatchRequestsPage() {
   }, [user?.id]);
 
   const subtitle = useMemo(() => {
-    return isAdmin ? "전체 파견요청을 확인합니다." : "내가 생성한 파견요청 목록입니다.";
+    return isAdmin ? "전체 강사 파견 요청을 확인합니다." : "내가 생성한 강사 파견 요청 목록입니다.";
   }, [isAdmin]);
 
   return (
     <>
       <PageShell
-        title="파견요청"
+        title="강사 파견 요청 현황"
         subtitle={subtitle}
         backHref="/admin-pages"
         actions={
           <button
             onClick={() => setModalOpen(true)}
             className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50">
-            + 파견요청 생성
+            + 강사 파견 요청 생성
           </button>
         }>
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -162,7 +162,7 @@ export default function DispatchRequestsPage() {
                 {!fetching && !items.length ? (
                   <tr>
                     <td className="px-4 py-6 text-zinc-600" colSpan={11}>
-                      아직 파견요청이 없습니다.
+                      아직 강사 파견 요청이 없습니다.
                     </td>
                   </tr>
                 ) : (
@@ -222,11 +222,11 @@ export default function DispatchRequestsPage() {
         branchesError={branchesError}
         defaultApplicantEmail={user?.email || ""}
         onSubmitSuccess={(msg) => {
-          toast.success(msg || "파견요청이 생성되었습니다.");
+          toast.success(msg || "강사 파견 요청이 생성되었습니다.");
           setModalOpen(false);
           fetchList();
         }}
-        onSubmitError={(msg) => toast.error(msg || "파견요청 생성에 실패했습니다.")}
+        onSubmitError={(msg) => toast.error(msg || "강사 파견 요청 생성에 실패했습니다.")}
       />
 
       <DispatchRequestDetailModal

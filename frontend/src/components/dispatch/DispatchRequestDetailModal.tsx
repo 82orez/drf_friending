@@ -166,7 +166,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   };
 
   const gotoPostAndClose = (postId: number) => {
-    // ✅ 공고 상세로 이동 + 모달 닫기
+    // ✅ 모집 공고 상세로 이동 + 모달 닫기
     router.push(`/admin-pages/posts/${postId}`);
     onClose();
   };
@@ -274,7 +274,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
             <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-zinc-200 bg-zinc-50 px-5 py-5 sm:px-6">
               <div>
                 <div className="text-base font-semibold text-zinc-900">{headerTitle}</div>
-                <div className="mt-1 text-sm text-zinc-600">파견요청 상세 확인 및 공고 생성/관리</div>
+                <div className="mt-1 text-sm text-zinc-600">파견요청 상세 확인 및 모집 공고 생성/관리</div>
               </div>
 
               <button
@@ -366,14 +366,14 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-sm font-semibold text-zinc-900">공고 생성 / 관리</div>
-                          <div className="mt-1 text-xs text-zinc-600">이 파견요청(#{item.id})을 기반으로 공고를 생성/게시/마감합니다.</div>
+                          <div className="text-sm font-semibold text-zinc-900">모집 공고 생성 / 관리</div>
+                          <div className="mt-1 text-xs text-zinc-600">이 파견요청(#{item.id})을 기반으로 모집 공고를 생성/게시/마감합니다.</div>
 
                           {relatedPostLoading ? (
-                            <div className="mt-1 text-xs text-zinc-500">공고 존재 여부 확인 중...</div>
+                            <div className="mt-1 text-xs text-zinc-500">모집 공고 존재 여부 확인 중...</div>
                           ) : relatedPost ? (
                             <div className="mt-1 text-xs text-zinc-600">
-                              이미 공고가 존재합니다. (status: <span className="font-semibold">{relatedPost.status}</span>)
+                              이미 모집 공고가 존재합니다. (status: <span className="font-semibold">{relatedPost.status}</span>)
                             </div>
                           ) : null}
                         </div>
@@ -382,7 +382,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                           <Link
                             href={`/admin-pages/posts/${createdPostId}`}
                             className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
-                            {relatedPost ? "기존 공고 보기" : "생성된 공고 보기"}
+                            {relatedPost ? "모집 공고 내용 보기" : "생성된 모집 공고 보기"}
                           </Link>
                         )}
                       </div>
@@ -401,13 +401,13 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                                   const res = await coursePostsAPI.publish(relatedPost.id);
                                   const newStatus = res?.data?.status ? String(res.data.status) : "PUBLISHED";
                                   setRelatedPost({ id: relatedPost.id, status: newStatus });
-                                  toast.success("공고가 게시되었습니다. (PUBLISHED)");
+                                  toast.success("모집 공고가 게시되었습니다. (PUBLISHED)");
                                   onPostCreated?.(relatedPost.id);
                                   gotoPostAndClose(relatedPost.id);
                                 } catch (e: any) {
                                   const { topMessage } = extractFieldErrors(e);
-                                  setTopError(topMessage || "공고 게시(publish)에 실패했습니다.");
-                                  toast.error(topMessage || "공고 게시(publish)에 실패했습니다.");
+                                  setTopError(topMessage || "모집 공고 게시(publish)에 실패했습니다.");
+                                  toast.error(topMessage || "모집 공고 게시(publish)에 실패했습니다.");
                                 } finally {
                                   setPostActionLoading(null);
                                 }
@@ -431,13 +431,13 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                                   const res = await coursePostsAPI.close(relatedPost.id);
                                   const newStatus = res?.data?.status ? String(res.data.status) : "CLOSED";
                                   setRelatedPost({ id: relatedPost.id, status: newStatus });
-                                  toast.success("공고가 마감되었습니다. (CLOSED)");
+                                  toast.success("모집 공고가 마감되었습니다. (CLOSED)");
                                   onPostCreated?.(relatedPost.id);
                                   gotoPostAndClose(relatedPost.id);
                                 } catch (e: any) {
                                   const { topMessage } = extractFieldErrors(e);
-                                  setTopError(topMessage || "공고 마감(close)에 실패했습니다.");
-                                  toast.error(topMessage || "공고 마감(close)에 실패했습니다.");
+                                  setTopError(topMessage || "모집 공고 마감(close)에 실패했습니다.");
+                                  toast.error(topMessage || "모집 공고 마감(close)에 실패했습니다.");
                                 } finally {
                                   setPostActionLoading(null);
                                 }
@@ -508,19 +508,21 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                           onClick={async () => {
                             if (!item) return;
                             if (relatedPost) {
-                              toast("이미 공고가 존재합니다. 오른쪽 버튼으로 이동하세요.");
+                              toast("이미 모집 공고가 존재합니다. 오른쪽 버튼으로 이동하세요.");
                               return;
                             }
 
                             // ✅ confirm (이제 백엔드가 한 번에 처리)
-                            const ok = window.confirm("공고를 생성할까요?\n\n- 공고가 생성됩니다.(DRAFT)\n- 파견요청 상태가 CONFIRMED로 변경됩니다.");
+                            const ok = window.confirm(
+                              "모집 공고를 생성할까요?\n\n- 모집 공고가 생성됩니다.(DRAFT)\n- 파견요청 상태가 CONFIRMED로 변경됩니다.",
+                            );
                             if (!ok) return;
 
                             clearErrors();
                             setCreatingPost(true);
 
                             try {
-                              // ✅ 단 1번 요청: 공고 생성 + DispatchRequest.status=CONFIRMED (백엔드 트랜잭션)
+                              // ✅ 단 1번 요청: 모집 공고 생성 + DispatchRequest.status=CONFIRMED (백엔드 트랜잭션)
                               const res = await coursePostsAPI.create({
                                 dispatch_request_id: item.id,
                                 application_deadline: deadline ? deadline : null,
@@ -538,15 +540,15 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               // ✅ UI 낙관적 업데이트(선택): 모달에 보이는 상태도 즉시 CONFIRMED로 반영
                               setItem((prev) => (prev ? { ...prev, status: "CONFIRMED" } : prev));
 
-                              toast.success("공고가 생성되었습니다. (DRAFT)");
+                              toast.success("모집 공고가 생성되었습니다. (DRAFT)");
                               onPostCreated?.(newId || undefined);
 
                               if (newId) gotoPostAndClose(newId);
                             } catch (e: any) {
                               const { fieldErrors, topMessage } = extractFieldErrors(e);
                               setCreateErrors(fieldErrors);
-                              setTopError(topMessage || "공고 생성에 실패했습니다.");
-                              toast.error(topMessage || "공고 생성에 실패했습니다.");
+                              setTopError(topMessage || "모집 공고 생성에 실패했습니다.");
+                              toast.error(topMessage || "모집 공고 생성에 실패했습니다.");
                             } finally {
                               setCreatingPost(false);
                             }
@@ -555,7 +557,13 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                             "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700",
                             (creatingPost || !!relatedPost || relatedPostLoading) && "cursor-not-allowed opacity-60",
                           )}>
-                          {creatingPost ? "생성 중..." : relatedPostLoading ? "확인 중..." : relatedPost ? "공고 존재" : "공고 생성 → 상세로 이동"}
+                          {creatingPost
+                            ? "생성 중..."
+                            : relatedPostLoading
+                              ? "확인 중..."
+                              : relatedPost
+                                ? "모집 공고 존재"
+                                : "모집 공고 생성 → 상세로 이동"}
                         </button>
 
                         <button
@@ -570,11 +578,13 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                         </button>
                       </div>
 
-                      <div className="mt-3 text-xs text-zinc-500">* 공고 존재 여부는 서버에서 확인합니다. (CoursePost는 DispatchRequest와 1:1)</div>
+                      <div className="mt-3 text-xs text-zinc-500">
+                        * 모집 공고 존재 여부는 서버에서 확인합니다. (CoursePost는 DispatchRequest와 1:1)
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-                      공고 생성/관리는 관리자만 가능합니다.
+                      모집 공고 생성/관리는 관리자만 가능합니다.
                     </div>
                   )}
                 </>

@@ -26,12 +26,12 @@ export default function AdminHome() {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <Link href="/admin-pages/dispatch-requests" className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:bg-zinc-50">
-            <div className="text-sm font-semibold text-zinc-900">파견요청 관리</div>
-            <div className="mt-1 text-sm text-zinc-600">매니저 요청 생성/목록/상세 확인</div>
+            <div className="text-sm font-semibold text-zinc-900">강사 파견 요청 관리</div>
+            <div className="mt-1 text-sm text-zinc-600">요청 생성/목록/상세 확인</div>
           </Link>
 
           <Link href="/admin-pages/posts" className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:bg-zinc-50">
-            <div className="text-sm font-semibold text-zinc-900">공고 관리</div>
+            <div className="text-sm font-semibold text-zinc-900">모집 공고 관리</div>
             <div className="mt-1 text-sm text-zinc-600">파견요청 기반 공고 생성/게시/지원자 관리</div>
           </Link>
 
@@ -43,7 +43,7 @@ export default function AdminHome() {
           <button
             onClick={() => window.open(`${API_BASE_URL}/admin/`, "_blank")}
             className="rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm hover:bg-zinc-50">
-            <div className="text-sm font-semibold text-zinc-900">Django Admin</div>
+            <div className="text-sm font-semibold text-zinc-900">Django Admin 바로 가기</div>
             <div className="mt-1 text-sm text-zinc-600">기존 Django admin 페이지 열기</div>
           </button>
         </div>
