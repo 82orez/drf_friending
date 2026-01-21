@@ -62,6 +62,14 @@ class CoursePostListCreateView(generics.ListCreateAPIView):
             .order_by("-created_at")
         )
 
+        # ✅ optional filter: /api/course-posts/?dispatch_request_id=<id>
+        drid = self.request.query_params.get("dispatch_request_id")
+        if drid:
+            try:
+                qs = qs.filter(dispatch_request_id=int(drid))
+            except Exception:
+                pass
+
         if _role(self.request.user) == "teacher":
             qs = qs.filter(status=CoursePostStatusChoices.PUBLISHED)
 
@@ -238,11 +246,23 @@ class CoursePostApplicationsView(generics.ListAPIView):
     serializer_class = CourseApplicationSerializer
 
     def get_queryset(self):
-        return (
-            CourseApplication.objects.select_related("teacher", "post")
-            .filter(post_id=self.kwargs["pk"])
+        qs = (
+            CoursePost.objects.select_related(
+                "dispatch_request", "dispatch_request__culture_center"
+            )
+            .annotate(applications_count=Count("applications"))
             .order_by("-created_at")
         )
+
+        # ✅ optional filter: /api/course-posts/admin/list/?dispatch_request_id=<id>
+        drid = self.request.query_params.get("dispatch_request_id")
+        if drid:
+            try:
+                qs = qs.filter(dispatch_request_id=int(drid))
+            except Exception:
+                pass
+
+        return qs
 
 
 class CoursePostSetApplicationStatusView(APIView):

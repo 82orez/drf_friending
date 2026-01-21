@@ -233,7 +233,7 @@ export default function AdminPostsPage() {
 
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Link
-                    href={`/frontend/src/app/admin-pages/posts/${p.id}`}
+                    href={`/admin-pages/posts/${p.id}`}
                     className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
                     상세/지원자
                   </Link>

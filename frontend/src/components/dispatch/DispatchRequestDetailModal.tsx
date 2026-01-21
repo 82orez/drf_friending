@@ -7,7 +7,6 @@ import Link from "next/link";
 import { toast } from "react-hot-toast";
 
 import { coursePostsAPI, dispatchRequestsAPI } from "@/lib/api";
-
 import StatusPill from "@/components/cms/StatusPill";
 import DayBadges from "@/components/cms/DayBadges";
 
@@ -50,6 +49,11 @@ export type DispatchRequestDetail = {
   updated_at?: string;
 };
 
+type CoursePostSummary = {
+  id: number;
+  status: string;
+};
+
 type Props = {
   open: boolean;
   requestId: number | null;
@@ -68,15 +72,44 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   const [fetching, setFetching] = useState(false);
   const [item, setItem] = useState<DispatchRequestDetail | null>(null);
 
+  const [relatedPost, setRelatedPost] = useState<CoursePostSummary | null>(null);
+  const [relatedPostLoading, setRelatedPostLoading] = useState(false);
+
   const [creatingPost, setCreatingPost] = useState(false);
   const [deadline, setDeadline] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [createdPostId, setCreatedPostId] = useState<number | null>(null);
 
+  const fetchRelatedPost = async (rid: number) => {
+    if (!isAdmin) {
+      setRelatedPost(null);
+      return;
+    }
+
+    try {
+      setRelatedPostLoading(true);
+      const res = await coursePostsAPI.adminList({ dispatch_request_id: rid });
+      const list = Array.isArray(res.data) ? res.data : [];
+      if (list.length > 0) {
+        setRelatedPost({ id: Number(list[0].id), status: String(list[0].status) });
+        setCreatedPostId(Number(list[0].id)); // ✅ 링크 버튼에서 그대로 재사용
+      } else {
+        setRelatedPost(null);
+      }
+    } catch (e) {
+      // 네트워크/권한 등: 조용히 무시(UX)
+      setRelatedPost(null);
+    } finally {
+      setRelatedPostLoading(false);
+    }
+  };
+
   const fetchDetail = async (rid: number) => {
     try {
       setFetching(true);
       setCreatedPostId(null);
+      setRelatedPost(null);
+
       const res = isAdmin ? await dispatchRequestsAPI.adminDetail(rid) : await dispatchRequestsAPI.detail(rid);
       setItem(res.data);
     } catch (e: any) {
@@ -87,15 +120,14 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
     }
   };
 
-  // open/close + fetch
   useEffect(() => {
     if (!open) return;
     if (!requestId) return;
     fetchDetail(requestId);
+    fetchRelatedPost(requestId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, requestId]);
 
-  // ESC close
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -116,7 +148,6 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
 
-      {/* Backdrop click close */}
       <div
         className="absolute inset-0 overflow-y-auto"
         onMouseDown={(e) => {
@@ -128,7 +159,6 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
             aria-modal="true"
             className="w-full rounded-3xl border border-zinc-200 bg-white shadow-2xl"
             onMouseDown={(e) => e.stopPropagation()}>
-            {/* Header */}
             <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-zinc-200 bg-zinc-50 px-5 py-5 sm:px-6">
               <div>
                 <div className="text-base font-semibold text-zinc-900">{headerTitle}</div>
@@ -142,7 +172,6 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
               </button>
             </div>
 
-            {/* Body */}
             <div className="space-y-4 px-5 py-5 sm:px-6">
               {fetching && <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>}
 
@@ -152,7 +181,6 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
               {item && (
                 <>
-                  {/* Detail */}
                   <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -194,7 +222,6 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                     </div>
                   </div>
 
-                  {/* Applicant */}
                   <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                     <div className="text-sm font-semibold text-zinc-900">신청자 정보</div>
                     <div className="mt-3 grid gap-2 text-sm text-zinc-900 sm:grid-cols-2">
@@ -218,20 +245,27 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                     </div>
                   </div>
 
-                  {/* Create Post (from admin-pages/posts/page.tsx) */}
                   {isAdmin ? (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-semibold text-zinc-900">공고 생성</div>
                           <div className="mt-1 text-xs text-zinc-600">이 파견요청(#{item.id})을 기반으로 공고를 생성합니다.</div>
+
+                          {relatedPostLoading ? (
+                            <div className="mt-1 text-xs text-zinc-500">공고 존재 여부 확인 중...</div>
+                          ) : relatedPost ? (
+                            <div className="mt-1 text-xs text-zinc-600">
+                              이미 공고가 존재합니다. (status: <span className="font-semibold">{relatedPost.status}</span>)
+                            </div>
+                          ) : null}
                         </div>
 
                         {createdPostId && (
                           <Link
                             href={`/admin-pages/posts/${createdPostId}`}
                             className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
-                            생성된 공고 보기
+                            {relatedPost ? "기존 공고 보기" : "생성된 공고 보기"}
                           </Link>
                         )}
                       </div>
@@ -243,7 +277,11 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                             value={deadline}
                             onChange={(e) => setDeadline(e.target.value)}
                             placeholder="YYYY-MM-DDTHH:mm"
-                            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                            disabled={!!relatedPost}
+                            className={clsx(
+                              "mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm",
+                              relatedPost && "cursor-not-allowed bg-zinc-50 text-zinc-500",
+                            )}
                           />
                           <p className="mt-1 text-xs text-zinc-500">예: 2026-02-01T18:00 (시간대는 서버 설정에 따름)</p>
                         </div>
@@ -254,7 +292,11 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={3}
-                            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                            disabled={!!relatedPost}
+                            className={clsx(
+                              "mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm",
+                              relatedPost && "cursor-not-allowed bg-zinc-50 text-zinc-500",
+                            )}
                             placeholder="강사에게 전달할 공지/안내사항"
                           />
                         </div>
@@ -262,9 +304,14 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
                       <div className="mt-3 flex items-center gap-2">
                         <button
-                          disabled={creatingPost}
+                          disabled={creatingPost || !!relatedPost || relatedPostLoading}
                           onClick={async () => {
                             if (!item) return;
+                            if (relatedPost) {
+                              toast("이미 공고가 존재합니다. 오른쪽 버튼으로 이동하세요.");
+                              return;
+                            }
+
                             setCreatingPost(true);
                             try {
                               const res = await coursePostsAPI.create({
@@ -274,6 +321,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               });
                               const newId = res?.data?.id ? Number(res.data.id) : null;
                               if (newId) setCreatedPostId(newId);
+                              if (newId) setRelatedPost({ id: newId, status: String(res?.data?.status || "DRAFT") });
                               toast.success("공고가 생성되었습니다. (DRAFT)");
                               onPostCreated?.(newId || undefined);
                             } catch (e: any) {
@@ -285,23 +333,23 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                           }}
                           className={clsx(
                             "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700",
-                            creatingPost && "cursor-not-allowed opacity-60",
+                            (creatingPost || !!relatedPost || relatedPostLoading) && "cursor-not-allowed opacity-60",
                           )}>
-                          {creatingPost ? "생성 중..." : "공고 생성"}
+                          {creatingPost ? "생성 중..." : relatedPostLoading ? "확인 중..." : relatedPost ? "공고 존재" : "공고 생성"}
                         </button>
 
                         <button
                           onClick={() => {
                             setDeadline("");
                             setNotes("");
-                            setCreatedPostId(null);
+                            if (!relatedPost) setCreatedPostId(null);
                           }}
                           className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
                           입력 초기화
                         </button>
                       </div>
 
-                      <div className="mt-3 text-xs text-zinc-500">* 이미 공고가 생성된 파견요청이라면 백엔드에서 중복 생성을 막습니다.</div>
+                      <div className="mt-3 text-xs text-zinc-500">* 공고 존재 여부는 서버에서 확인합니다. (CoursePost는 DispatchRequest와 1:1)</div>
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">공고 생성은 관리자만 가능합니다.</div>

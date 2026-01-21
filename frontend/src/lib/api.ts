@@ -99,13 +99,14 @@ export const dispatchRequestsAPI = {
 
 // === Course Posts (Recruiting) API ===
 export const coursePostsAPI = {
-  list: () => api.get("/course-posts/"),
+  list: (params?: { dispatch_request_id?: number }) => api.get("/course-posts/", params ? { params } : undefined),
   detail: (id: number) => api.get(`/course-posts/${id}/`),
   apply: (id: number, message?: string) => api.post(`/course-posts/${id}/apply/`, { message: message || "" }),
   withdraw: (id: number) => api.post(`/course-posts/${id}/withdraw/`),
 
   // admin/manager
-  adminList: () => api.get("/course-posts/admin/list/"),
+  adminList: (params?: { dispatch_request_id?: number }) => api.get("/course-posts/admin/list/", params ? { params } : undefined),
+
   adminDetail: (id: number) => api.get(`/course-posts/admin/${id}/`),
   create: (data: { dispatch_request_id: number; application_deadline?: string | null; notes_for_teachers?: string }) =>
     api.post("/course-posts/", data),
@@ -113,10 +114,7 @@ export const coursePostsAPI = {
   close: (id: number) => api.post(`/course-posts/admin/${id}/close/`),
   applications: (id: number) => api.get(`/course-posts/admin/${id}/applications/`),
   setApplicationStatus: (postId: number, applicationId: number, status: string) =>
-    api.patch(`/course-posts/admin/${postId}/set-application-status/`, {
-      application_id: applicationId,
-      status,
-    }),
+    api.patch(`/course-posts/admin/${postId}/set-application-status/`, { application_id: applicationId, status }),
 };
 
 // === Courses (Confirmed) API ===

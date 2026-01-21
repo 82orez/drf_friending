@@ -122,7 +122,7 @@ export default function AdminPostDetailPage() {
   const actions = (
     <>
       <Link
-        href="/admin/posts"
+        href="/admin-pages/posts"
         className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
         공고 목록
       </Link>
@@ -149,7 +149,7 @@ export default function AdminPostDetailPage() {
         }}
         className={clsx(
           "inline-flex items-center rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700",
-          (!selected || confirming) && "cursor-not-allowed opacity-60"
+          (!selected || confirming) && "cursor-not-allowed opacity-60",
         )}>
         {confirming ? "확정 중..." : "선정 강사로 강좌 확정"}
       </button>
@@ -179,9 +179,7 @@ export default function AdminPostDetailPage() {
               <StatusPill value={post.status} />
               {typeof post.applications_count === "number" && <span className="text-xs text-zinc-500">지원 {post.applications_count}명</span>}
             </div>
-            <div className="mt-1 text-sm text-zinc-600">
-              {cc ? `${cc.region_name} · ${cc.center_name} · ${cc.branch_name}` : "-"}
-            </div>
+            <div className="mt-1 text-sm text-zinc-600">{cc ? `${cc.region_name} · ${cc.center_name} · ${cc.branch_name}` : "-"}</div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
@@ -213,14 +211,14 @@ export default function AdminPostDetailPage() {
           {post.notes_for_teachers?.trim() && (
             <div className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="text-sm font-semibold text-zinc-900">강사 안내</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{post.notes_for_teachers}</div>
+              <div className="mt-2 text-sm whitespace-pre-wrap text-zinc-700">{post.notes_for_teachers}</div>
             </div>
           )}
 
           {dr?.extra_requirements?.trim() && (
             <div className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="text-sm font-semibold text-zinc-900">추가 요청사항</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{dr.extra_requirements}</div>
+              <div className="mt-2 text-sm whitespace-pre-wrap text-zinc-700">{dr.extra_requirements}</div>
             </div>
           )}
 
@@ -245,10 +243,18 @@ export default function AdminPostDetailPage() {
                 <table className="min-w-full border-separate border-spacing-0">
                   <thead>
                     <tr>
-                      <th className="whitespace-nowrap border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold text-zinc-700">강사</th>
-                      <th className="whitespace-nowrap border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold text-zinc-700">메시지</th>
-                      <th className="whitespace-nowrap border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold text-zinc-700">상태</th>
-                      <th className="whitespace-nowrap border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-right text-xs font-semibold text-zinc-700">액션</th>
+                      <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">
+                        강사
+                      </th>
+                      <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">
+                        메시지
+                      </th>
+                      <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">
+                        상태
+                      </th>
+                      <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-right text-xs font-semibold whitespace-nowrap text-zinc-700">
+                        액션
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -256,10 +262,12 @@ export default function AdminPostDetailPage() {
                       const isBusy = mutatingId === a.id;
                       const isSelected = a.status === "SELECTED";
                       return (
-                        <tr key={a.id} className={clsx(isSelected && "bg-emerald-50")}> 
+                        <tr key={a.id} className={clsx(isSelected && "bg-emerald-50")}>
                           <td className="border-b border-zinc-200 px-3 py-3 text-sm font-medium text-zinc-900">{a.teacher_display}</td>
                           <td className="border-b border-zinc-200 px-3 py-3 text-sm text-zinc-700">
-                            <div className="max-w-[480px] whitespace-pre-wrap">{a.message?.trim() ? a.message : <span className="text-zinc-500">-</span>}</div>
+                            <div className="max-w-[480px] whitespace-pre-wrap">
+                              {a.message?.trim() ? a.message : <span className="text-zinc-500">-</span>}
+                            </div>
                           </td>
                           <td className="border-b border-zinc-200 px-3 py-3">
                             <select
@@ -342,7 +350,7 @@ export default function AdminPostDetailPage() {
                                 }}
                                 className={clsx(
                                   "inline-flex items-center rounded-2xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700",
-                                  isSelected && "opacity-70"
+                                  isSelected && "opacity-70",
                                 )}>
                                 선정
                               </button>
