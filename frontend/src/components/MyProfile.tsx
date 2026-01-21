@@ -329,13 +329,13 @@ export default function MyProfile() {
 
                 <button
                   onClick={() => router.push("/teacher/posts")}
-                  className="w-full rounded-md border border-zinc-200 bg-white px-4 py-2 font-medium text-zinc-900 shadow-sm hover:cursor-pointer hover:bg-zinc-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
+                  className="hidden w-full rounded-md border border-zinc-200 bg-white px-4 py-2 font-medium text-zinc-900 shadow-sm hover:cursor-pointer hover:bg-zinc-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
                   Browse course posts (공고 보기)
                 </button>
 
                 <button
                   onClick={() => router.push("/teacher/courses")}
-                  className="w-full rounded-md border border-zinc-200 bg-white px-4 py-2 font-medium text-zinc-900 shadow-sm hover:cursor-pointer hover:bg-zinc-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
+                  className="hidden w-full rounded-md border border-zinc-200 bg-white px-4 py-2 font-medium text-zinc-900 shadow-sm hover:cursor-pointer hover:bg-zinc-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none">
                   My courses (배정된 강좌)
                 </button>
 

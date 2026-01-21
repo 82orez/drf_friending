@@ -48,6 +48,10 @@ export default function AdminHome() {
           </button>
         </div>
       </div>
+
+      <div className={"mt-6 flex justify-center text-sm text-zinc-600"}>
+        <Link href={"/"}>Back to Home</Link>
+      </div>
     </div>
   );
 }
