@@ -73,7 +73,7 @@ export default function DispatchRequestDetailPage() {
       setNextStatus(res.data?.status || "");
     } catch (e: any) {
       toast.error("파견요청 상세를 불러오지 못했습니다.");
-      router.push("/admin/dispatch-requests");
+      router.push("/admin-pages/dispatch-requests");
     } finally {
       setFetching(false);
     }
@@ -129,7 +129,7 @@ export default function DispatchRequestDetailPage() {
     <PageShell
       title={item ? `파견요청 #${item.id}` : "파견요청"}
       subtitle={fetching ? "불러오는 중..." : "파견요청 상세 정보를 확인합니다."}
-      backHref="/admin/dispatch-requests"
+      backHref="/admin-pages/dispatch-requests"
       actions={actions}>
       {!item ? (
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">로딩 중...</div>

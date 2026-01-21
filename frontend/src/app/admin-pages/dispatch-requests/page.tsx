@@ -13,6 +13,7 @@ import PageShell from "@/components/cms/PageShell";
 import StatusPill from "@/components/cms/StatusPill";
 import DayBadges from "@/components/cms/DayBadges";
 import DispatchRequestModal, { type CultureCenterBranch } from "@/components/dispatch/DispatchRequestModal";
+import DispatchRequestDetailModal from "@/components/dispatch/DispatchRequestDetailModal";
 
 type DispatchRequest = {
   id: number;
@@ -50,6 +51,9 @@ export default function DispatchRequestsPage() {
   const [fetching, setFetching] = useState(true);
 
   const [modalOpen, setModalOpen] = useState(false);
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
 
   const [branches, setBranches] = useState<CultureCenterBranch[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(true);
@@ -136,14 +140,23 @@ export default function DispatchRequestsPage() {
               <tbody className="text-sm text-zinc-900">
                 {!fetching && !items.length ? (
                   <tr>
-                    <td className="px-4 py-6 text-zinc-600" colSpan={9}>
+                    <td className="px-4 py-6 text-zinc-600" colSpan={11}>
                       아직 파견요청이 없습니다.
                     </td>
                   </tr>
                 ) : (
                   items.map((it) => (
                     <tr key={it.id} className="border-t border-zinc-100 hover:bg-zinc-50">
-                      <td className="px-4 py-3"># {it.id}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => {
+                            setSelectedRequestId(it.id);
+                            setDetailOpen(true);
+                          }}
+                          className="font-semibold text-zinc-900 hover:underline">
+                          # {it.id}
+                        </button>
+                      </td>
                       <td className="px-4 py-3">
                         <StatusPill value={it.status} />
                       </td>
@@ -156,9 +169,7 @@ export default function DispatchRequestsPage() {
                       <td className="px-4 py-3">{it.teaching_language}</td>
                       <td className="px-4 py-3">{it.instructor_type}</td>
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/frontend/src/app/admin-pages/dispatch-requests/${it.id}`}
-                          className="font-semibold text-zinc-900 hover:underline">
+                        <Link href={`/admin-pages/dispatch-requests/${it.id}`} className="font-semibold text-zinc-900 hover:underline">
                           {it.course_title}
                         </Link>
                       </td>
@@ -195,6 +206,20 @@ export default function DispatchRequestsPage() {
           fetchList();
         }}
         onSubmitError={(msg) => toast.error(msg || "파견요청 생성에 실패했습니다.")}
+      />
+
+      <DispatchRequestDetailModal
+        open={detailOpen}
+        requestId={selectedRequestId}
+        isAdmin={isAdmin}
+        onClose={() => {
+          setDetailOpen(false);
+          setSelectedRequestId(null);
+        }}
+        onPostCreated={() => {
+          // 목록 새로고침(공고 생성 등 이후 상태 변경 가능)
+          fetchList();
+        }}
       />
     </>
   );
