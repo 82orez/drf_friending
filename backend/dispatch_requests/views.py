@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions
 from .models import DispatchRequest
-from .serializers import DispatchRequestSerializer
+from .serializers import DispatchRequestSerializer, DispatchRequestAdminSerializer
 
 from django.db import transaction
 from .emails import send_dispatch_request_received_email
@@ -83,5 +83,5 @@ class DispatchRequestAdminDetailView(generics.RetrieveUpdateAPIView):
     """
 
     permission_classes = [permissions.IsAdminUser]
-    serializer_class = DispatchRequestSerializer
+    serializer_class = DispatchRequestAdminSerializer  # ✅ 변경
     queryset = DispatchRequest.objects.select_related("culture_center", "requester")

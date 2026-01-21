@@ -107,12 +107,10 @@ function toArrayMessage(v: any): string[] {
 function extractFieldErrors(err: any): { fieldErrors: FieldErrors; topMessage?: string } {
   const data = err?.response?.data;
 
-  // DRF: {detail: "..."}
   if (data && typeof data === "object" && typeof data.detail === "string") {
     return { fieldErrors: {}, topMessage: data.detail };
   }
 
-  // DRF validation: { field: ["..."], non_field_errors: ["..."] }
   if (data && typeof data === "object" && !Array.isArray(data)) {
     const fe: FieldErrors = {};
     let top = "";
@@ -122,22 +120,15 @@ function extractFieldErrors(err: any): { fieldErrors: FieldErrors; topMessage?: 
       if (!msgs.length) continue;
 
       fe[k] = msgs;
-
-      if (!top) {
-        // 첫 메시지를 topMessage로도 쓰되, field 아래에도 표시
-        top = msgs[0];
-      }
+      if (!top) top = msgs[0];
     }
 
-    // message 라는 키가 오는 경우도 대비
     if (!top && typeof (data as any).message === "string") top = (data as any).message;
 
     return { fieldErrors: fe, topMessage: top || undefined };
   }
 
-  // fallback
   const fallback = err?.response?.data?.message || err?.message || "요청 처리 중 오류가 발생했습니다.";
-
   return { fieldErrors: {}, topMessage: String(fallback) };
 }
 
@@ -157,7 +148,6 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
   const [postActionLoading, setPostActionLoading] = useState<"publish" | "close" | null>(null);
 
-  // ✅ inline error states
   const [topError, setTopError] = useState<string>("");
   const [createErrors, setCreateErrors] = useState<FieldErrors>({});
 
@@ -167,7 +157,6 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   };
 
   const gotoPostAndClose = (postId: number) => {
-    // ✅ 공고 상세로 이동 + 모달 닫기
     router.push(`/admin-pages/posts/${postId}`);
     onClose();
   };
@@ -180,7 +169,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
     try {
       setRelatedPostLoading(true);
-      const res = await coursePostsAPI.adminList({ dispatch_request_id: rid });
+      const res = await coursePostsAPI.adminList({ dispatch_request_id: rid } as any);
       const list = Array.isArray(res.data) ? res.data : [];
       if (list.length > 0) {
         const pid = Number(list[0].id);
@@ -278,11 +267,11 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
             <div className="space-y-4 px-5 py-5 sm:px-6">
               {topError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{topError}</div> : null}
 
-              {fetching && <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>}
+              {fetching ? <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div> : null}
 
-              {!fetching && !item && (
+              {!fetching && !item ? (
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">상세 정보를 불러오지 못했습니다.</div>
-              )}
+              ) : null}
 
               {item && (
                 <>
@@ -503,10 +492,15 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               return;
                             }
 
+                            // ✅ NEW: confirm
+                            const ok = window.confirm("공고를 생성할까요?\n\n- 공고가 생성됩니다.(DRAFT)\n- 파견요청 상태가 CONFIRMED로 변경됩니다.");
+                            if (!ok) return;
+
                             clearErrors();
                             setCreatingPost(true);
 
                             try {
+                              // 1) 공고 생성
                               const res = await coursePostsAPI.create({
                                 dispatch_request_id: item.id,
                                 application_deadline: deadline ? deadline : null,
@@ -519,6 +513,15 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               if (newId) {
                                 setCreatedPostId(newId);
                                 setRelatedPost({ id: newId, status: newStatus });
+                              }
+
+                              // 2) ✅ NEW: DispatchRequest.status -> CONFIRMED
+                              try {
+                                await dispatchRequestsAPI.adminUpdate(item.id, { status: "CONFIRMED" });
+                                setItem((prev) => (prev ? { ...prev, status: "CONFIRMED" } : prev));
+                              } catch (e: any) {
+                                // 공고 생성은 됐는데 status 업데이트만 실패할 수 있음
+                                toast.error("공고는 생성되었지만, 파견요청 상태(CONFIRMED) 변경에 실패했습니다.");
                               }
 
                               toast.success("공고가 생성되었습니다. (DRAFT)");

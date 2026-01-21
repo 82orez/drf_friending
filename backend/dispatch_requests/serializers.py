@@ -1,8 +1,8 @@
+# backend/dispatch_requests/serializers.py
 from rest_framework import serializers
 from culture_centers.models import CultureCenter
 from culture_centers.serializers import CultureCenterBranchSerializer
 from .models import DispatchRequest
-
 from teacher_applications.models import TeacherApplication, ApplicationStatusChoices
 
 
@@ -70,10 +70,7 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
 
     def get_teacher_name_display(self, obj: DispatchRequest):
         ta = getattr(obj, "teacher_name", None)
-        if not ta:
-            return None
-        # __str__가 이미 "First Last (email)" 형태이므로 그대로 사용
-        return str(ta)
+        return str(ta) if ta else None
 
     def validate(self, attrs):
         start_time = attrs.get("start_time")
@@ -108,3 +105,17 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+
+# ✅ NEW: 관리자용 Serializer (status writable)
+class DispatchRequestAdminSerializer(DispatchRequestSerializer):
+    class Meta(DispatchRequestSerializer.Meta):
+        read_only_fields = [
+            "id",
+            "requester",
+            "created_at",
+            "updated_at",
+            "end_date",
+            "teacher_name",
+            "teacher_name_display",
+        ]
