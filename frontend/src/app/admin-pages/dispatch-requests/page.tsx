@@ -37,10 +37,31 @@ type DispatchRequest = {
   created_at: string;
 };
 
+function toHHMM(t?: string | null) {
+  if (!t) return null;
+
+  // "HH:MM" or "HH:MM:SS" or "HH:MM:SS.sss" 같은 형태 모두 처리
+  const s = String(t).trim();
+  if (s.length >= 5 && s[2] === ":") return s.slice(0, 5);
+
+  // 혹시 "H:MM" 같이 올 가능성까지 대비 (거의 없지만 안전하게)
+  const parts = s.split(":");
+  if (parts.length >= 2) {
+    const hh = parts[0].padStart(2, "0");
+    const mm = parts[1].padStart(2, "0");
+    return `${hh}:${mm}`.slice(0, 5);
+  }
+
+  return s;
+}
+
 function fmtTimeRange(s?: string | null, e?: string | null) {
-  if (!s && !e) return "-";
-  if (s && e) return `${s} ~ ${e}`;
-  return s || e || "-";
+  const ss = toHHMM(s);
+  const ee = toHHMM(e);
+
+  if (!ss && !ee) return "-";
+  if (ss && ee) return `${ss} ~ ${ee}`;
+  return ss || ee || "-";
 }
 
 export default function DispatchRequestsPage() {
