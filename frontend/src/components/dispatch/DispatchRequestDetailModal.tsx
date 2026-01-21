@@ -1,9 +1,9 @@
-// frontend/src/components/dispatch/DispatchRequestDetailModal.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
 import { coursePostsAPI, dispatchRequestsAPI } from "@/lib/api";
@@ -74,7 +74,55 @@ function normalizeStatus(v?: string | null) {
     .toUpperCase();
 }
 
+type FieldErrors = Record<string, string[]>;
+
+function toArrayMessage(v: any): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((x) => String(x));
+  if (typeof v === "string") return [v];
+  return [String(v)];
+}
+
+function extractFieldErrors(err: any): { fieldErrors: FieldErrors; topMessage?: string } {
+  const data = err?.response?.data;
+
+  // DRF: {detail: "..."}
+  if (data && typeof data === "object" && typeof data.detail === "string") {
+    return { fieldErrors: {}, topMessage: data.detail };
+  }
+
+  // DRF validation: { field: ["..."], non_field_errors: ["..."] }
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const fe: FieldErrors = {};
+    let top = "";
+
+    for (const k of Object.keys(data)) {
+      const msgs = toArrayMessage((data as any)[k]);
+      if (!msgs.length) continue;
+
+      fe[k] = msgs;
+
+      if (!top) {
+        // 첫 메시지를 topMessage로도 쓰되, field 아래에도 표시
+        top = msgs[0];
+      }
+    }
+
+    // message 라는 키가 오는 경우도 대비
+    if (!top && typeof (data as any).message === "string") top = (data as any).message;
+
+    return { fieldErrors: fe, topMessage: top || undefined };
+  }
+
+  // fallback
+  const fallback = err?.response?.data?.message || err?.message || "요청 처리 중 오류가 발생했습니다.";
+
+  return { fieldErrors: {}, topMessage: String(fallback) };
+}
+
 export default function DispatchRequestDetailModal({ open, requestId, isAdmin, onClose, onPostCreated }: Props) {
+  const router = useRouter();
+
   const [fetching, setFetching] = useState(false);
   const [item, setItem] = useState<DispatchRequestDetail | null>(null);
 
@@ -88,6 +136,21 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
   const [postActionLoading, setPostActionLoading] = useState<"publish" | "close" | null>(null);
 
+  // ✅ inline error states
+  const [topError, setTopError] = useState<string>("");
+  const [createErrors, setCreateErrors] = useState<FieldErrors>({});
+
+  const clearErrors = () => {
+    setTopError("");
+    setCreateErrors({});
+  };
+
+  const gotoPostAndClose = (postId: number) => {
+    // ✅ 공고 상세로 이동 + 모달 닫기
+    router.push(`/admin-pages/posts/${postId}`);
+    onClose();
+  };
+
   const fetchRelatedPost = async (rid: number) => {
     if (!isAdmin) {
       setRelatedPost(null);
@@ -99,13 +162,15 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
       const res = await coursePostsAPI.adminList({ dispatch_request_id: rid });
       const list = Array.isArray(res.data) ? res.data : [];
       if (list.length > 0) {
-        setRelatedPost({ id: Number(list[0].id), status: String(list[0].status) });
-        setCreatedPostId(Number(list[0].id));
+        const pid = Number(list[0].id);
+        const pst = String(list[0].status);
+        setRelatedPost({ id: pid, status: pst });
+        setCreatedPostId(pid);
       } else {
         setRelatedPost(null);
         setCreatedPostId(null);
       }
-    } catch (e) {
+    } catch {
       setRelatedPost(null);
       setCreatedPostId(null);
     } finally {
@@ -118,10 +183,11 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
       setFetching(true);
       setCreatedPostId(null);
       setRelatedPost(null);
+      clearErrors();
 
       const res = isAdmin ? await dispatchRequestsAPI.adminDetail(rid) : await dispatchRequestsAPI.detail(rid);
       setItem(res.data);
-    } catch (e: any) {
+    } catch {
       toast.error("파견요청 상세를 불러오지 못했습니다.");
       setItem(null);
     } finally {
@@ -155,6 +221,9 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   const canPublish = !!relatedPost && relatedPostStatus === "DRAFT";
   const canClose = !!relatedPost && relatedPostStatus === "PUBLISHED";
 
+  const deadlineErr = createErrors["application_deadline"] || createErrors["deadline"] || createErrors["applicationDeadline"] || [];
+  const notesErr = createErrors["notes_for_teachers"] || createErrors["notes"] || createErrors["notesForTeachers"] || [];
+
   if (!open) return null;
 
   return (
@@ -186,6 +255,8 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
             </div>
 
             <div className="space-y-4 px-5 py-5 sm:px-6">
+              {topError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{topError}</div> : null}
+
               {fetching && <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>}
 
               {!fetching && !item && (
@@ -294,6 +365,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               disabled={postActionLoading !== null}
                               onClick={async () => {
                                 if (!relatedPost) return;
+                                clearErrors();
                                 setPostActionLoading("publish");
                                 try {
                                   const res = await coursePostsAPI.publish(relatedPost.id);
@@ -301,9 +373,11 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                                   setRelatedPost({ id: relatedPost.id, status: newStatus });
                                   toast.success("공고가 게시되었습니다. (PUBLISHED)");
                                   onPostCreated?.(relatedPost.id);
+                                  gotoPostAndClose(relatedPost.id);
                                 } catch (e: any) {
-                                  const msg = e?.response?.data?.detail || e?.response?.data?.message || "공고 게시(publish)에 실패했습니다.";
-                                  toast.error(msg);
+                                  const { topMessage } = extractFieldErrors(e);
+                                  setTopError(topMessage || "공고 게시(publish)에 실패했습니다.");
+                                  toast.error(topMessage || "공고 게시(publish)에 실패했습니다.");
                                 } finally {
                                   setPostActionLoading(null);
                                 }
@@ -312,7 +386,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                                 "inline-flex items-center rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700",
                                 postActionLoading && "cursor-not-allowed opacity-60",
                               )}>
-                              {postActionLoading === "publish" ? "게시 중..." : "게시(Publish)"}
+                              {postActionLoading === "publish" ? "게시 중..." : "게시(Publish) → 상세로 이동"}
                             </button>
                           )}
 
@@ -321,6 +395,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               disabled={postActionLoading !== null}
                               onClick={async () => {
                                 if (!relatedPost) return;
+                                clearErrors();
                                 setPostActionLoading("close");
                                 try {
                                   const res = await coursePostsAPI.close(relatedPost.id);
@@ -328,9 +403,11 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                                   setRelatedPost({ id: relatedPost.id, status: newStatus });
                                   toast.success("공고가 마감되었습니다. (CLOSED)");
                                   onPostCreated?.(relatedPost.id);
+                                  gotoPostAndClose(relatedPost.id);
                                 } catch (e: any) {
-                                  const msg = e?.response?.data?.detail || e?.response?.data?.message || "공고 마감(close)에 실패했습니다.";
-                                  toast.error(msg);
+                                  const { topMessage } = extractFieldErrors(e);
+                                  setTopError(topMessage || "공고 마감(close)에 실패했습니다.");
+                                  toast.error(topMessage || "공고 마감(close)에 실패했습니다.");
                                 } finally {
                                   setPostActionLoading(null);
                                 }
@@ -339,7 +416,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                                 "inline-flex items-center rounded-2xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-black",
                                 postActionLoading && "cursor-not-allowed opacity-60",
                               )}>
-                              {postActionLoading === "close" ? "마감 중..." : "마감(Close)"}
+                              {postActionLoading === "close" ? "마감 중..." : "마감(Close) → 상세로 이동"}
                             </button>
                           )}
 
@@ -355,30 +432,43 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                           <label className="text-xs font-medium text-zinc-600">지원 마감(선택)</label>
                           <input
                             value={deadline}
-                            onChange={(e) => setDeadline(e.target.value)}
+                            onChange={(e) => {
+                              setDeadline(e.target.value);
+                              if (deadlineErr.length) setCreateErrors((prev) => ({ ...prev, application_deadline: [] }));
+                            }}
                             placeholder="YYYY-MM-DDTHH:mm"
                             disabled={!!relatedPost}
                             className={clsx(
                               "mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm",
                               relatedPost && "cursor-not-allowed bg-zinc-50 text-zinc-500",
+                              deadlineErr.length && "border-rose-300",
                             )}
                           />
-                          <p className="mt-1 text-xs text-zinc-500">예: 2026-02-01T18:00</p>
+                          {deadlineErr.length ? (
+                            <div className="mt-1 text-xs text-rose-600">{deadlineErr[0]}</div>
+                          ) : (
+                            <p className="mt-1 text-xs text-zinc-500">예: 2026-02-01T18:00</p>
+                          )}
                         </div>
 
                         <div className="md:col-span-2">
                           <label className="text-xs font-medium text-zinc-600">강사 안내(선택)</label>
                           <textarea
                             value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
+                            onChange={(e) => {
+                              setNotes(e.target.value);
+                              if (notesErr.length) setCreateErrors((prev) => ({ ...prev, notes_for_teachers: [] }));
+                            }}
                             rows={3}
                             disabled={!!relatedPost}
                             className={clsx(
                               "mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm",
                               relatedPost && "cursor-not-allowed bg-zinc-50 text-zinc-500",
+                              notesErr.length && "border-rose-300",
                             )}
                             placeholder="강사에게 전달할 공지/안내사항"
                           />
+                          {notesErr.length ? <div className="mt-1 text-xs text-rose-600">{notesErr[0]}</div> : null}
                         </div>
                       </div>
 
@@ -392,24 +482,33 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               return;
                             }
 
+                            clearErrors();
                             setCreatingPost(true);
+
                             try {
                               const res = await coursePostsAPI.create({
                                 dispatch_request_id: item.id,
                                 application_deadline: deadline ? deadline : null,
                                 notes_for_teachers: notes || "",
                               });
+
                               const newId = res?.data?.id ? Number(res.data.id) : null;
                               const newStatus = res?.data?.status ? String(res.data.status) : "DRAFT";
+
                               if (newId) {
                                 setCreatedPostId(newId);
                                 setRelatedPost({ id: newId, status: newStatus });
                               }
+
                               toast.success("공고가 생성되었습니다. (DRAFT)");
                               onPostCreated?.(newId || undefined);
+
+                              if (newId) gotoPostAndClose(newId);
                             } catch (e: any) {
-                              const msg = e?.response?.data?.detail || e?.response?.data?.message || "공고 생성에 실패했습니다.";
-                              toast.error(msg);
+                              const { fieldErrors, topMessage } = extractFieldErrors(e);
+                              setCreateErrors(fieldErrors);
+                              setTopError(topMessage || "공고 생성에 실패했습니다.");
+                              toast.error(topMessage || "공고 생성에 실패했습니다.");
                             } finally {
                               setCreatingPost(false);
                             }
@@ -418,7 +517,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                             "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700",
                             (creatingPost || !!relatedPost || relatedPostLoading) && "cursor-not-allowed opacity-60",
                           )}>
-                          {creatingPost ? "생성 중..." : relatedPostLoading ? "확인 중..." : relatedPost ? "공고 존재" : "공고 생성"}
+                          {creatingPost ? "생성 중..." : relatedPostLoading ? "확인 중..." : relatedPost ? "공고 존재" : "공고 생성 → 상세로 이동"}
                         </button>
 
                         <button
@@ -426,6 +525,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                             setDeadline("");
                             setNotes("");
                             if (!relatedPost) setCreatedPostId(null);
+                            clearErrors();
                           }}
                           className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
                           입력 초기화
