@@ -9,7 +9,8 @@ import cityDistrictData from "@/lib/city_district.json";
 import WeeklyTimeTableReadOnly from "@/components/WeeklyTimeTableReadOnly";
 import Flag from "@/components/Flag";
 import DispatchRequestModal, { CultureCenterBranch } from "@/components/dispatch/DispatchRequestModal";
-import { Toaster, toast } from "react-hot-toast"; // ✅ NEW
+import { Toaster, toast } from "react-hot-toast";
+import Link from "next/link"; // ✅ NEW
 
 type TeacherApplication = {
   id: number;
@@ -694,6 +695,14 @@ export default function MainPage() {
           <div className="flex w-full items-center gap-2">
             <div className="w-full">{renderAdvancedSearchControls()}</div>
           </div>
+
+          {user?.role === "admin" && (
+            <Link
+              href="/admin"
+              className="inline-flex items-center justify-center rounded-xl bg-blue-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-blue-500 focus:ring-4 focus:ring-blue-200 focus:outline-none">
+              Admin
+            </Link>
+          )}
 
           <div className="flex flex-col items-center justify-end gap-3">
             <button

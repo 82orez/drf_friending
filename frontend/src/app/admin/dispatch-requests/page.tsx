@@ -120,9 +120,11 @@ export default function DispatchRequestsPage() {
             <table className="w-full min-w-[1000px] text-left">
               <thead className="bg-zinc-50 text-xs font-semibold text-zinc-600">
                 <tr>
+                  <th className="px-4 py-3">ID</th>
                   <th className="px-4 py-3">상태</th>
                   <th className="px-4 py-3">센터/지점</th>
                   <th className="px-4 py-3">언어</th>
+                  <th className="px-4 py-3">형태</th>
                   <th className="px-4 py-3">강좌명</th>
                   <th className="px-4 py-3">요일</th>
                   <th className="px-4 py-3">시간</th>
@@ -141,6 +143,7 @@ export default function DispatchRequestsPage() {
                 ) : (
                   items.map((it) => (
                     <tr key={it.id} className="border-t border-zinc-100 hover:bg-zinc-50">
+                      <td className="px-4 py-3"># {it.id}</td>
                       <td className="px-4 py-3">
                         <StatusPill value={it.status} />
                       </td>
@@ -151,6 +154,7 @@ export default function DispatchRequestsPage() {
                         <div className="text-xs text-zinc-600">{it.culture_center?.region_name}</div>
                       </td>
                       <td className="px-4 py-3">{it.teaching_language}</td>
+                      <td className="px-4 py-3">{it.instructor_type}</td>
                       <td className="px-4 py-3">
                         <Link href={`/admin/dispatch-requests/${it.id}`} className="font-semibold text-zinc-900 hover:underline">
                           {it.course_title}
