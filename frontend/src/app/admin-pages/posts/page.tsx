@@ -13,6 +13,15 @@ import PageShell from "@/components/cms/PageShell";
 import StatusPill from "@/components/cms/StatusPill";
 import DayBadges from "@/components/cms/DayBadges";
 
+// ✅ "HH:mm:ss" 또는 "HH:mm" 형태를 "HH:mm" 으로 통일
+function toHHmm(t?: string | null) {
+  if (!t) return "-";
+  const s = String(t).trim();
+  // "09:30:00" -> "09:30", "09:30" -> "09:30"
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) return s.slice(0, 5);
+  return s;
+}
+
 type CultureCenter = {
   id: number;
   center_name: string;
@@ -122,14 +131,14 @@ export default function AdminPostsPage() {
 
   return (
     <PageShell
-      title="공고 관리"
-      subtitle="파견요청(DispatchRequest) 기반으로 공고를 생성/게시/마감하고 지원자를 관리합니다."
+      title="모집 공고 관리"
+      subtitle="파견요청(DispatchRequest) 기반으로 모집 공고를 생성/게시/마감하고 지원자를 관리합니다."
       backHref="/admin-pages"
       actions={actions}>
       <div className="space-y-3">
         {/* Create */}
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-zinc-900">공고 생성</div>
+          <div className="text-sm font-semibold text-zinc-900">모집 공고 생성</div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-zinc-600">파견요청 선택</label>
@@ -144,7 +153,7 @@ export default function AdminPostsPage() {
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-zinc-500">이미 공고가 생성된 파견요청은 목록에서 숨깁니다.</p>
+              <p className="mt-1 text-xs text-zinc-500">이미 모집 공고가 생성된 파견요청은 목록에서 숨깁니다.</p>
             </div>
 
             <div>
@@ -182,13 +191,13 @@ export default function AdminPostsPage() {
                     application_deadline: deadline ? deadline : null,
                     notes_for_teachers: notes || "",
                   });
-                  toast.success("공고가 생성되었습니다. (DRAFT)");
+                  toast.success("모집 공고가 생성되었습니다. (DRAFT)");
                   setDispatchRequestId("");
                   setDeadline("");
                   setNotes("");
                   await refresh();
                 } catch (e: any) {
-                  const msg = e?.response?.data?.detail || e?.response?.data?.message || "공고 생성에 실패했습니다.";
+                  const msg = e?.response?.data?.detail || e?.response?.data?.message || "모집 공고 생성에 실패했습니다.";
                   toast.error(msg);
                 } finally {
                   setCreating(false);
@@ -198,7 +207,7 @@ export default function AdminPostsPage() {
                 "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700",
                 (creating || dispatchRequestId === "") && "cursor-not-allowed opacity-60",
               )}>
-              {creating ? "생성 중..." : "공고 생성"}
+              {creating ? "생성 중..." : "모집 공고 생성"}
             </button>
           </div>
         </div>
@@ -208,8 +217,8 @@ export default function AdminPostsPage() {
 
         {!fetching && posts.length === 0 && (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-            <div className="text-sm font-semibold text-zinc-900">공고가 없습니다.</div>
-            <div className="mt-1 text-sm text-zinc-600">위에서 파견요청을 선택해 공고를 생성해 주세요.</div>
+            <div className="text-sm font-semibold text-zinc-900">모집 공고가 없습니다.</div>
+            <div className="mt-1 text-sm text-zinc-600">위에서 강사 파견 요청을 선택해 모집 공고를 생성해 주세요.</div>
           </div>
         )}
 
@@ -217,7 +226,7 @@ export default function AdminPostsPage() {
           const dr = p.dispatch_request;
           const cc = dr?.culture_center;
           const place = cc ? `${cc.region_name} · ${cc.center_name} · ${cc.branch_name}` : "-";
-          const time = dr?.start_time && dr?.end_time ? `${dr.start_time} ~ ${dr.end_time}` : "-";
+          const time = dr?.start_time && dr?.end_time ? `${toHHmm(dr.start_time)} ~ ${toHHmm(dr.end_time)}` : "-";
 
           return (
             <div key={p.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -235,7 +244,7 @@ export default function AdminPostsPage() {
                   <Link
                     href={`/admin-pages/posts/${p.id}`}
                     className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
-                    상세/지원자
+                    모집 공고 상세 및 지원자 현황
                   </Link>
                   <button
                     onClick={async () => {
@@ -252,7 +261,7 @@ export default function AdminPostsPage() {
                       "inline-flex items-center rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700",
                       p.status === "PUBLISHED" && "opacity-60",
                     )}>
-                    게시
+                    게시하기
                   </button>
                   <button
                     onClick={async () => {
@@ -269,7 +278,7 @@ export default function AdminPostsPage() {
                       "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50",
                       p.status === "CLOSED" && "opacity-60",
                     )}>
-                    마감
+                    마감하기
                   </button>
                 </div>
               </div>
@@ -287,8 +296,12 @@ export default function AdminPostsPage() {
                       <span className="text-sm font-medium text-zinc-900">{time}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-zinc-500">개강</span>
+                      <span className="text-xs text-zinc-500">개강일</span>
                       <span className="text-sm font-medium text-zinc-900">{dr?.start_date || "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs text-zinc-500">종강일</span>
+                      <span className="text-sm font-medium text-zinc-900">{dr?.end_date || "-"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">수업횟수</span>
