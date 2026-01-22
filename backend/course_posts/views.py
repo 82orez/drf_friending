@@ -263,21 +263,13 @@ class CoursePostApplicationsView(generics.ListAPIView):
     serializer_class = CourseApplicationSerializer
 
     def get_queryset(self):
+        post_id = self.kwargs.get("pk")
+
         qs = (
-            CoursePost.objects.select_related(
-                "dispatch_request", "dispatch_request__culture_center"
-            )
-            .annotate(applications_count=Count("applications"))
+            CourseApplication.objects.select_related("teacher", "post")
+            .filter(post_id=post_id)
             .order_by("-created_at")
         )
-
-        # ✅ optional filter: /api/course-posts/admin/list/?dispatch_request_id=<id>
-        drid = self.request.query_params.get("dispatch_request_id")
-        if drid:
-            try:
-                qs = qs.filter(dispatch_request_id=int(drid))
-            except Exception:
-                pass
 
         return qs
 

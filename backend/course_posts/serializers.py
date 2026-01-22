@@ -30,7 +30,7 @@ class DispatchRequestSummarySerializer(serializers.ModelSerializer):
 
 
 class CourseApplicationSerializer(serializers.ModelSerializer):
-    teacher_display = serializers.CharField(source="teacher.__str__", read_only=True)
+    teacher_display = serializers.StringRelatedField(source="teacher", read_only=True)
 
     class Meta:
         model = CourseApplication

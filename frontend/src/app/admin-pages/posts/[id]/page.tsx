@@ -74,6 +74,14 @@ function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   );
 }
 
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700">
+      {children}
+    </span>
+  );
+}
+
 export default function AdminPostDetailPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -100,9 +108,28 @@ export default function AdminPostDetailPage() {
     setFetching(true);
     try {
       const [postRes, appRes] = await Promise.all([coursePostsAPI.adminDetail(postId), coursePostsAPI.applications(postId)]);
-      setPost(postRes.data);
-      const appData = Array.isArray(appRes.data) ? appRes.data : appRes.data?.results || appRes.data?.data || [];
-      setApps(appData);
+      const postData = postRes.data as CoursePost;
+      setPost(postData);
+
+      // DRF pagination 대비: [..] 또는 { results: [..] } 또는 { data: [..] }
+      const raw = (appRes as any)?.data;
+      const list: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.results) ? raw.results : Array.isArray(raw?.data) ? raw.data : [];
+
+      // ✅ "지원자 없음" 케이스에서 placeholder row가 섞여 들어오는 경우가 있어 방어적으로 필터링
+      // - teacher가 없거나
+      // - teacher_display가 비어있거나 '-' 인 항목은 실제 지원자로 보지 않음
+      const cleaned = list.filter((a) => {
+        const td = String(a?.teacher_display ?? "").trim();
+        const teacherOk = a?.teacher !== null && a?.teacher !== undefined && a?.teacher !== "";
+        return teacherOk && td && td !== "-";
+      });
+
+      // ✅ 백엔드에서 applications_count=0 이면 프론트에서도 무조건 비어있는 상태로 처리
+      if (typeof postData?.applications_count === "number" && postData.applications_count === 0) {
+        setApps([]);
+      } else {
+        setApps(cleaned as CourseApplication[]);
+      }
     } catch (e: any) {
       const msg = e?.response?.data?.detail || e?.response?.data?.message || "데이터를 불러오지 못했습니다.";
       toast.error(msg);
@@ -118,6 +145,14 @@ export default function AdminPostDetailPage() {
   }, [user, postId]);
 
   const selected = apps.find((a) => a.status === "SELECTED");
+
+  // ✅ 지원자 카드 렌더 여부는 "실제 지원 리스트" 기준
+  const hasApplicants = apps.length > 0;
+
+  // ✅ 상단 요약 배지(지원자 없음)는 "count 우선" + 없으면 apps 길이로 추정
+  const applicantsCount = typeof post?.applications_count === "number" ? post.applications_count : hasApplicants ? apps.length : 0;
+
+  const showNoApplicantsBadge = applicantsCount === 0;
 
   const actions = (
     <>
@@ -180,9 +215,19 @@ export default function AdminPostDetailPage() {
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-lg font-semibold text-zinc-900">{dr?.course_title || "(제목 없음)"}</div>
+
               <StatusPill value={post.status} />
-              {typeof post.applications_count === "number" && <span className="text-xs text-zinc-500">지원 {post.applications_count}명</span>}
+
+              {/* ✅ 지원자 수 / 지원자 없음 배지 */}
+              {typeof post.applications_count === "number" ? (
+                <span className="text-xs text-zinc-500">지원 {post.applications_count}명</span>
+              ) : (
+                <span className="text-xs text-zinc-500">지원 {apps.length}명</span>
+              )}
+
+              {showNoApplicantsBadge && <Badge>지원자 없음</Badge>}
             </div>
+
             <div className="mt-1 text-sm text-zinc-600">{cc ? `${cc.region_name} · ${cc.center_name} · ${cc.branch_name}` : "-"}</div>
           </div>
 
@@ -226,23 +271,21 @@ export default function AdminPostDetailPage() {
             </div>
           )}
 
-          {/* Applications */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-sm font-semibold text-zinc-900">지원자</div>
-                <div className="mt-1 text-sm text-zinc-600">상태를 변경하고, SELECTED 1명을 기준으로 강좌를 확정합니다.</div>
-              </div>
-              {selected && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                  선정됨: <span className="font-semibold">{selected.teacher_display}</span>
+          {/* Applications (지원자 0명일 때는 카드 자체를 숨김) */}
+          {hasApplicants && (
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-zinc-900">지원자</div>
+                  <div className="mt-1 text-sm text-zinc-600">상태를 변경하고, SELECTED 1명을 기준으로 강좌를 확정합니다.</div>
                 </div>
-              )}
-            </div>
+                {selected && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                    선정됨: <span className="font-semibold">{selected.teacher_display}</span>
+                  </div>
+                )}
+              </div>
 
-            {apps.length === 0 ? (
-              <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">아직 지원자가 없습니다.</div>
-            ) : (
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full border-separate border-spacing-0">
                   <thead>
@@ -366,8 +409,8 @@ export default function AdminPostDetailPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </PageShell>
