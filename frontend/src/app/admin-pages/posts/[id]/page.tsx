@@ -74,9 +74,14 @@ function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   );
 }
 
-function Badge({ children }: { children: React.ReactNode }) {
+function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "warning" }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700">
+    <span
+      className={clsx(
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
+        tone === "neutral" && "border-zinc-200 bg-zinc-50 text-zinc-700",
+        tone === "warning" && "border-amber-200 bg-amber-50 text-amber-700",
+      )}>
       {children}
     </span>
   );
@@ -108,6 +113,7 @@ export default function AdminPostDetailPage() {
     setFetching(true);
     try {
       const [postRes, appRes] = await Promise.all([coursePostsAPI.adminDetail(postId), coursePostsAPI.applications(postId)]);
+
       const postData = postRes.data as CoursePost;
       setPost(postData);
 
@@ -115,7 +121,7 @@ export default function AdminPostDetailPage() {
       const raw = (appRes as any)?.data;
       const list: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.results) ? raw.results : Array.isArray(raw?.data) ? raw.data : [];
 
-      // ✅ "지원자 없음" 케이스에서 placeholder row가 섞여 들어오는 경우가 있어 방어적으로 필터링
+      // ✅ "지원자 없음" 케이스에서 placeholder row 방어
       // - teacher가 없거나
       // - teacher_display가 비어있거나 '-' 인 항목은 실제 지원자로 보지 않음
       const cleaned = list.filter((a) => {
@@ -149,10 +155,8 @@ export default function AdminPostDetailPage() {
   // ✅ 지원자 카드 렌더 여부는 "실제 지원 리스트" 기준
   const hasApplicants = apps.length > 0;
 
-  // ✅ 상단 요약 배지(지원자 없음)는 "count 우선" + 없으면 apps 길이로 추정
-  const applicantsCount = typeof post?.applications_count === "number" ? post.applications_count : hasApplicants ? apps.length : 0;
-
-  const showNoApplicantsBadge = applicantsCount === 0;
+  // ✅ 상단 요약 표시용 지원자 수: count 우선, 없으면 apps 길이
+  const applicantsCount = typeof post?.applications_count === "number" ? post.applications_count : apps.length;
 
   const actions = (
     <>
@@ -218,14 +222,12 @@ export default function AdminPostDetailPage() {
 
               <StatusPill value={post.status} />
 
-              {/* ✅ 지원자 수 / 지원자 없음 배지 */}
-              {typeof post.applications_count === "number" ? (
-                <span className="text-xs text-zinc-500">지원 {post.applications_count}명</span>
+              {/* ✅ 지원자 0명일 때는 '지원 0명' 텍스트 숨김 + 주황 배지만 노출 */}
+              {applicantsCount > 0 ? (
+                <span className="text-xs text-zinc-500">지원 {applicantsCount}명</span>
               ) : (
-                <span className="text-xs text-zinc-500">지원 {apps.length}명</span>
+                <Badge tone="warning">지원자 없음</Badge>
               )}
-
-              {showNoApplicantsBadge && <Badge>지원자 없음</Badge>}
             </div>
 
             <div className="mt-1 text-sm text-zinc-600">{cc ? `${cc.region_name} · ${cc.center_name} · ${cc.branch_name}` : "-"}</div>
@@ -362,6 +364,7 @@ export default function AdminPostDetailPage() {
                                 className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50">
                                 후보
                               </button>
+
                               <button
                                 disabled={isBusy}
                                 onClick={async () => {
@@ -380,6 +383,7 @@ export default function AdminPostDetailPage() {
                                 className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50">
                                 탈락
                               </button>
+
                               <button
                                 disabled={isBusy}
                                 onClick={async () => {
