@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { toast } from "react-hot-toast";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { coursePostsAPI, dispatchRequestsAPI } from "@/lib/api";
+import { coursePostsAPI } from "@/lib/api";
 
 import PageShell from "@/components/cms/PageShell";
 import StatusPill from "@/components/cms/StatusPill";
@@ -57,24 +57,12 @@ type CoursePost = {
   applications_count?: number;
 };
 
-function toOptionLabel(dr: DispatchRequest) {
-  const cc = dr.culture_center;
-  const place = cc ? `${cc.region_name}·${cc.center_name}·${cc.branch_name}` : "-";
-  return `#${dr.id} | ${dr.course_title} | ${dr.teaching_language} | ${place} | ${dr.start_date}`;
-}
-
 export default function AdminPostsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   const [posts, setPosts] = useState<CoursePost[]>([]);
-  const [dispatchRequests, setDispatchRequests] = useState<DispatchRequest[]>([]);
   const [fetching, setFetching] = useState(true);
-  const [creating, setCreating] = useState(false);
-
-  const [dispatchRequestId, setDispatchRequestId] = useState<number | "">("");
-  const [deadline, setDeadline] = useState<string>("");
-  const [notes, setNotes] = useState<string>("");
 
   useEffect(() => {
     if (!loading && !user) router.push("/auth/login");
@@ -89,11 +77,9 @@ export default function AdminPostsPage() {
   const refresh = async () => {
     setFetching(true);
     try {
-      const [postsRes, drRes] = await Promise.all([coursePostsAPI.adminList(), dispatchRequestsAPI.adminList()]);
+      const postsRes = await coursePostsAPI.adminList();
       const postsData = Array.isArray(postsRes.data) ? postsRes.data : postsRes.data?.results || postsRes.data?.data || [];
-      const drData = Array.isArray(drRes.data) ? drRes.data : drRes.data?.results || drRes.data?.data || [];
       setPosts(postsData);
-      setDispatchRequests(drData);
     } catch (e: any) {
       const msg = e?.response?.data?.detail || e?.response?.data?.message || "데이터를 불러오지 못했습니다.";
       toast.error(msg);
@@ -107,12 +93,6 @@ export default function AdminPostsPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
-  const drOptions = useMemo(() => {
-    // 중복 생성은 백엔드가 막아주지만, UX를 위해 "이미 post가 있는 dr"는 목록에서 숨김
-    const used = new Set(posts.map((p) => p.dispatch_request?.id).filter(Boolean));
-    return dispatchRequests.filter((dr) => !used.has(dr.id));
-  }, [dispatchRequests, posts]);
 
   const actions = (
     <>
@@ -132,93 +112,17 @@ export default function AdminPostsPage() {
   return (
     <PageShell
       title="모집 공고 관리"
-      subtitle="파견요청(DispatchRequest) 기반으로 모집 공고를 생성/게시/마감하고 지원자를 관리합니다."
+      subtitle="생성된 모집 공고 초안을 최종적으로 게시/마감하고 지원자를 관리합니다."
       backHref="/admin-pages"
       actions={actions}>
       <div className="space-y-3">
-        {/* Create */}
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-zinc-900">모집 공고 생성</div>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium text-zinc-600">파견요청 선택</label>
-              <select
-                value={dispatchRequestId}
-                onChange={(e) => setDispatchRequestId(e.target.value ? Number(e.target.value) : "")}
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm">
-                <option value="">선택하세요</option>
-                {drOptions.map((dr) => (
-                  <option key={dr.id} value={dr.id}>
-                    {toOptionLabel(dr)}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-zinc-500">이미 모집 공고가 생성된 파견요청은 목록에서 숨깁니다.</p>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-zinc-600">지원 마감(선택)</label>
-              <input
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                placeholder="YYYY-MM-DDTHH:mm" // ISO
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-              />
-              <p className="mt-1 text-xs text-zinc-500">예: 2026-02-01T18:00 (시간대는 서버 설정에 따름)</p>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="text-xs font-medium text-zinc-600">강사 안내(선택)</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                placeholder="강사에게 전달할 공지/안내사항"
-              />
-            </div>
-          </div>
-
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              disabled={creating || dispatchRequestId === ""}
-              onClick={async () => {
-                if (dispatchRequestId === "") return;
-                setCreating(true);
-                try {
-                  await coursePostsAPI.create({
-                    dispatch_request_id: dispatchRequestId,
-                    application_deadline: deadline ? deadline : null,
-                    notes_for_teachers: notes || "",
-                  });
-                  toast.success("모집 공고가 생성되었습니다. (DRAFT)");
-                  setDispatchRequestId("");
-                  setDeadline("");
-                  setNotes("");
-                  await refresh();
-                } catch (e: any) {
-                  const msg = e?.response?.data?.detail || e?.response?.data?.message || "모집 공고 생성에 실패했습니다.";
-                  toast.error(msg);
-                } finally {
-                  setCreating(false);
-                }
-              }}
-              className={clsx(
-                "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700",
-                (creating || dispatchRequestId === "") && "cursor-not-allowed opacity-60",
-              )}>
-              {creating ? "생성 중..." : "모집 공고 생성"}
-            </button>
-          </div>
-        </div>
-
         {/* List */}
         {fetching && <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>}
 
         {!fetching && posts.length === 0 && (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6">
             <div className="text-sm font-semibold text-zinc-900">모집 공고가 없습니다.</div>
-            <div className="mt-1 text-sm text-zinc-600">위에서 강사 파견 요청을 선택해 모집 공고를 생성해 주세요.</div>
+            <div className="mt-1 text-sm text-zinc-600">강사 파견 요청 상세에서 모집 공고 초안을 생성해 주세요.</div>
           </div>
         )}
 

@@ -146,16 +146,16 @@ export default function DispatchRequestsPage() {
               <thead className="bg-zinc-50 text-xs font-semibold text-zinc-600">
                 <tr>
                   <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">상태</th>
-                  <th className="px-4 py-3">센터/지점</th>
-                  <th className="px-4 py-3">언어</th>
-                  <th className="px-4 py-3">형태</th>
+                  <th className="px-4 py-3">진행 상태</th>
+                  <th className="px-4 py-3">요청 센터/지점명</th>
+                  <th className="px-4 py-3">요청 과목</th>
+                  <th className="px-4 py-3">강사 형태</th>
                   <th className="px-4 py-3">강좌명</th>
                   <th className="px-4 py-3">요일</th>
                   <th className="px-4 py-3">시간</th>
-                  <th className="px-4 py-3">시작일</th>
-                  <th className="px-4 py-3">종료일</th>
-                  <th className="px-4 py-3">횟수</th>
+                  <th className="px-4 py-3">예상 개강일</th>
+                  <th className="px-4 py-3">예상 종강일</th>
+                  <th className="px-4 py-3">수업 횟수</th>
                 </tr>
               </thead>
               <tbody className="text-sm text-zinc-900">
