@@ -167,7 +167,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   };
 
   const gotoPostAndClose = (postId: number) => {
-    // ✅ 모집 공고 상세로 이동 + 모달 닫기
+    // ✅ 모집 공고 상세 페이지로 이동 + 모달 닫기
     router.push(`/admin-pages/posts/${postId}`);
     onClose();
   };
@@ -219,7 +219,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
       const res = isAdmin ? await dispatchRequestsAPI.adminDetail(rid) : await dispatchRequestsAPI.detail(rid);
       setItem(res.data);
     } catch {
-      toast.error("파견요청 상세를 불러오지 못했습니다.");
+      toast.error("강사 파견 요청 상세를 불러오지 못했습니다.");
       setItem(null);
     } finally {
       setFetching(false);
@@ -244,8 +244,8 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   }, [open, onClose]);
 
   const headerTitle = useMemo(() => {
-    if (!requestId) return "파견요청";
-    return item ? `파견요청 #${item.id}` : `파견요청 #${requestId}`;
+    if (!requestId) return "강사 파견 요청";
+    return item ? `강사 파견 요청 #${item.id}` : `강사 파견 요청 #${requestId}`;
   }, [item, requestId]);
 
   const relatedPostStatus = normalizeStatus(relatedPost?.status);
@@ -275,7 +275,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
             <div className="flex items-start justify-between gap-4 rounded-t-3xl border-b border-zinc-200 bg-zinc-50 px-5 py-5 sm:px-6">
               <div>
                 <div className="text-base font-semibold text-zinc-900">{headerTitle}</div>
-                <div className="mt-1 text-sm text-zinc-600">파견요청 상세 확인 및 모집 공고 생성/관리</div>
+                <div className="mt-1 text-sm text-zinc-600">강사 파견 요청 상세 및 모집 공고 생성/관리</div>
               </div>
 
               <button
@@ -368,7 +368,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-semibold text-zinc-900">모집 공고 생성 / 관리</div>
-                          <div className="mt-1 text-xs text-zinc-600">이 파견요청(#{item.id})을 기반으로 모집 공고를 생성/게시/마감합니다.</div>
+                          <div className="mt-1 text-xs text-zinc-600">이 강사 파견 요청(#{item.id})을 기반으로 모집 공고를 생성/게시/마감합니다.</div>
 
                           {relatedPostLoading ? (
                             <div className="mt-1 text-xs text-zinc-500">모집 공고 존재 여부 확인 중...</div>
@@ -517,7 +517,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
                             // ✅ confirm (이제 백엔드가 한 번에 처리)
                             const ok = window.confirm(
-                              "모집 공고를 생성할까요?\n\n- 모집 공고가 생성됩니다.(DRAFT)\n- 파견요청 상태가 CONFIRMED로 변경됩니다.",
+                              "모집 공고 초안을 생성할까요?\n\n- 모집 공고 초안이 생성됩니다.(DRAFT)\n- 강사 파견 요청 상태가 CONFIRMED로 변경됩니다.",
                             );
                             if (!ok) return;
 
@@ -543,7 +543,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               // ✅ UI 낙관적 업데이트(선택): 모달에 보이는 상태도 즉시 CONFIRMED로 반영
                               setItem((prev) => (prev ? { ...prev, status: "CONFIRMED" } : prev));
 
-                              toast.success("모집 공고가 생성되었습니다. (DRAFT)");
+                              toast.success("모집 공고 초안이 생성되었습니다. (DRAFT)");
                               onPostCreated?.(newId || undefined);
 
                               if (newId) gotoPostAndClose(newId);
@@ -566,7 +566,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               ? "확인 중..."
                               : relatedPost
                                 ? "모집 공고 존재"
-                                : "모집 공고 생성 → 상세로 이동"}
+                                : "모집 공고 초안 생성 및 상세 페이지로 이동"}
                         </button>
 
                         <button
