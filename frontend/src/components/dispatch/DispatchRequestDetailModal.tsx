@@ -1,3 +1,4 @@
+// frontend/src/components/dispatch/DispatchRequestDetailModal.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -461,13 +462,15 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                         <div>
                           <label className="text-xs font-medium text-zinc-600">지원 마감(선택)</label>
                           <input
+                            type="datetime-local"
                             value={deadline}
                             onChange={(e) => {
+                              // ✅ 브라우저 캘린더/시간 선택 UI 사용 (예: 2026-02-01T18:00)
                               setDeadline(e.target.value);
                               if (deadlineErr.length) setCreateErrors((prev) => ({ ...prev, application_deadline: [] }));
                             }}
-                            placeholder="YYYY-MM-DDTHH:mm"
                             disabled={!!relatedPost}
+                            step={60}
                             className={clsx(
                               "mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm",
                               relatedPost && "cursor-not-allowed bg-zinc-50 text-zinc-500",
@@ -477,7 +480,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                           {deadlineErr.length ? (
                             <div className="mt-1 text-xs text-rose-600">{deadlineErr[0]}</div>
                           ) : (
-                            <p className="mt-1 text-xs text-zinc-500">예: 2026-02-01T18:00</p>
+                            <p className="mt-1 text-xs text-zinc-500">캘린더에서 날짜를 선택하고 시간을 지정하세요. (예: 2026-02-01T18:00)</p>
                           )}
                         </div>
 
