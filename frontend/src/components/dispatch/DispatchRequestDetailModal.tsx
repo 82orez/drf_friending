@@ -458,7 +458,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                       )}
 
                       {/* create form */}
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className={clsx("mt-4 grid gap-3 md:grid-cols-2", { hidden: relatedPost })}>
                         <div>
                           <label className="text-xs font-medium text-zinc-600">지원 마감(선택)</label>
                           <input
@@ -505,7 +505,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                         </div>
                       </div>
 
-                      <div className="mt-3 flex items-center gap-2">
+                      <div className={clsx("mt-3 flex items-center gap-2", { hidden: relatedPost })}>
                         <button
                           disabled={creatingPost || !!relatedPost || relatedPostLoading}
                           onClick={async () => {

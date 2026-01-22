@@ -288,6 +288,10 @@ export default function AdminPostsPage() {
                   <div className="text-xs font-semibold text-zinc-700">수업 일정</div>
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs text-zinc-500">과목</span>
+                      <span className="text-sm font-medium text-zinc-900">{dr?.teaching_language || "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">요일</span>
                       <DayBadges days={dr?.class_days} className="justify-end" />
                     </div>
@@ -296,15 +300,15 @@ export default function AdminPostsPage() {
                       <span className="text-sm font-medium text-zinc-900">{time}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-zinc-500">개강일</span>
+                      <span className="text-xs text-zinc-500">예상 개강일</span>
                       <span className="text-sm font-medium text-zinc-900">{dr?.start_date || "-"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-zinc-500">종강일</span>
+                      <span className="text-xs text-zinc-500">예상 종강일</span>
                       <span className="text-sm font-medium text-zinc-900">{dr?.end_date || "-"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-zinc-500">수업횟수</span>
+                      <span className="text-xs text-zinc-500">수업 횟수</span>
                       <span className="text-sm font-medium text-zinc-900">{dr?.lecture_count ?? "-"}</span>
                     </div>
                   </div>
@@ -319,10 +323,12 @@ export default function AdminPostsPage() {
                       <span className="text-zinc-500">-</span>
                     )}
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="text-xs text-zinc-500">지원 마감</span>
-                    <span className="text-sm font-medium text-zinc-900">{p.application_deadline || "-"}</span>
-                  </div>
+                  {p.application_deadline && (
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span className="text-xs text-zinc-500">모집 공고 마감일</span>
+                      <span className="text-sm font-medium text-zinc-900">{p.application_deadline || "-"}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

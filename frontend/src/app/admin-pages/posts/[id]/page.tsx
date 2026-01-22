@@ -13,6 +13,15 @@ import PageShell from "@/components/cms/PageShell";
 import StatusPill from "@/components/cms/StatusPill";
 import DayBadges from "@/components/cms/DayBadges";
 
+// ✅ "HH:mm:ss" 또는 "HH:mm" 형태를 "HH:mm" 으로 통일
+function toHHmm(t?: string | null) {
+  if (!t) return "-";
+  const s = String(t).trim();
+  // "09:30:00" -> "09:30", "09:30" -> "09:30"
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(s)) return s.slice(0, 5);
+  return s;
+}
+
 type CultureCenter = {
   id: number;
   center_name: string;
@@ -163,7 +172,7 @@ export default function AdminPostDetailPage() {
       <Link
         href="/admin-pages/posts"
         className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
-        공고 목록
+        모집 공고 목록
       </Link>
       <button
         onClick={refresh}
@@ -197,11 +206,11 @@ export default function AdminPostDetailPage() {
 
   const dr = post?.dispatch_request;
   const cc = dr?.culture_center;
-  const time = dr?.start_time && dr?.end_time ? `${dr.start_time} ~ ${dr.end_time}` : "-";
+  const time = dr?.start_time && dr?.end_time ? `${toHHmm(dr.start_time)} ~ ${toHHmm(dr.end_time)}` : "-";
 
   return (
     <PageShell
-      title="공고 상세/지원자"
+      title="모집 공고 상세 및 지원자 현황"
       subtitle="지원자 상태를 관리하고 선정된 강사로 강좌를 확정하세요."
       backHref="/admin-pages/posts"
       actions={actions}>
@@ -209,7 +218,7 @@ export default function AdminPostDetailPage() {
 
       {!fetching && !post && (
         <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-          <div className="text-sm font-semibold text-zinc-900">공고를 찾을 수 없습니다.</div>
+          <div className="text-sm font-semibold text-zinc-900">모집 공고를 찾을 수 없습니다.</div>
         </div>
       )}
 
@@ -237,13 +246,13 @@ export default function AdminPostDetailPage() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="text-sm font-semibold text-zinc-900">수업 정보</div>
               <div className="mt-3 space-y-2">
-                <Field label="언어" value={dr?.teaching_language || "-"} />
+                <Field label="과목" value={dr?.teaching_language || "-"} />
                 <Field label="요일" value={<DayBadges days={dr?.class_days} className="justify-end" />} />
                 <Field label="시간" value={time} />
-                <Field label="개강" value={dr?.start_date || "-"} />
-                <Field label="종강" value={dr?.end_date || "-"} />
-                <Field label="수업횟수" value={dr?.lecture_count ?? "-"} />
-                <Field label="마감" value={post.application_deadline || "-"} />
+                <Field label="예상 개강일" value={dr?.start_date || "-"} />
+                <Field label="예상 종강일" value={dr?.end_date || "-"} />
+                <Field label="수업 횟수" value={dr?.lecture_count ?? "-"} />
+                {post.application_deadline && <Field label="지원 마감일" value={post.application_deadline || "-"} />}
               </div>
             </div>
 
