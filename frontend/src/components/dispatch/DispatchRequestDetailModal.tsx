@@ -300,10 +300,13 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                   <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="truncate text-lg font-bold text-zinc-900">{item.course_title}</div>
+                        <div className="truncate text-lg font-bold text-zinc-900">
+                          {item.culture_center?.center_name} / {item.culture_center?.branch_name} ({item.culture_center?.region_name})
+                        </div>
                         <div className="mt-1 text-sm text-zinc-600">
                           {item.teaching_language}
                           {item.instructor_type ? ` · ${item.instructor_type}` : ""}
+                          {item.course_title ? ` · ${item.course_title}` : ""}
                         </div>
                       </div>
                       <StatusPill value={item.status} />
@@ -311,11 +314,10 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       <div>
-                        <div className="text-xs font-semibold text-zinc-500">센터/지점</div>
-                        <div className="mt-1 text-sm font-semibold text-zinc-900">
+                        <div className="text-sm font-semibold text-zinc-900">센터/지점 정보</div>
+                        <div className="mt-1 text-sm font-semibold text-zinc-500">
                           {item.culture_center?.center_name} / {item.culture_center?.branch_name}
                         </div>
-                        <div className="mt-1 text-xs text-zinc-600">{item.culture_center?.region_name}</div>
                         <div className="mt-1 text-xs text-zinc-600">{item.culture_center?.address_detail}</div>
                         <div className="mt-2 grid gap-1 text-xs text-zinc-600 sm:grid-cols-2">
                           <div>센터 연락처: {item.culture_center?.center_phone || "-"}</div>
@@ -326,12 +328,12 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                       </div>
 
                       <div>
-                        <div className="text-xs font-semibold text-zinc-500">일정</div>
+                        <div className="text-sm font-semibold text-zinc-900">일정</div>
                         <div className="mt-1">
                           <DayBadges days={item.class_days} />
                         </div>
                         <div className="mt-2 text-sm text-zinc-900">{fmtTimeRange(item.start_time, item.end_time)}</div>
-                        <div className="mt-1 text-xs text-zinc-600">
+                        <div className="mt-1 text-sm text-zinc-600">
                           시작일: {item.start_date || "-"} / 종료일: {item.end_date || "-"} / 횟수: {item.lecture_count ?? "-"}
                         </div>
                       </div>
@@ -388,7 +390,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                         )}
                       </div>
 
-                      {/* existing post actions */}
+                      {/* existing post-actions */}
                       {relatedPost && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           {canPublish && (

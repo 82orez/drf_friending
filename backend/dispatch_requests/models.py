@@ -93,8 +93,8 @@ class DispatchRequest(models.Model):
     updated_at = models.DateTimeField("수정일", auto_now=True)
 
     class Meta:
-        verbose_name = "강사 파견 요청"
-        verbose_name_plural = "강사 파견 요청"
+        verbose_name = "강사 파견 요청 현황"
+        verbose_name_plural = "강사 파견 요청 현황"
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["status"]),
