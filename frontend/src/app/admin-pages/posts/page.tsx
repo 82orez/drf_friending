@@ -122,7 +122,7 @@ export default function AdminPostsPage() {
         {!fetching && posts.length === 0 && (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6">
             <div className="text-sm font-semibold text-zinc-900">모집 공고가 없습니다.</div>
-            <div className="mt-1 text-sm text-zinc-600">강사 파견 요청 상세에서 모집 공고 초안을 생성해 주세요.</div>
+            <div className="mt-1 text-sm text-zinc-600">강사 파견 요청 관리 페이지에서 모집 공고 초안을 생성해 주세요.</div>
           </div>
         )}
 
@@ -149,7 +149,10 @@ export default function AdminPostsPage() {
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Link
                     href={`/admin-pages/posts/${p.id}`}
-                    className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
+                    className={clsx(
+                      "items-center rounded-2xl border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-900 shadow-sm hover:bg-blue-50",
+                      { hidden: p.status == "DRAFT", "inline-flex": p.status !== "DRAFT" },
+                    )}>
                     모집 공고 상세 및 지원자 현황
                   </Link>
                   <button
@@ -183,7 +186,7 @@ export default function AdminPostsPage() {
                       }
                     }}
                     className={clsx(
-                      "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50",
+                      "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-200",
                       p.status === "CLOSED" && "opacity-60" && "cursor-not-allowed",
                     )}
                     disabled={p.status === "CLOSED"}>
