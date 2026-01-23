@@ -167,8 +167,8 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
   };
 
   const gotoPostAndClose = (postId: number) => {
-    // ✅ 모집 공고 상세 페이지로 이동 + 모달 닫기
-    router.push(`/admin-pages/posts/${postId}`);
+    // ✅ 모집 공고 목록 페이지로 이동 + 모달 닫기
+    router.push(`/admin-pages/posts`);
     onClose();
   };
 
@@ -519,7 +519,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
 
                             // ✅ confirm (이제 백엔드가 한 번에 처리)
                             const ok = window.confirm(
-                              "모집 공고 초안을 생성할까요?\n\n- 모집 공고 초안이 생성됩니다.(DRAFT)\n- 강사 파견 요청 상태가 CONFIRMED로 변경됩니다.",
+                              "모집 공고 초안을 생성할까요?\n\n- 모집 공고 초안이 생성됩니다.\n- 모집 공고 목록 보기 페이지로 이동합니다.",
                             );
                             if (!ok) return;
 
@@ -568,7 +568,7 @@ export default function DispatchRequestDetailModal({ open, requestId, isAdmin, o
                               ? "확인 중..."
                               : relatedPost
                                 ? "모집 공고 존재"
-                                : "모집 공고 초안 생성 및 상세 페이지로 이동"}
+                                : "모집 공고 초안 생성 및 목록 보기 페이지로 이동"}
                         </button>
 
                         <button

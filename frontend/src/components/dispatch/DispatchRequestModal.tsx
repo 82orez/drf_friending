@@ -389,6 +389,9 @@ export default function DispatchRequestModal({
   }, [reqApplicantEmail]);
 
   const submitDispatchRequest = async () => {
+    const preConfirmed = window.confirm("강사 파견 요청을 제출하시겠습니까? 이후에는 취소가 불가합니다.");
+    if (!preConfirmed) return;
+
     setReqSubmitting(true);
     setReqError(null);
 

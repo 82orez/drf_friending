@@ -157,6 +157,9 @@ export default function AdminPostsPage() {
                   </Link>
                   <button
                     onClick={async () => {
+                      const ok = window.confirm("이 모집 공고를 게시하시겠습니까? 이후에는 취소가 불가합니다.");
+                      if (!ok) return;
+
                       try {
                         await coursePostsAPI.publish(p.id);
                         toast.success("게시되었습니다.");
@@ -176,6 +179,9 @@ export default function AdminPostsPage() {
                   </button>
                   <button
                     onClick={async () => {
+                      const ok = window.confirm("이 모집 공고를 마감하시겠습니까? 이후에는 취소가 불가합니다.");
+                      if (!ok) return;
+
                       try {
                         await coursePostsAPI.close(p.id);
                         toast.success("마감되었습니다.");
