@@ -191,18 +191,18 @@ export default function AdminPostsPage() {
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <div className="text-xs font-semibold text-zinc-700">수업 일정</div>
+                  <div className="text-sm font-semibold text-zinc-900">수업 개요</div>
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-zinc-500">과목</span>
+                      <span className="text-xs text-zinc-500">수업 과목</span>
                       <span className="text-sm font-medium text-zinc-900">{dr?.teaching_language || "-"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-zinc-500">요일</span>
+                      <span className="text-xs text-zinc-500">수업 요일</span>
                       <DayBadges days={dr?.class_days} className="justify-end" />
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs text-zinc-500">시간</span>
+                      <span className="text-xs text-zinc-500">수업 시간</span>
                       <span className="text-sm font-medium text-zinc-900">{time}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
