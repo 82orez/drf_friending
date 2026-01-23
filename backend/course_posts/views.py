@@ -11,6 +11,8 @@ from rest_framework.views import APIView
 
 from teacher_applications.models import TeacherApplication
 
+from dispatch_requests.models import DispatchRequestStatusChoices  # ✅ add
+
 from .models import (
     CoursePost,
     CourseApplication,
@@ -159,9 +161,22 @@ class CoursePostPublishView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
 
     def post(self, request, pk: int):
-        post = CoursePost.objects.get(pk=pk)
-        post.publish()
-        post.save()
+        with transaction.atomic():
+            post = (
+                CoursePost.objects.select_for_update()
+                .select_related("dispatch_request")
+                .get(pk=pk)
+            )
+
+            post.publish()
+            post.save()
+
+            # ✅ also: DispatchRequest.status -> PUBLISHED
+            dr = post.dispatch_request
+            if dr and dr.status != DispatchRequestStatusChoices.PUBLISHED:
+                dr.status = DispatchRequestStatusChoices.PUBLISHED
+                dr.save()
+
         data = CoursePostSerializer(
             post,
             context={"request": request},

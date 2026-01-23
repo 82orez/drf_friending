@@ -11,7 +11,7 @@ class DispatchRequestStatusChoices(models.TextChoices):
     NEW = "NEW", "New"
     IN_REVIEW = "IN_REVIEW", "In review"
     MATCHED = "MATCHED", "Matched"
-    CONFIRMED = "CONFIRMED", "Confirmed"
+    PUBLISHED = "PUBLISHED", "Published"
     CLOSED = "CLOSED", "Closed"
     CANCELLED = "CANCELLED", "Cancelled"
 
