@@ -127,7 +127,7 @@ class CoursePostCreateSerializer(serializers.ModelSerializer):
         """
         ✅ 한 번의 요청으로 트랜잭션 처리
         - CoursePost 생성
-        - DispatchRequest.status -> CONFIRMED
+        - DispatchRequest.status -> IN_REVIEW
         """
         request = self.context["request"]
         dr_id = validated_data["dispatch_request"].id
@@ -149,9 +149,9 @@ class CoursePostCreateSerializer(serializers.ModelSerializer):
                 notes_for_teachers=validated_data.get("notes_for_teachers", ""),
             )
 
-            # ✅ 공고 생성 성공 시 파견요청 상태를 CONFIRMED로 변경
-            if dr.status != DispatchRequestStatusChoices.CONFIRMED:
-                dr.status = DispatchRequestStatusChoices.CONFIRMED
+            # ✅ 공고 생성 성공 시 파견요청 상태를 IN_REVIEW로 변경
+            if dr.status != DispatchRequestStatusChoices.IN_REVIEW:
+                dr.status = DispatchRequestStatusChoices.IN_REVIEW
                 dr.save()  # DispatchRequest.save()에서 full_clean() 유지
 
         return post
