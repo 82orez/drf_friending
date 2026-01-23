@@ -6,7 +6,7 @@ import clsx from "clsx";
 export default function StatusPill({ value, className }: { value?: string | null; className?: string }) {
   const v = (value || "").toUpperCase();
 
-  const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset";
+  const base = "inline-flex items-center rounded-xl px-2 py-2 text-xs font-semibold ring-1 ring-inset";
 
   const color =
     v === "PUBLISHED" || v === "CONFIRMED" || v === "ONGOING"
@@ -21,5 +21,7 @@ export default function StatusPill({ value, className }: { value?: string | null
               ? "bg-indigo-50 text-indigo-700 ring-indigo-200"
               : "bg-zinc-100 text-zinc-700 ring-zinc-200";
 
-  return <span className={clsx(base, color, className)}>{value || "-"}</span>;
+  const label = v === "CONFIRMED" ? "게시 대기 중" : v === "NEW" ? "신규 접수" : value || "-";
+
+  return <span className={clsx(base, color, className)}>{label}</span>;
 }

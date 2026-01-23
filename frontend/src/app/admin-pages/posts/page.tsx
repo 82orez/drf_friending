@@ -137,7 +137,9 @@ export default function AdminPostsPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="truncate text-base font-semibold text-zinc-900">{dr?.course_title || "(제목 없음)"}</div>
+                    <div className="truncate text-base font-semibold text-zinc-900">
+                      # {dr.id} {dr?.course_title || "(제목 없음)"}
+                    </div>
                     <StatusPill value={p.status} />
                     {typeof p.applications_count === "number" && <span className="text-xs text-zinc-500">지원 {p.applications_count}명</span>}
                   </div>
