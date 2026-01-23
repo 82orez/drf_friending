@@ -165,8 +165,10 @@ export default function AdminPostsPage() {
                     }}
                     className={clsx(
                       "inline-flex items-center rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700",
-                      p.status === "PUBLISHED" && "opacity-60",
-                    )}>
+                      p.status === "PUBLISHED" && "opacity-60" && "cursor-not-allowed",
+                      p.status === "CLOSED" && "opacity-60" && "cursor-not-allowed",
+                    )}
+                    disabled={p.status === "PUBLISHED" || p.status === "CLOSED"}>
                     게시하기
                   </button>
                   <button
@@ -182,8 +184,9 @@ export default function AdminPostsPage() {
                     }}
                     className={clsx(
                       "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50",
-                      p.status === "CLOSED" && "opacity-60",
-                    )}>
+                      p.status === "CLOSED" && "opacity-60" && "cursor-not-allowed",
+                    )}
+                    disabled={p.status === "CLOSED"}>
                     마감하기
                   </button>
                 </div>

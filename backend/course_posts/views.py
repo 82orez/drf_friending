@@ -192,9 +192,22 @@ class CoursePostCloseView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
 
     def post(self, request, pk: int):
-        post = CoursePost.objects.get(pk=pk)
-        post.close()
-        post.save()
+        with transaction.atomic():
+            post = (
+                CoursePost.objects.select_for_update()
+                .select_related("dispatch_request")
+                .get(pk=pk)
+            )
+
+            post.close()
+            post.save()
+
+            # ✅ also: DispatchRequest.status -> CLOSED
+            dr = post.dispatch_request
+            if dr and dr.status != DispatchRequestStatusChoices.CLOSED:
+                dr.status = DispatchRequestStatusChoices.CLOSED
+                dr.save()
+
         data = CoursePostSerializer(post, context={"request": request}).data
         return Response(data, status=status.HTTP_200_OK)
 
