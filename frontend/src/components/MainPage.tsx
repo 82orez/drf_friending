@@ -5,8 +5,11 @@ import clsx from "clsx";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import cityDistrictData from "@/lib/city_district.json";
-import WeeklyTimeTableReadOnly, { WeeklyTimeTableSummary } from "@/components/WeeklyTimeTableReadOnly";
+import WeeklyTimeTableReadOnly from "@/components/WeeklyTimeTableReadOnly";
 import Flag from "@/components/Flag";
+import DispatchRequestModal, { CultureCenterBranch } from "@/components/dispatch/DispatchRequestModal";
+import { Toaster, toast } from "react-hot-toast";
+import Link from "next/link"; // ✅ NEW
 
 type TeacherApplication = {
   id: number;
@@ -241,16 +244,50 @@ export default function MainPage() {
   const [error, setError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<TeacherApplication[]>([]);
 
+  // ===== Dispatch Request (Manager Request) (minimal state only) =====
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchesError, setBranchesError] = useState<string | null>(null);
+  const [branches, setBranches] = useState<CultureCenterBranch[]>([]);
+  const [reqSuccess, setReqSuccess] = useState<string | null>(null);
+
+  const openDispatchModal = async () => {
+    setDispatchOpen(true);
+
+    // 지점 목록 로딩 (최초 1회 or 비어있을 때만)
+    if (branches.length > 0) return;
+
+    setBranchesLoading(true);
+    setBranchesError(null);
+    try {
+      const res = await api.get("/culture-centers/branches/");
+      const data = Array.isArray(res.data) ? res.data : [];
+      setBranches(data);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 401) setBranchesError("로그인이 필요합니다. (401)");
+      else setBranchesError("문화센터 지점 목록을 불러오지 못했습니다.");
+      setBranches([]);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
+  const closeDispatchModal = () => {
+    setDispatchOpen(false);
+  };
+
   // 조건 검색(복합) UI 상태 (조건 검색창만 사용)
   // location: 시/도 -> 시/군/구 -> (선택) 구(일반구)
   const [sido, setSido] = useState<string>(ALL_VALUE);
   const [sigungu, setSigungu] = useState<string>(ALL_VALUE);
   const [gu, setGu] = useState<string>(ALL_VALUE);
 
-  // 조건 검색: language / gender / age
+  // 조건 검색: language / gender / age / nationality
   const [advLanguage, setAdvLanguage] = useState<string>(ALL_VALUE);
   const [advGender, setAdvGender] = useState<string>(ALL_VALUE);
   const [advAgeBracket, setAdvAgeBracket] = useState<AgeBracket>("ALL");
+  const [advNationality, setAdvNationality] = useState<string>(ALL_VALUE); // ✅ NEW
 
   const resetFilters = () => {
     setSido(ALL_VALUE);
@@ -259,6 +296,7 @@ export default function MainPage() {
     setAdvLanguage(ALL_VALUE);
     setAdvGender(ALL_VALUE);
     setAdvAgeBracket("ALL");
+    setAdvNationality(ALL_VALUE); // ✅ NEW
   };
 
   const sidoOptions = useMemo(() => {
@@ -286,6 +324,12 @@ export default function MainPage() {
     if (!Array.isArray(inner)) return [];
     return inner.map((g: any) => String(g?.name)).filter(Boolean);
   }, [sido, sigungu]);
+
+  // ✅ NEW: 국적 옵션(고정 choices 기반)
+  const nationalityOptions = useMemo(() => {
+    const keys = Object.keys(NATIONALITY_META) as NationalityKey[];
+    return keys.map((k) => ({ key: k, label: NATIONALITY_META[k].label }));
+  }, []);
 
   // location select 연동: 상위 변경 시 하위 초기화
   useEffect(() => {
@@ -516,9 +560,15 @@ export default function MainPage() {
       if (advGender !== ALL_VALUE && (t.gender || "") !== advGender) return false;
       if (advAgeBracket !== "ALL" && getAgeBracket(t.age ?? null) !== advAgeBracket) return false;
 
+      // ✅ NEW: nationality filter
+      if (advNationality !== ALL_VALUE) {
+        const tKey = normalizeNationalityKey(t.nationality);
+        if (tKey !== advNationality) return false;
+      }
+
       return true;
     });
-  }, [teachers, sido, sigungu, gu, advLanguage, advGender, advAgeBracket]);
+  }, [teachers, sido, sigungu, gu, advLanguage, advGender, advAgeBracket, advNationality]);
 
   const handleLogout = async () => {
     try {
@@ -575,7 +625,7 @@ export default function MainPage() {
           </select>
         </div>
 
-        {/* 하단: language / gender / age */}
+        {/* 하단: language / gender / age / nationality(NEW) */}
         <div className="flex w-full flex-wrap items-center justify-center gap-2">
           <select
             value={advLanguage}
@@ -587,6 +637,19 @@ export default function MainPage() {
             <option value="Japanese">Japanese</option>
             <option value="Chinese">Chinese</option>
             <option value="Spanish">Spanish</option>
+          </select>
+
+          <select
+            value={advNationality}
+            onChange={(e) => setAdvNationality(e.target.value)}
+            className="w-[190px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition outline-none focus:border-gray-300 focus:ring-4 focus:ring-gray-100"
+            title="Nationality">
+            <option value={ALL_VALUE}>전체 국적</option>
+            {nationalityOptions.map((n) => (
+              <option key={n.key} value={n.key}>
+                {n.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -622,17 +685,23 @@ export default function MainPage() {
     const locParts = [sido !== ALL_VALUE ? sido : null, sigungu !== ALL_VALUE ? sigungu : null, gu !== ALL_VALUE ? gu : null].filter(Boolean);
     const locText = locParts.length ? locParts.join(" / ") : "지역 전체";
     const langText = advLanguage === ALL_VALUE ? "전체 언어" : advLanguage;
+    const natText =
+      advNationality === ALL_VALUE ? "전체 국적" : NATIONALITY_META[(advNationality as NationalityKey) ?? "OTHER"]?.label || advNationality;
     const genderText = advGender === ALL_VALUE ? "전체 성별" : labelGender(advGender);
     const ageText = advAgeBracket === "ALL" ? "전체 연령대" : labelAgeBracket(advAgeBracket);
 
-    return `${locText} - ${langText} - ${genderText} - ${ageText}`;
-  }, [sido, sigungu, gu, advLanguage, advGender, advAgeBracket]);
+    return `${locText} - ${langText} - ${natText} - ${genderText} - ${ageText}`;
+  }, [sido, sigungu, gu, advLanguage, advNationality, advGender, advAgeBracket]);
 
   const detailThumb = toAbsoluteMediaUrl(teacherDetail?.profile_image_thumbnail);
   const detailFullName = `${teacherDetail?.first_name || ""} ${teacherDetail?.last_name || ""}`.trim();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
+      {/* ✅ Toast container */}
+      {/* 기본값은 top-center 이지만 모달창 특성에 따라 top-right 로 위치 변경 */}
+      <Toaster position="top-right" />
+
       {/* Navbar */}
       <header className="sticky top-0 z-20 border-b border-gray-200/70 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
@@ -656,6 +725,14 @@ export default function MainPage() {
             {/*</button>*/}
           </div>
 
+          {user?.role === "admin" && (
+            <Link
+              href="/admin-pages"
+              className="inline-flex items-center justify-center rounded-xl bg-blue-800 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:cursor-pointer hover:bg-blue-500 focus:ring-4 focus:ring-blue-200 focus:outline-none">
+              Admin
+            </Link>
+          )}
+
           {/* Right: Email + Logout */}
           <div className="flex flex-col items-center justify-end gap-3">
             <button
@@ -673,6 +750,29 @@ export default function MainPage() {
 
       {/* Content */}
       <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+        {/* ===== Manager: Dispatch Request CTA ===== */}
+        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-base font-semibold text-gray-900">강사 파견 요청</div>
+              <div className="mt-1 text-sm text-gray-600">강좌 개설 정보를 입력하여 주시면 강사 파견을 요청하실 수 있습니다.</div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {reqSuccess && (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+                  {reqSuccess}
+                </span>
+              )}
+              <button
+                onClick={openDispatchModal}
+                className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-black focus:ring-4 focus:ring-gray-200 focus:outline-none">
+                요청서 작성하기
+              </button>
+            </div>
+          </div>
+        </section>
+
         <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Registered Foreign Teachers</h1>
@@ -868,6 +968,9 @@ export default function MainPage() {
                         {detailLoading ? "Loading..." : detailFullName || `Teacher #${selectedTeacherId}`}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200">
+                          {teacherDetail?.teaching_languages}
+                        </span>
                         <span
                           className={clsx(
                             "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
@@ -877,6 +980,9 @@ export default function MainPage() {
                         </span>
                         <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
                           Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                          Teacher_ID: #{teacherDetail?.id}
                         </span>
                       </div>
                     </div>
@@ -1029,6 +1135,23 @@ export default function MainPage() {
           </div>
         </div>
       )}
+
+      {/* ✅ Dispatch Request Modal (external component) */}
+      <DispatchRequestModal
+        open={dispatchOpen}
+        onClose={closeDispatchModal}
+        branches={branches}
+        branchesLoading={branchesLoading}
+        branchesError={branchesError}
+        defaultApplicantEmail={user?.email || ""}
+        onSubmitSuccess={(msg) => {
+          setReqSuccess(msg);
+          toast.success(msg, { id: "dispatch-success" }); // ✅ optional
+        }}
+        onSubmitError={(msg) => {
+          toast.error(msg, { id: "dispatch-error" }); // ✅ NEW
+        }}
+      />
 
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-white">
