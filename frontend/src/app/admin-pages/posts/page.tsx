@@ -64,6 +64,10 @@ export default function AdminPostsPage() {
   const [posts, setPosts] = useState<CoursePost[]>([]);
   const [fetching, setFetching] = useState(true);
 
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [notesDraft, setNotesDraft] = useState<string>("");
+  const [savingNotes, setSavingNotes] = useState(false);
+
   useEffect(() => {
     if (!loading && !user) router.push("/auth/login");
   }, [loading, user, router]);
@@ -93,6 +97,34 @@ export default function AdminPostsPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const startEditNotes = (p: CoursePost) => {
+    setEditingPostId(p.id);
+    setNotesDraft(p.notes_for_teachers ?? "");
+  };
+
+  const cancelEditNotes = () => {
+    setEditingPostId(null);
+    setNotesDraft("");
+  };
+
+  const saveEditNotes = async (postId: number) => {
+    if (savingNotes) return;
+
+    setSavingNotes(true);
+    try {
+      await coursePostsAPI.adminUpdate(postId, { notes_for_teachers: notesDraft });
+      toast.success("메모가 저장되었습니다.");
+      setEditingPostId(null);
+      setNotesDraft("");
+      refresh();
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || e?.response?.data?.message || "메모 저장 실패";
+      toast.error(msg);
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   const actions = (
     <>
@@ -203,6 +235,19 @@ export default function AdminPostsPage() {
                     disabled={p.status === "CLOSED"}>
                     마감하기
                   </button>
+
+                  <button
+                    onClick={() => startEditNotes(p)}
+                    className={clsx(
+                      "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50",
+                      {
+                        "hover:cursor-pointer": p.status !== "CLOSED",
+                        "cursor-not-allowed opacity-60": p.status === "CLOSED",
+                      },
+                    )}
+                    disabled={p.status === "CLOSED"}>
+                    수정하기
+                  </button>
                 </div>
               </div>
 
@@ -238,14 +283,48 @@ export default function AdminPostsPage() {
                 </div>
 
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <div className="text-xs font-semibold text-zinc-700">메모</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold text-zinc-700">메모</div>
+
+                    {editingPostId === p.id && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => saveEditNotes(p.id)}
+                          disabled={savingNotes}
+                          className={clsx(
+                            "inline-flex items-center rounded-xl bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-zinc-800",
+                            { "cursor-not-allowed opacity-60": savingNotes },
+                          )}>
+                          저장
+                        </button>
+                        <button
+                          onClick={cancelEditNotes}
+                          disabled={savingNotes}
+                          className={clsx(
+                            "inline-flex items-center rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 shadow-sm hover:bg-zinc-50",
+                            { "cursor-not-allowed opacity-60": savingNotes },
+                          )}>
+                          취소
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-2 text-sm text-zinc-700">
-                    {p.notes_for_teachers?.trim() ? (
+                    {editingPostId === p.id ? (
+                      <textarea
+                        value={notesDraft}
+                        onChange={(e) => setNotesDraft(e.target.value)}
+                        className="min-h-[96px] w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 ring-0 outline-none focus:border-zinc-400"
+                        placeholder="강사에게 전달할 메모를 입력하세요."
+                      />
+                    ) : p.notes_for_teachers?.trim() ? (
                       <div className="whitespace-pre-wrap">{p.notes_for_teachers}</div>
                     ) : (
                       <span className="text-zinc-500">-</span>
                     )}
                   </div>
+
                   {p.application_deadline && (
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">모집 공고 마감일</span>

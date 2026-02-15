@@ -114,6 +114,9 @@ export const coursePostsAPI = {
   applications: (id: number) => api.get(`/course-posts/admin/${id}/applications/`),
   setApplicationStatus: (postId: number, applicationId: number, status: string) =>
     api.patch(`/course-posts/admin/${postId}/set-application-status/`, { application_id: applicationId, status }),
+
+  adminUpdate: (id: number, data: { notes_for_teachers?: string | null; application_deadline?: string | null }) =>
+    api.patch(`/course-posts/admin/${id}/`, data),
 };
 
 // === Courses (Confirmed) API ===
