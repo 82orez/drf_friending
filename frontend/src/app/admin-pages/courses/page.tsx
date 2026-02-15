@@ -36,7 +36,13 @@ type Course = {
   course_title: string;
   teaching_language: string;
   culture_center: CultureCenter;
-  teacher?: TeacherSummary | null;
+
+  // ✅ 백엔드 CourseSerializer 기준:
+  // - teacher: number | null (FK id)
+  // - teacher_display: string (read_only)
+  teacher?: number | null;
+  teacher_display?: string | null;
+
   class_days: any;
   start_time?: string | null;
   end_time?: string | null;
@@ -127,7 +133,7 @@ export default function AdminCoursesPage() {
                   </div>
                   <div className="mt-1 text-sm text-zinc-600">{place}</div>
                   <div className="mt-1 text-sm text-zinc-600">
-                    강사: <span className="font-medium text-zinc-900">{c.teacher?.display || "-"}</span>
+                    강사: <span className="font-medium text-zinc-900">{c.teacher_display || "-"}</span>
                   </div>
                 </div>
 
