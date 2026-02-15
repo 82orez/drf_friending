@@ -304,12 +304,12 @@ export default function AdminPostDetailPage() {
                       <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">
                         강사
                       </th>
-                      <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">
-                        메시지
-                      </th>
-                      <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">
-                        상태
-                      </th>
+                      {/*<th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">*/}
+                      {/*  메시지*/}
+                      {/*</th>*/}
+                      {/*<th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-zinc-700">*/}
+                      {/*  상태*/}
+                      {/*</th>*/}
                       <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-right text-xs font-semibold whitespace-nowrap text-zinc-700">
                         액션
                       </th>
@@ -322,76 +322,76 @@ export default function AdminPostDetailPage() {
                       return (
                         <tr key={a.id} className={clsx(isSelected && "bg-emerald-50")}>
                           <td className="border-b border-zinc-200 px-3 py-3 text-sm font-medium text-zinc-900">{a.teacher_display}</td>
-                          <td className="border-b border-zinc-200 px-3 py-3 text-sm text-zinc-700">
-                            <div className="max-w-[480px] whitespace-pre-wrap">
-                              {a.message?.trim() ? a.message : <span className="text-zinc-500">-</span>}
-                            </div>
-                          </td>
-                          <td className="border-b border-zinc-200 px-3 py-3">
-                            <select
-                              value={a.status}
-                              onChange={async (e) => {
-                                const next = e.target.value;
-                                setMutatingId(a.id);
-                                try {
-                                  await coursePostsAPI.setApplicationStatus(postId, a.id, next);
-                                  toast.success("상태가 변경되었습니다.");
-                                  await refresh();
-                                } catch (err: any) {
-                                  const msg = err?.response?.data?.detail || err?.response?.data?.message || "상태 변경 실패";
-                                  toast.error(msg);
-                                } finally {
-                                  setMutatingId(null);
-                                }
-                              }}
-                              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
-                              disabled={isBusy}>
-                              {APPLICATION_STATUSES.map((s) => (
-                                <option key={s} value={s}>
-                                  {s}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
+                          {/*<td className="border-b border-zinc-200 px-3 py-3 text-sm text-zinc-700">*/}
+                          {/*  <div className="max-w-[480px] whitespace-pre-wrap">*/}
+                          {/*    {a.message?.trim() ? a.message : <span className="text-zinc-500">-</span>}*/}
+                          {/*  </div>*/}
+                          {/*</td>*/}
+                          {/*<td className="border-b border-zinc-200 px-3 py-3">*/}
+                          {/*  <select*/}
+                          {/*    value={a.status}*/}
+                          {/*    onChange={async (e) => {*/}
+                          {/*      const next = e.target.value;*/}
+                          {/*      setMutatingId(a.id);*/}
+                          {/*      try {*/}
+                          {/*        await coursePostsAPI.setApplicationStatus(postId, a.id, next);*/}
+                          {/*        toast.success("상태가 변경되었습니다.");*/}
+                          {/*        await refresh();*/}
+                          {/*      } catch (err: any) {*/}
+                          {/*        const msg = err?.response?.data?.detail || err?.response?.data?.message || "상태 변경 실패";*/}
+                          {/*        toast.error(msg);*/}
+                          {/*      } finally {*/}
+                          {/*        setMutatingId(null);*/}
+                          {/*      }*/}
+                          {/*    }}*/}
+                          {/*    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"*/}
+                          {/*    disabled={isBusy}>*/}
+                          {/*    {APPLICATION_STATUSES.map((s) => (*/}
+                          {/*      <option key={s} value={s}>*/}
+                          {/*        {s}*/}
+                          {/*      </option>*/}
+                          {/*    ))}*/}
+                          {/*  </select>*/}
+                          {/*</td>*/}
                           <td className="border-b border-zinc-200 px-3 py-3 text-right">
                             <div className="inline-flex flex-wrap justify-end gap-2">
-                              <button
-                                disabled={isBusy}
-                                onClick={async () => {
-                                  setMutatingId(a.id);
-                                  try {
-                                    await coursePostsAPI.setApplicationStatus(postId, a.id, "SHORTLISTED");
-                                    toast.success("SHORTLISTED로 변경");
-                                    await refresh();
-                                  } catch (err: any) {
-                                    const msg = err?.response?.data?.detail || err?.response?.data?.message || "실패";
-                                    toast.error(msg);
-                                  } finally {
-                                    setMutatingId(null);
-                                  }
-                                }}
-                                className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50">
-                                후보
-                              </button>
+                              {/*<button*/}
+                              {/*  disabled={isBusy}*/}
+                              {/*  onClick={async () => {*/}
+                              {/*    setMutatingId(a.id);*/}
+                              {/*    try {*/}
+                              {/*      await coursePostsAPI.setApplicationStatus(postId, a.id, "SHORTLISTED");*/}
+                              {/*      toast.success("SHORTLISTED로 변경");*/}
+                              {/*      await refresh();*/}
+                              {/*    } catch (err: any) {*/}
+                              {/*      const msg = err?.response?.data?.detail || err?.response?.data?.message || "실패";*/}
+                              {/*      toast.error(msg);*/}
+                              {/*    } finally {*/}
+                              {/*      setMutatingId(null);*/}
+                              {/*    }*/}
+                              {/*  }}*/}
+                              {/*  className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50">*/}
+                              {/*  후보*/}
+                              {/*</button>*/}
 
-                              <button
-                                disabled={isBusy}
-                                onClick={async () => {
-                                  setMutatingId(a.id);
-                                  try {
-                                    await coursePostsAPI.setApplicationStatus(postId, a.id, "REJECTED");
-                                    toast.success("REJECTED로 변경");
-                                    await refresh();
-                                  } catch (err: any) {
-                                    const msg = err?.response?.data?.detail || err?.response?.data?.message || "실패";
-                                    toast.error(msg);
-                                  } finally {
-                                    setMutatingId(null);
-                                  }
-                                }}
-                                className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50">
-                                탈락
-                              </button>
+                              {/*<button*/}
+                              {/*  disabled={isBusy}*/}
+                              {/*  onClick={async () => {*/}
+                              {/*    setMutatingId(a.id);*/}
+                              {/*    try {*/}
+                              {/*      await coursePostsAPI.setApplicationStatus(postId, a.id, "REJECTED");*/}
+                              {/*      toast.success("REJECTED로 변경");*/}
+                              {/*      await refresh();*/}
+                              {/*    } catch (err: any) {*/}
+                              {/*      const msg = err?.response?.data?.detail || err?.response?.data?.message || "실패";*/}
+                              {/*      toast.error(msg);*/}
+                              {/*    } finally {*/}
+                              {/*      setMutatingId(null);*/}
+                              {/*    }*/}
+                              {/*  }}*/}
+                              {/*  className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50">*/}
+                              {/*  탈락*/}
+                              {/*</button>*/}
 
                               <button
                                 disabled={isBusy}
