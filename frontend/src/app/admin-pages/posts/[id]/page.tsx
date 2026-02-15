@@ -187,7 +187,7 @@ export default function AdminPostDetailPage() {
           try {
             await coursesAPI.confirmFromPost(post.id, selected.teacher);
             toast.success("강좌가 확정(생성)되었습니다.");
-            router.push("/admin/courses");
+            router.push("/admin-pages/courses");
           } catch (e: any) {
             const msg = e?.response?.data?.detail || e?.response?.data?.message || "강좌 확정에 실패했습니다.";
             toast.error(msg);
