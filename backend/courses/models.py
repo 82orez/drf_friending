@@ -30,9 +30,7 @@ class Course(models.Model):
 
     source_post = models.OneToOneField(
         CoursePost,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         related_name="course",
     )
 
