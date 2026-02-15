@@ -126,9 +126,7 @@ export default function TeacherPostsPage() {
   return (
     <PageShell title="모집 공고" subtitle="현재 지원 가능한 문화센터 강좌 공고를 확인하고 지원하세요." backHref="/" actions={actions}>
       <div className="space-y-3">
-        {fetching && (
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>
-        )}
+        {fetching && <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">불러오는 중...</div>}
 
         {empty && (
           <div className="rounded-2xl border border-zinc-200 bg-white p-6">
@@ -151,9 +149,7 @@ export default function TeacherPostsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="truncate text-base font-semibold text-zinc-900">{title}</h2>
                     <StatusPill value={p.status} />
-                    {typeof p.applications_count === "number" && (
-                      <span className="text-xs text-zinc-500">지원 {p.applications_count}명</span>
-                    )}
+                    {typeof p.applications_count === "number" && <span className="text-xs text-zinc-500">지원 {p.applications_count}명</span>}
                   </div>
                   <div className="mt-1 text-sm text-zinc-600">{place}</div>
                 </div>
@@ -162,10 +158,13 @@ export default function TeacherPostsPage() {
                   <Link
                     href={`/teacher/posts/${p.id}`}
                     className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50">
-                    상세
+                    상세 보기
                   </Link>
                   <button
                     onClick={async () => {
+                      const ok = window.confirm("이 공고에 지원하시겠습니까?");
+                      if (!ok) return;
+
                       try {
                         await coursePostsAPI.apply(p.id);
                         toast.success("지원이 완료되었습니다.");
@@ -176,7 +175,7 @@ export default function TeacherPostsPage() {
                       }
                     }}
                     className={clsx(
-                      "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+                      "inline-flex items-center rounded-2xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700",
                     )}>
                     지원하기
                   </button>
@@ -228,7 +227,7 @@ export default function TeacherPostsPage() {
               {p.notes_for_teachers?.trim() && (
                 <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3">
                   <div className="text-xs font-semibold text-zinc-700">안내</div>
-                  <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{p.notes_for_teachers}</div>
+                  <div className="mt-2 text-sm whitespace-pre-wrap text-zinc-700">{p.notes_for_teachers}</div>
                 </div>
               )}
             </div>
