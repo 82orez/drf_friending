@@ -120,7 +120,17 @@ export default function AdminCoursesPage() {
         {courses.map((c) => {
           const cc = c.culture_center;
           const place = cc ? `${cc.region_name} · ${cc.center_name} · ${cc.branch_name}` : "-";
-          const time = c.start_time && c.end_time ? `${c.start_time} ~ ${c.end_time}` : "-";
+
+          const toHHMM = (v?: string | null) => {
+            if (!v) return null;
+            // e.g. "15:00:00" or "15:00" -> "15:00"
+            return v.length >= 5 ? v.slice(0, 5) : v;
+          };
+
+          const start = toHHMM(c.start_time);
+          const end = toHHMM(c.end_time);
+          const time = start && end ? `${start} ~ ${end}` : "-";
+
           const isSaving = savingId === c.id;
 
           return (
