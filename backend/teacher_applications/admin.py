@@ -62,6 +62,8 @@ class TeacherApplicationAdmin(admin.ModelAdmin):
                     "city",
                     "district",
                     "postal_code",
+                    "latitude",
+                    "longitude",
                 )
             },
         ),
