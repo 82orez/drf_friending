@@ -837,7 +837,7 @@ export default function TeacherApplicationPage() {
                 {/* Visa scan (✅ core locked) */}
                 <div className={"rounded-xl border border-gray-300 p-4"}>
                   <label className="block text-sm font-medium text-slate-800">
-                    Visa Copy (2MB max, JPG/PNG) / 비자 사본
+                    Visa Copy (2MB max, JPG/PNG) / 비자 사본 / 한국인 강사의 경우 신분증
                     {!hasExistingApplication && <span className="text-rose-500"> *</span>}
                   </label>
                   <div className="mt-2 flex items-center gap-4">
@@ -1082,7 +1082,7 @@ export default function TeacherApplicationPage() {
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-800">
-                    Visa Type / 비자 종류
+                    Visa Type / 비자 종류 / 한국인 강사의 경우 '기타' 선택
                     <span className="text-rose-500"> *</span>
                   </label>
                   <select
