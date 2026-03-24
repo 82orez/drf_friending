@@ -951,7 +951,7 @@ export default function MainPage() {
                   // 모달 내부 클릭은 바깥 클릭 핸들러로 전파되지 않게 막기
                   e.stopPropagation();
                 }}>
-                <div className="flex items-center justify-center px-5 py-6 sm:px-6">
+                <div data-pdf-block="true" className="flex items-center justify-center px-5 py-6 sm:px-6">
                   <img src="/friending_logo-Photoroom.png" alt="Friending" className="h-8 w-auto object-contain" draggable={false} />
                 </div>
 
