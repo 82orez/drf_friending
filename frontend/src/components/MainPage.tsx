@@ -860,9 +860,11 @@ export default function MainPage() {
                               )}>
                               {labelGender(t.gender)}
                             </span>
-                            <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                              Age: {ageText}
-                            </span>
+                            {user?.role !== "manager" && (
+                              <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                                Age: {ageText}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -982,9 +984,11 @@ export default function MainPage() {
                           )}>
                           {labelGender(teacherDetail?.gender)}
                         </span>
-                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
-                          Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
-                        </span>
+                        {user?.role !== "manager" && (
+                          <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
+                            Age: {typeof teacherDetail?.age === "number" ? teacherDetail?.age : "-"}
+                          </span>
+                        )}
                         <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200">
                           Teacher_ID: #{teacherDetail?.id}
                         </span>
