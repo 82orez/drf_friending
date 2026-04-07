@@ -853,6 +853,9 @@ export default function MainPage() {
                         <div className="min-w-0">
                           <div className="truncate text-base font-semibold">{fullName || "Unknown name"}</div>
                           <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200">
+                              {t.teaching_languages || "-"}
+                            </span>
                             <span
                               className={clsx(
                                 "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1",
