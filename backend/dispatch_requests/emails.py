@@ -3,13 +3,18 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.utils import timezone
-from django.core.mail import send_mail
 
 from django.contrib.auth.models import Group
 
+from teacher_applications.geo import teachers_within_radius
+from teacher_applications.models import ApplicationStatusChoices
+
 from .models import DispatchRequest
+
+
+DEFAULT_NOTIFY_RADIUS_KM = 15
 
 
 def _format_days(days) -> str:
@@ -23,7 +28,7 @@ def _format_days(days) -> str:
 
 def build_dispatch_request_email_text(dr: DispatchRequest) -> tuple[str, str]:
     """
-    returns (subject, body_text)
+    returns (subject, body_text) — 접수 알림용 (관리자/매니저 대상)
     """
     cc = getattr(dr, "culture_center", None)
 
@@ -69,12 +74,11 @@ def get_dispatch_request_recipients(dr: DispatchRequest) -> list[str]:
     User = get_user_model()
     recipients: set[str] = set()
 
-    def add_email(v: str | None):
+    def add_email(v):
         s = (v or "").strip()
         if s:
             recipients.add(s)
 
-    # (A) superuser 전체
     superuser_emails = (
         User.objects.filter(is_superuser=True, is_active=True)
         .exclude(email__isnull=True)
@@ -84,7 +88,6 @@ def get_dispatch_request_recipients(dr: DispatchRequest) -> list[str]:
     for e in superuser_emails:
         add_email(e)
 
-    # (B) Sub_admins 그룹 전체
     try:
         sub_admins = Group.objects.get(name="Sub_admins")
         group_emails = (
@@ -98,17 +101,13 @@ def get_dispatch_request_recipients(dr: DispatchRequest) -> list[str]:
     except Group.DoesNotExist:
         pass
 
-    # (C) 요청서 폼에 입력한 applicant_email (접수 안내 대상)
     add_email(getattr(dr, "applicant_email", None))
 
     return sorted(recipients)
 
 
 def send_dispatch_request_received_email(dr: DispatchRequest) -> None:
-    """
-    DB에 이미 저장된 DispatchRequest 기준으로 이메일 발송.
-    """
-    # ✅ 최적화: email 본문 생성 전에 관련 FK들을 한 번에 로딩
+    """DB에 이미 저장된 DispatchRequest 기준으로 이메일 발송. (매니저/관리자용 접수 안내)"""
     dr = DispatchRequest.objects.select_related(
         "culture_center__center",
         "culture_center__region",
@@ -132,28 +131,31 @@ def send_dispatch_request_received_email(dr: DispatchRequest) -> None:
     msg.send(fail_silently=True)
 
 
-def _build_teacher_dispatch_email(dispatch_request) -> tuple[str, str]:
-    cc = dispatch_request.culture_center
-    subject = f"[Friending] New Dispatch Request: {dispatch_request.course_title} ({dispatch_request.teaching_language})"
+def _build_teacher_open_email(dr: DispatchRequest) -> tuple[str, str]:
+    cc = dr.culture_center
+    frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
+    apply_url = f"{frontend_url}/teacher/posts/{dr.id}"
 
-    message = f"""
-Hello,
+    subject = f"[Friending] New Teaching Opportunity: {dr.course_title} ({dr.teaching_language})"
 
-A new teaching dispatch request is available near you.
+    message = f"""Hello,
+
+A new teaching opportunity is available near you.
 
 - Culture Center: {cc}
-- Language: {dispatch_request.teaching_language}
-- Course Title: {dispatch_request.course_title}
-- Instructor Type: {dispatch_request.instructor_type}
-- Class Days: {", ".join(dispatch_request.class_days or [])}
-- Start Date: {dispatch_request.start_date or ""}
-- End Date: {dispatch_request.end_date or ""}
-- Time: {dispatch_request.start_time or ""} ~ {dispatch_request.end_time or ""}
-- Lecture Count: {dispatch_request.lecture_count}
-- Students (expected): {dispatch_request.students_count or ""}
-- Extra Requirements: {dispatch_request.extra_requirements or ""}
+- Language: {dr.teaching_language}
+- Course: {dr.course_title}
+- Instructor Type: {dr.instructor_type}
+- Class Days: {", ".join(dr.class_days or [])}
+- Time: {dr.start_time or ""} ~ {dr.end_time or ""}
+- Start Date: {dr.start_date or ""}
+- End Date: {dr.end_date or ""}
+- Lecture Count: {dr.lecture_count}
+- Students (expected): {dr.students_count or ""}
+- Notes: {dr.notes_for_teachers or "-"}
+- Extra Requirements: {dr.extra_requirements or "-"}
 
-If you are interested, please contact us.
+[Apply now →] {apply_url}
 
 Best regards,
 Friending Team
@@ -162,13 +164,25 @@ Friending Team
     return subject, message
 
 
-def send_dispatch_request_to_selected_teachers(
-    *, dispatch_request, teachers: list
-) -> dict:
+def send_open_notification_to_matched_teachers(dr: DispatchRequest) -> dict:
     """
-    선택된 teachers에게만 개별 발송(수신자 이메일 노출 방지)
+    공고 게시 시 호출: 반경 + 언어 + ACCEPTED 강사 전원에 개별 발송.
     """
-    subject, message = _build_teacher_dispatch_email(dispatch_request)
+    cc = dr.culture_center
+    if not cc or cc.latitude is None or cc.longitude is None:
+        return {"target_count": 0, "sent_count": 0, "failed_count": 0, "skipped_reason": "missing_center_geo"}
+
+    teachers = teachers_within_radius(
+        center_lat=float(cc.latitude),
+        center_lng=float(cc.longitude),
+        radius_km=float(DEFAULT_NOTIFY_RADIUS_KM),
+    ).filter(
+        status=ApplicationStatusChoices.ACCEPTED,
+        teaching_languages=dr.teaching_language,
+    )
+
+    subject, message = _build_teacher_open_email(dr)
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
 
     seen = set()
     target_count = 0
@@ -186,9 +200,9 @@ def send_dispatch_request_to_selected_teachers(
             send_mail(
                 subject=subject,
                 message=message,
-                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
+                from_email=from_email,
                 recipient_list=[email],
-                fail_silently=False,
+                fail_silently=True,
             )
             sent_count += 1
         except Exception:

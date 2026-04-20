@@ -1,19 +1,10 @@
 from __future__ import annotations
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils import timezone
 
-from dispatch_requests.models import DispatchRequest
+from dispatch_requests.models import DispatchRequest, DispatchRequestStatusChoices
 from teacher_applications.models import TeacherApplication
-
-
-class CoursePostStatusChoices(models.TextChoices):
-    DRAFT = "DRAFT", "Draft"
-    PUBLISHED = "PUBLISHED", "Published"
-    CLOSED = "CLOSED", "Closed"
-    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class CourseApplicationStatusChoices(models.TextChoices):
@@ -24,93 +15,17 @@ class CourseApplicationStatusChoices(models.TextChoices):
     SELECTED = "SELECTED", "Selected"
 
 
-class CoursePost(models.Model):
-    """
-    모집 공고 (정석)
-    - DispatchRequest(내부 요청)와 1:1 연결
-    """
-
-    dispatch_request = models.OneToOneField(
-        DispatchRequest,
-        on_delete=models.CASCADE,
-        related_name="course_post",
-    )
-
-    status = models.CharField(
-        max_length=20,
-        choices=CoursePostStatusChoices.choices,
-        default=CoursePostStatusChoices.DRAFT,
-        db_index=True,
-    )
-
-    application_deadline = models.DateTimeField(null=True, blank=True)
-    published_at = models.DateTimeField(null=True, blank=True)
-    closed_at = models.DateTimeField(null=True, blank=True)
-
-    notes_for_teachers = models.TextField(blank=True, default="")
-
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="created_course_posts",
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Course post"
-        verbose_name_plural = "Course posts"
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["status"]),
-            models.Index(fields=["published_at"]),
-        ]
-
-    def __str__(self):
-        dr = self.dispatch_request
-        return f"[{self.status}] {dr.course_title} / {dr.teaching_language} @ {dr.culture_center}"
-
-    def clean(self):
-        super().clean()
-        if (
-            self.application_deadline
-            and self.published_at
-            and self.application_deadline < self.published_at
-        ):
-            raise ValidationError(
-                {"application_deadline": "마감일은 게시일 이후여야 합니다."}
-            )
-
-    def publish(self):
-        if self.status in [
-            CoursePostStatusChoices.CLOSED,
-            CoursePostStatusChoices.CANCELLED,
-        ]:
-            raise ValidationError("이미 마감/취소된 공고는 게시할 수 없습니다.")
-        self.status = CoursePostStatusChoices.PUBLISHED
-        if not self.published_at:
-            self.published_at = timezone.now()
-
-    def close(self):
-        if self.status == CoursePostStatusChoices.CANCELLED:
-            raise ValidationError("취소된 공고는 마감할 수 없습니다.")
-        self.status = CoursePostStatusChoices.CLOSED
-        if not self.closed_at:
-            self.closed_at = timezone.now()
-
-
 class CourseApplication(models.Model):
     """
-    지원서
-    - (post, teacher) 유니크
+    강사 지원서
+    - (dispatch_request, teacher) 유니크
     - 강사는 본인 계정의 teacher_application으로 자동 매핑 (views에서 처리)
     """
 
-    post = models.ForeignKey(
-        CoursePost, on_delete=models.CASCADE, related_name="applications"
+    dispatch_request = models.ForeignKey(
+        DispatchRequest,
+        on_delete=models.CASCADE,
+        related_name="applications",
     )
     teacher = models.ForeignKey(
         TeacherApplication, on_delete=models.CASCADE, related_name="course_applications"
@@ -133,29 +48,30 @@ class CourseApplication(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["post", "teacher"], name="uniq_course_application_post_teacher"
+                fields=["dispatch_request", "teacher"],
+                name="uniq_course_application_dispatch_teacher",
             ),
         ]
         indexes = [
-            models.Index(fields=["post"]),
+            models.Index(fields=["dispatch_request"]),
             models.Index(fields=["teacher"]),
             models.Index(fields=["status"]),
         ]
 
     def __str__(self):
-        return f"{self.teacher} -> {self.post} ({self.status})"
+        return f"{self.teacher} -> {self.dispatch_request} ({self.status})"
 
     def clean(self):
         super().clean()
 
-        if self.post.status != CoursePostStatusChoices.PUBLISHED:
-            raise ValidationError("게시된 공고에만 지원할 수 있습니다.")
+        if self.dispatch_request.status != DispatchRequestStatusChoices.OPEN:
+            raise ValidationError("게시된(OPEN) 요청에만 지원할 수 있습니다.")
 
-        # SELECTED는 1명만 허용
         if self.status == CourseApplicationStatusChoices.SELECTED:
             exists = (
                 CourseApplication.objects.filter(
-                    post=self.post, status=CourseApplicationStatusChoices.SELECTED
+                    dispatch_request=self.dispatch_request,
+                    status=CourseApplicationStatusChoices.SELECTED,
                 )
                 .exclude(pk=self.pk)
                 .exists()

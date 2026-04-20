@@ -7,22 +7,14 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from course_posts.models import CourseApplication, CourseApplicationStatusChoices
+from dispatch_requests.models import DispatchRequest
 from teacher_applications.models import TeacherApplication
 
-from course_posts.models import (
-    CoursePost,
-    CourseApplication,
-    CoursePostStatusChoices,
-    CourseApplicationStatusChoices,
-)
-
+from .emails import notify_confirmation_results
 from .models import Course, CourseStatusChoices
 from .permissions import IsAdminOrManager, IsTeacher
 from .serializers import CourseSerializer, CourseConfirmSerializer
-
-
-def _role(user) -> str:
-    return getattr(user, "role", "") or ""
 
 
 def _get_my_teacher_application_or_error(user) -> TeacherApplication:
@@ -35,10 +27,7 @@ def _get_my_teacher_application_or_error(user) -> TeacherApplication:
 
 
 class CourseMyListView(generics.ListAPIView):
-    """
-    teacher: 배정된 강좌 목록
-    GET /api/courses/my/
-    """
+    """GET /api/courses/my/"""
 
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
     serializer_class = CourseSerializer
@@ -46,82 +35,76 @@ class CourseMyListView(generics.ListAPIView):
     def get_queryset(self):
         teacher = _get_my_teacher_application_or_error(self.request.user)
         return (
-            Course.objects.select_related("culture_center", "teacher", "source_post")
+            Course.objects.select_related(
+                "culture_center", "teacher", "source_dispatch_request"
+            )
             .filter(teacher=teacher)
             .order_by("-created_at")
         )
 
 
 class CourseAdminListView(generics.ListAPIView):
-    """
-    admin/manager: 전체 강좌 목록
-    GET /api/courses/admin/list/
-    """
+    """GET /api/courses/admin/list/"""
 
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     serializer_class = CourseSerializer
     queryset = Course.objects.select_related(
-        "culture_center", "teacher", "source_post"
+        "culture_center", "teacher", "source_dispatch_request"
     ).order_by("-created_at")
 
 
 class CourseAdminDetailView(generics.RetrieveUpdateAPIView):
-    """
-    admin/manager: 상세/업데이트
-    GET/PATCH /api/courses/admin/<id>/
-    """
+    """GET/PATCH /api/courses/admin/<id>/"""
 
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     serializer_class = CourseSerializer
-    queryset = Course.objects.select_related("culture_center", "teacher", "source_post")
+    queryset = Course.objects.select_related(
+        "culture_center", "teacher", "source_dispatch_request"
+    )
 
 
-class CourseConfirmFromPostView(APIView):
+class CourseConfirmFromDispatchView(APIView):
     """
-    ✅ 공고 기반 확정 생성 (정석)
-    POST /api/courses/admin/confirm-from-post/<post_id>/
+    POST /api/courses/admin/confirm-from-dispatch/<dispatch_id>/
     body(optional): { teacher_id?: number }
 
-    - 기본은: 해당 post에서 status=SELECTED 지원자 1명을 자동으로 찾음
-    - 없으면 teacher_id로 지정 가능(단, 그 teacher가 SELECTED여야 함)
-    - Course 생성 후 post는 CLOSED 처리
+    - 기본은: 해당 파견 요청에서 status=SELECTED 지원자 1명을 자동으로 찾음
+    - 없으면 teacher_id로 지정 가능(단, 해당 강사가 SELECTED여야 함)
+    - Course 생성 후 DispatchRequest는 CLOSED 처리
     """
 
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
 
-    def post(self, request, post_id: int):
+    def post(self, request, dispatch_id: int):
         try:
-            post = CoursePost.objects.select_related(
-                "dispatch_request", "dispatch_request__culture_center"
-            ).get(pk=post_id)
-        except CoursePost.DoesNotExist:
-            raise ValidationError("공고를 찾을 수 없습니다.")
+            dr = DispatchRequest.objects.select_related("culture_center").get(
+                pk=dispatch_id
+            )
+        except DispatchRequest.DoesNotExist:
+            raise ValidationError("파견 요청을 찾을 수 없습니다.")
 
-        if hasattr(post, "course") and post.course:
-            raise ValidationError("이미 이 공고로 생성된 강좌가 존재합니다.")
+        if hasattr(dr, "course") and dr.course:
+            raise ValidationError("이미 이 요청으로 생성된 강좌가 존재합니다.")
 
         body = CourseConfirmSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         teacher_id = body.validated_data.get("teacher_id")
 
         selected_qs = CourseApplication.objects.filter(
-            post=post, status=CourseApplicationStatusChoices.SELECTED
+            dispatch_request=dr, status=CourseApplicationStatusChoices.SELECTED
         )
-
         if teacher_id is not None:
             selected_qs = selected_qs.filter(teacher_id=teacher_id)
 
         selected = selected_qs.select_related("teacher").first()
         if not selected:
             raise ValidationError(
-                "SELECTED 상태의 지원자를 찾을 수 없습니다. (먼저 지원자를 SELECTED로 지정해 주세요.)"
+                "SELECTED 상태의 지원자를 찾을 수 없습니다. 먼저 지원자를 선정해 주세요."
             )
-
-        dr = post.dispatch_request
 
         with transaction.atomic():
             course = Course.objects.create(
-                source_post=post,
+                source_dispatch_request=dr,
                 culture_center=dr.culture_center,
                 teaching_language=dr.teaching_language,
                 course_title=dr.course_title,
@@ -141,8 +124,10 @@ class CourseConfirmFromPostView(APIView):
                 notes="",
             )
 
-            post.close()
-            post.save()
+            dr.close()
+            dr.save()
+
+        transaction.on_commit(lambda: notify_confirmation_results(dr, selected))
 
         return Response(
             CourseSerializer(course, context={"request": request}).data,

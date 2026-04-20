@@ -14,7 +14,6 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
     )
     culture_center = CultureCenterBranchSerializer(read_only=True)
 
-    # ✅ write: teacher_name_id로 받기 (ACCEPTED만 허용)
     teacher_name_id = serializers.PrimaryKeyRelatedField(
         source="teacher_name",
         queryset=TeacherApplication.objects.filter(
@@ -25,9 +24,8 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
 
-    # ✅ read: teacher_name은 pk(또는 null)로 내려감 (ModelSerializer 기본 동작)
-    # ✅ read: 사람이 보기 쉬운 표시값 추가
     teacher_name_display = serializers.SerializerMethodField(read_only=True)
+    applications_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = DispatchRequest
@@ -53,7 +51,12 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
             "lecture_count",
             "students_count",
             "extra_requirements",
+            "notes_for_teachers",
+            "application_deadline",
+            "published_at",
+            "closed_at",
             "status",
+            "applications_count",
             "created_at",
             "updated_at",
         ]
@@ -61,6 +64,9 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
             "id",
             "requester",
             "status",
+            "published_at",
+            "closed_at",
+            "applications_count",
             "created_at",
             "updated_at",
             "end_date",
@@ -71,6 +77,11 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
     def get_teacher_name_display(self, obj: DispatchRequest):
         ta = getattr(obj, "teacher_name", None)
         return str(ta) if ta else None
+
+    def get_applications_count(self, obj: DispatchRequest) -> int:
+        if hasattr(obj, "_applications_count"):
+            return obj._applications_count
+        return obj.applications.count()
 
     def validate(self, attrs):
         start_time = attrs.get("start_time")
@@ -83,7 +94,6 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
         if start_date and end_date and start_date > end_date:
             raise serializers.ValidationError("end_date must be on/after start_date.")
 
-        # ✅ start_date 요일이 class_days에 포함되어야 함
         days = attrs.get("class_days")
         if start_date and days:
             key_to_weekday = {
@@ -107,15 +117,29 @@ class DispatchRequestSerializer(serializers.ModelSerializer):
         return attrs
 
 
-# ✅ NEW: 관리자용 Serializer (status writable)
 class DispatchRequestAdminSerializer(DispatchRequestSerializer):
+    """관리자용 — notes_for_teachers / application_deadline 수정 허용"""
+
     class Meta(DispatchRequestSerializer.Meta):
         read_only_fields = [
             "id",
             "requester",
+            "status",
+            "published_at",
+            "closed_at",
+            "applications_count",
             "created_at",
             "updated_at",
             "end_date",
             "teacher_name",
             "teacher_name_display",
         ]
+
+
+class ApplySerializer(serializers.Serializer):
+    message = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class SetApplicationStatusSerializer(serializers.Serializer):
+    application_id = serializers.IntegerField(required=True)
+    status = serializers.CharField(required=True)

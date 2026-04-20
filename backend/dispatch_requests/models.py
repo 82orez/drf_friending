@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from culture_centers.models import CultureCenter
 from datetime import timedelta
 
@@ -8,10 +9,8 @@ from teacher_applications.models import TeacherApplication, ApplicationStatusCho
 
 
 class DispatchRequestStatusChoices(models.TextChoices):
-    NEW = "NEW", "New"
-    IN_REVIEW = "IN_REVIEW", "In review"
-    MATCHED = "MATCHED", "Matched"
-    PUBLISHED = "PUBLISHED", "Published"
+    REQUESTED = "REQUESTED", "Requested"
+    OPEN = "OPEN", "Open"
     CLOSED = "CLOSED", "Closed"
     CANCELLED = "CANCELLED", "Cancelled"
 
@@ -50,7 +49,6 @@ class DispatchRequest(models.Model):
         default=InstructorTypeChoices.ANY,
     )
 
-    # ✅ added: accepted(채용 확정) 강사만 선택 가능
     teacher_name = models.ForeignKey(
         TeacherApplication,
         on_delete=models.PROTECT,
@@ -81,11 +79,18 @@ class DispatchRequest(models.Model):
 
     extra_requirements = models.TextField("추가 요청사항", blank=True, null=True)
 
+    notes_for_teachers = models.TextField("강사 안내 메모", blank=True, default="")
+    application_deadline = models.DateTimeField(
+        "지원 마감", null=True, blank=True
+    )
+    published_at = models.DateTimeField("게시일", null=True, blank=True)
+    closed_at = models.DateTimeField("마감일", null=True, blank=True)
+
     status = models.CharField(
         "상태",
         max_length=20,
         choices=DispatchRequestStatusChoices.choices,
-        default=DispatchRequestStatusChoices.NEW,
+        default=DispatchRequestStatusChoices.REQUESTED,
         db_index=True,
     )
 
@@ -103,18 +108,10 @@ class DispatchRequest(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        """
-        DRF serializer.save()는 model.clean()을 자동 호출하지 않기 때문에,
-        저장 전에 full_clean()을 호출해서 end_date 자동 계산/검증이 항상 적용되게 한다.
-        """
         self.full_clean()
         return super().save(*args, **kwargs)
 
     def _calculate_end_date_from_start_days_and_count(self):
-        """
-        start_date부터 시작해 class_days에 해당하는 날짜를 세어서
-        lecture_count번째 수업 날짜를 end_date로 반환
-        """
         if not self.start_date:
             return None
 
@@ -162,7 +159,6 @@ class DispatchRequest(models.Model):
         if bad:
             raise ValidationError({"class_days": f"Invalid day(s): {bad}"})
 
-        # ✅ start_date의 실제 요일이 class_days에 포함되어야 함
         if self.start_date and days:
             key_to_weekday = {
                 "MON": 0,
@@ -182,7 +178,6 @@ class DispatchRequest(models.Model):
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError({"end_time": "end_time must be after start_time."})
 
-        # ✅ teacher_name은 accepted 강사만 허용(폼 외의 경로로 값이 들어오는 것도 방지)
         if (
             self.teacher_name
             and self.teacher_name.status != ApplicationStatusChoices.ACCEPTED
@@ -191,11 +186,36 @@ class DispatchRequest(models.Model):
                 {"teacher_name": "ACCEPTED(채용 확정) 강사만 선택할 수 있습니다."}
             )
 
-        # ✅ 정책: end_date는 파생값이므로 항상 재계산해서 덮어쓴다
         self.end_date = self._calculate_end_date_from_start_days_and_count()
 
         if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValidationError({"end_date": "end_date must be on/after start_date."})
+
+        if (
+            self.application_deadline
+            and self.published_at
+            and self.application_deadline < self.published_at
+        ):
+            raise ValidationError(
+                {"application_deadline": "마감일은 게시일 이후여야 합니다."}
+            )
+
+    def open(self):
+        if self.status in [
+            DispatchRequestStatusChoices.CLOSED,
+            DispatchRequestStatusChoices.CANCELLED,
+        ]:
+            raise ValidationError("이미 마감/취소된 요청은 게시할 수 없습니다.")
+        self.status = DispatchRequestStatusChoices.OPEN
+        if not self.published_at:
+            self.published_at = timezone.now()
+
+    def close(self):
+        if self.status == DispatchRequestStatusChoices.CANCELLED:
+            raise ValidationError("취소된 요청은 마감할 수 없습니다.")
+        self.status = DispatchRequestStatusChoices.CLOSED
+        if not self.closed_at:
+            self.closed_at = timezone.now()
 
     def __str__(self) -> str:
         return f"[{self.status}] {self.course_title} / {self.teaching_language} @ {self.culture_center}"

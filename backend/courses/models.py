@@ -4,17 +4,15 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from culture_centers.models import CultureCenter
+from dispatch_requests.models import DispatchRequest
 from teacher_applications.models import TeacherApplication
 
-from course_posts.models import CoursePost
 from courses.utils import calculate_end_date
 
 DAY_KEYS = {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"}
 
 
 class CourseStatusChoices(models.TextChoices):
-    NEW = "NEW", "New"
-    REVIEWING = "REVIEWING", "Reviewing"
     CONFIRMED = "CONFIRMED", "Confirmed"
     ONGOING = "ONGOING", "Ongoing"
     ENDED = "ENDED", "Ended"
@@ -24,12 +22,12 @@ class CourseStatusChoices(models.TextChoices):
 class Course(models.Model):
     """
     확정 강좌(운영 엔티티)
-    - source_post 1:1 (정석)
+    - source_dispatch_request 1:1
     - DispatchRequest의 필드들을 복제하여 운영 중 원본 요청이 바뀌어도 강좌는 안정적으로 유지
     """
 
-    source_post = models.OneToOneField(
-        CoursePost,
+    source_dispatch_request = models.OneToOneField(
+        DispatchRequest,
         on_delete=models.CASCADE,
         related_name="course",
     )
@@ -82,7 +80,7 @@ class Course(models.Model):
         "상태",
         max_length=20,
         choices=CourseStatusChoices.choices,
-        default=CourseStatusChoices.NEW,
+        default=CourseStatusChoices.CONFIRMED,
         db_index=True,
     )
 
@@ -126,7 +124,6 @@ class Course(models.Model):
         if self.lecture_count < 1:
             raise ValidationError({"lecture_count": "강의 횟수는 1 이상이어야 합니다."})
 
-        # ✅ end_date는 파생값(항상 재계산)
         self.end_date = calculate_end_date(
             self.start_date, self.class_days, self.lecture_count
         )

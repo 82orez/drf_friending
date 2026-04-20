@@ -23,7 +23,7 @@ class CourseSerializer(serializers.ModelSerializer):
         model = Course
         fields = [
             "id",
-            "source_post",
+            "source_dispatch_request",
             "culture_center",
             "culture_center_id",
             "teaching_language",
