@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { toast } from "react-hot-toast";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { coursePostsAPI } from "@/lib/api";
+import { dispatchRequestsAPI } from "@/lib/api";
 
 import PageShell from "@/components/cms/PageShell";
 import StatusPill from "@/components/cms/StatusPill";
@@ -23,14 +23,12 @@ type CultureCenter = {
   manager_name?: string | null;
   manager_phone?: string | null;
   manager_email?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  notes?: string | null;
 };
 
-type DispatchRequestSummary = {
+type DispatchRequest = {
   id: number;
   culture_center: CultureCenter;
+  status: string;
   teaching_language: string;
   course_title: string;
   instructor_type?: string | null;
@@ -42,12 +40,6 @@ type DispatchRequestSummary = {
   lecture_count?: number | null;
   students_count?: number | null;
   extra_requirements?: string | null;
-};
-
-type CoursePost = {
-  id: number;
-  dispatch_request: DispatchRequestSummary;
-  status: string;
   application_deadline?: string | null;
   published_at?: string | null;
   closed_at?: string | null;
@@ -64,7 +56,7 @@ export default function TeacherPostsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  const [posts, setPosts] = useState<CoursePost[]>([]);
+  const [posts, setPosts] = useState<DispatchRequest[]>([]);
   const [fetching, setFetching] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -85,7 +77,7 @@ export default function TeacherPostsPage() {
     (async () => {
       setFetching(true);
       try {
-        const res = await coursePostsAPI.list();
+        const res = await dispatchRequestsAPI.openList();
         const data = Array.isArray(res.data) ? res.data : res.data?.results || res.data?.data || [];
         if (mounted) setPosts(data);
       } catch (e: any) {
@@ -136,11 +128,10 @@ export default function TeacherPostsPage() {
         )}
 
         {posts.map((p) => {
-          const dr = p.dispatch_request;
-          const cc = dr?.culture_center;
-          const title = dr?.course_title || "(제목 없음)";
+          const cc = p.culture_center;
+          const title = p.course_title || "(제목 없음)";
           const place = cc ? `${cc.region_name} · ${cc.center_name} · ${cc.branch_name}` : "-";
-          const time = dr?.start_time && dr?.end_time ? `${dr.start_time} ~ ${dr.end_time}` : "-";
+          const time = p.start_time && p.end_time ? `${p.start_time} ~ ${p.end_time}` : "-";
 
           return (
             <div key={p.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -166,7 +157,7 @@ export default function TeacherPostsPage() {
                       if (!ok) return;
 
                       try {
-                        await coursePostsAPI.apply(p.id);
+                        await dispatchRequestsAPI.apply(p.id);
                         toast.success("지원이 완료되었습니다.");
                         setRefreshKey((k) => k + 1);
                       } catch (e: any) {
@@ -188,7 +179,7 @@ export default function TeacherPostsPage() {
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">요일</span>
-                      <DayBadges days={dr?.class_days} className="justify-end" />
+                      <DayBadges days={p.class_days} className="justify-end" />
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">시간</span>
@@ -196,11 +187,11 @@ export default function TeacherPostsPage() {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">개강</span>
-                      <span className="text-sm font-medium text-zinc-900">{fmtDate(dr?.start_date)}</span>
+                      <span className="text-sm font-medium text-zinc-900">{fmtDate(p.start_date)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">종강</span>
-                      <span className="text-sm font-medium text-zinc-900">{fmtDate(dr?.end_date)}</span>
+                      <span className="text-sm font-medium text-zinc-900">{fmtDate(p.end_date)}</span>
                     </div>
                   </div>
                 </div>
@@ -210,11 +201,11 @@ export default function TeacherPostsPage() {
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">언어</span>
-                      <span className="text-sm font-medium text-zinc-900">{dr?.teaching_language || "-"}</span>
+                      <span className="text-sm font-medium text-zinc-900">{p.teaching_language || "-"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">수업횟수</span>
-                      <span className="text-sm font-medium text-zinc-900">{dr?.lecture_count ?? "-"}</span>
+                      <span className="text-sm font-medium text-zinc-900">{p.lecture_count ?? "-"}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">마감</span>

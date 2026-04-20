@@ -7,7 +7,7 @@ import clsx from "clsx";
 import { toast } from "react-hot-toast";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { coursePostsAPI } from "@/lib/api";
+import { dispatchRequestsAPI } from "@/lib/api";
 
 import PageShell from "@/components/cms/PageShell";
 import StatusPill from "@/components/cms/StatusPill";
@@ -23,12 +23,12 @@ type CultureCenter = {
   manager_name?: string | null;
   manager_phone?: string | null;
   manager_email?: string | null;
-  notes?: string | null;
 };
 
-type DispatchRequestSummary = {
+type DispatchRequest = {
   id: number;
   culture_center: CultureCenter;
+  status: string;
   teaching_language: string;
   course_title: string;
   instructor_type?: string | null;
@@ -40,15 +40,7 @@ type DispatchRequestSummary = {
   lecture_count?: number | null;
   students_count?: number | null;
   extra_requirements?: string | null;
-};
-
-type CoursePost = {
-  id: number;
-  dispatch_request: DispatchRequestSummary;
-  status: string;
   application_deadline?: string | null;
-  published_at?: string | null;
-  closed_at?: string | null;
   notes_for_teachers?: string | null;
   applications_count?: number;
 };
@@ -70,8 +62,9 @@ export default function TeacherPostDetailPage() {
 
   const postId = useMemo(() => Number((params as any)?.id), [params]);
 
-  const [post, setPost] = useState<CoursePost | null>(null);
+  const [post, setPost] = useState<DispatchRequest | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.push("/auth/login");
@@ -90,7 +83,7 @@ export default function TeacherPostDetailPage() {
     (async () => {
       setFetching(true);
       try {
-        const res = await coursePostsAPI.detail(postId);
+        const res = await dispatchRequestsAPI.detail(postId);
         if (mounted) setPost(res.data);
       } catch (e: any) {
         const msg = e?.response?.data?.detail || e?.response?.data?.message || "공고를 불러오지 못했습니다.";
@@ -103,7 +96,7 @@ export default function TeacherPostDetailPage() {
     return () => {
       mounted = false;
     };
-  }, [user, postId]);
+  }, [user, postId, refreshKey]);
 
   const actions = (
     <>
@@ -115,9 +108,12 @@ export default function TeacherPostDetailPage() {
       <button
         onClick={async () => {
           if (!post) return;
+          const ok = window.confirm("이 공고에 지원하시겠습니까?");
+          if (!ok) return;
           try {
-            await coursePostsAPI.apply(post.id);
+            await dispatchRequestsAPI.apply(post.id);
             toast.success("지원이 완료되었습니다.");
+            setRefreshKey((k) => k + 1);
           } catch (e: any) {
             const msg = e?.response?.data?.detail || e?.response?.data?.message || "지원에 실패했습니다.";
             toast.error(msg);
@@ -129,25 +125,27 @@ export default function TeacherPostDetailPage() {
       <button
         onClick={async () => {
           if (!post) return;
+          const ok = window.confirm("지원을 취소하시겠습니까?");
+          if (!ok) return;
           try {
-            await coursePostsAPI.withdraw(post.id);
+            await dispatchRequestsAPI.withdraw(post.id);
             toast.success("지원이 취소되었습니다.");
+            setRefreshKey((k) => k + 1);
           } catch (e: any) {
             const msg = e?.response?.data?.detail || e?.response?.data?.message || "지원 취소에 실패했습니다.";
             toast.error(msg);
           }
         }}
         className={clsx(
-          "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50"
+          "inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50",
         )}>
         지원 취소
       </button>
     </>
   );
 
-  const dr = post?.dispatch_request;
-  const cc = dr?.culture_center;
-  const time = dr?.start_time && dr?.end_time ? `${dr.start_time} ~ ${dr.end_time}` : "-";
+  const cc = post?.culture_center;
+  const time = post?.start_time && post?.end_time ? `${post.start_time} ~ ${post.end_time}` : "-";
 
   return (
     <PageShell title="공고 상세" subtitle="지원 전 강좌 정보를 확인하세요." backHref="/teacher/posts" actions={actions}>
@@ -163,7 +161,7 @@ export default function TeacherPostDetailPage() {
         <div className="space-y-3">
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="text-lg font-semibold text-zinc-900">{dr?.course_title || "(제목 없음)"}</div>
+              <div className="text-lg font-semibold text-zinc-900">{post.course_title || "(제목 없음)"}</div>
               <StatusPill value={post.status} />
               {typeof post.applications_count === "number" && <span className="text-xs text-zinc-500">지원 {post.applications_count}명</span>}
             </div>
@@ -176,13 +174,13 @@ export default function TeacherPostDetailPage() {
             <div className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="text-sm font-semibold text-zinc-900">수업 정보</div>
               <div className="mt-3 space-y-2">
-                <Field label="언어" value={dr?.teaching_language || "-"} />
-                <Field label="요일" value={<DayBadges days={dr?.class_days} className="justify-end" />} />
+                <Field label="언어" value={post.teaching_language || "-"} />
+                <Field label="요일" value={<DayBadges days={post.class_days} className="justify-end" />} />
                 <Field label="시간" value={time} />
-                <Field label="개강" value={dr?.start_date || "-"} />
-                <Field label="종강" value={dr?.end_date || "-"} />
-                <Field label="수업횟수" value={dr?.lecture_count ?? "-"} />
-                <Field label="수강생" value={dr?.students_count ?? "-"} />
+                <Field label="개강" value={post.start_date || "-"} />
+                <Field label="종강" value={post.end_date || "-"} />
+                <Field label="수업횟수" value={post.lecture_count ?? "-"} />
+                <Field label="수강생" value={post.students_count ?? "-"} />
               </div>
             </div>
 
@@ -199,10 +197,10 @@ export default function TeacherPostDetailPage() {
             </div>
           </div>
 
-          {dr?.extra_requirements?.trim() && (
+          {post.extra_requirements?.trim() && (
             <div className="rounded-2xl border border-zinc-200 bg-white p-4">
               <div className="text-sm font-semibold text-zinc-900">추가 요청사항</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{dr.extra_requirements}</div>
+              <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{post.extra_requirements}</div>
             </div>
           )}
 

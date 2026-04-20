@@ -12,7 +12,6 @@ const api = axios.create({
 
 // CSRF Token 처리
 api.interceptors.request.use(async (config) => {
-  // Django의 CSRF 토큰을 가져오기
   if (["post", "put", "patch", "delete"].includes(config.method?.toLowerCase() || "")) {
     try {
       const csrfResponse = await fetch(`${API_BASE_URL}/api/auth/csrf/`, {
@@ -29,104 +28,75 @@ api.interceptors.request.use(async (config) => {
 
 export default api;
 
-// Auth API functions
+// Auth API
 export const authAPI = {
   register: (data: { email: string; password: string; password_confirm: string }) => api.post("/auth/register/", data),
-
   login: (data: { email: string; password: string }) => api.post("/auth/login/", data),
-
   logout: () => api.post("/auth/logout/"),
-
   verifyEmail: (token: string) => api.post("/auth/verify-email/", { token }),
-
   resendVerification: (email: string) => api.post("/auth/resend-verification/", { email }),
-
   passwordResetRequest: (email: string) => api.post("/auth/password-reset-request/", { email }),
-
   passwordResetConfirm: (data: { token: string; password: string; password_confirm: string }) => api.post("/auth/password-reset-confirm/", data),
-
   getProfile: () => api.get("/auth/profile/"),
-
-  updateProfile: (data: FormData) => {
-    return api.patch("/auth/profile/", data, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  },
+  updateProfile: (data: FormData) =>
+    api.patch("/auth/profile/", data, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
 
 export const teacherApplicationAPI = {
-  // 기존 이력서 확인 및 새 이력서 제출
-  submit: async (formData: FormData) => {
-    return await api.post("/teacher-applications/", formData, {
+  submit: async (formData: FormData) =>
+    api.post("/teacher-applications/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-    });
-  },
-
-  // 기존 이력서 조회
-  checkExisting: async () => {
-    return await api.get("/teacher-applications/");
-  },
-
-  // 이력서 수정
-  update: async (formData: FormData) => {
-    return await api.patch("/teacher-applications/my/", formData, {
+    }),
+  checkExisting: async () => api.get("/teacher-applications/"),
+  update: async (formData: FormData) =>
+    api.patch("/teacher-applications/my/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-    });
-  },
-
-  // 이력서 조회 (수정용)
-  getMyApplication: async () => {
-    return await api.get("/teacher-applications/my/");
-  },
-
-  // 이력서 삭제 (REJECTED일 때만 서버에서 허용)
-  deleteMyApplication: async () => {
-    return await api.delete("/teacher-applications/my/");
-  },
+    }),
+  getMyApplication: async () => api.get("/teacher-applications/my/"),
+  deleteMyApplication: async () => api.delete("/teacher-applications/my/"),
 };
 
-// === Dispatch Requests API ===
+// === Dispatch Requests API (공고/지원 통합) ===
 export const dispatchRequestsAPI = {
+  // common
   create: (data: any) => api.post("/dispatch-requests/", data),
   myList: () => api.get("/dispatch-requests/my/"),
-  detail: (id: number) => api.get(`/dispatch-requests/${id}/`), // ✅ NEW
-  adminList: () => api.get("/dispatch-requests/admin/list/"),
-  adminDetail: (id: number) => api.get(`/dispatch-requests/admin/${id}/`),
-  adminUpdate: (id: number, data: any) => api.patch(`/dispatch-requests/admin/${id}/`, data), // ✅ NEW(상태변경용)
-};
-
-// === Course Posts (Recruiting) API ===
-export const coursePostsAPI = {
-  list: (params?: { dispatch_request_id?: number }) => api.get("/course-posts/", params ? { params } : undefined),
-  detail: (id: number) => api.get(`/course-posts/${id}/`),
-  apply: (id: number, message?: string) => api.post(`/course-posts/${id}/apply/`, { message: message || "" }),
-  withdraw: (id: number) => api.post(`/course-posts/${id}/withdraw/`),
+  openList: () => api.get("/dispatch-requests/open/"),
+  detail: (id: number) => api.get(`/dispatch-requests/${id}/`),
 
   // admin/manager
-  adminList: (params?: Record<string, any>) => api.get("/course-posts/admin/list/", { params }),
-  adminDetail: (id: number) => api.get(`/course-posts/admin/${id}/`),
-  create: (data: { dispatch_request_id: number; application_deadline?: string | null; notes_for_teachers?: string }) =>
-    api.post("/course-posts/", data),
-  publish: (id: number) => api.post(`/course-posts/admin/${id}/publish/`),
-  close: (id: number) => api.post(`/course-posts/admin/${id}/close/`),
-  applications: (id: number) => api.get(`/course-posts/admin/${id}/applications/`),
-  setApplicationStatus: (postId: number, applicationId: number, status: string) =>
-    api.patch(`/course-posts/admin/${postId}/set-application-status/`, { application_id: applicationId, status }),
+  adminList: () => api.get("/dispatch-requests/admin/list/"),
+  adminDetail: (id: number) => api.get(`/dispatch-requests/admin/${id}/`),
+  adminUpdate: (
+    id: number,
+    data: { notes_for_teachers?: string | null; application_deadline?: string | null }
+  ) => api.patch(`/dispatch-requests/admin/${id}/`, data),
+  open: (id: number) => api.post(`/dispatch-requests/admin/${id}/open/`),
+  close: (id: number) => api.post(`/dispatch-requests/admin/${id}/close/`),
+  applications: (id: number) => api.get(`/dispatch-requests/admin/${id}/applications/`),
+  setApplicationStatus: (id: number, applicationId: number, status: string) =>
+    api.patch(`/dispatch-requests/admin/${id}/set-application-status/`, {
+      application_id: applicationId,
+      status,
+    }),
 
-  adminUpdate: (id: number, data: { notes_for_teachers?: string | null; application_deadline?: string | null }) =>
-    api.patch(`/course-posts/admin/${id}/`, data),
+  // teacher
+  apply: (id: number, message?: string) =>
+    api.post(`/dispatch-requests/${id}/apply/`, { message: message || "" }),
+  withdraw: (id: number) => api.post(`/dispatch-requests/${id}/withdraw/`),
 };
 
 // === Courses (Confirmed) API ===
 export const coursesAPI = {
   myList: () => api.get("/courses/my/"),
-
-  // admin/manager
   adminList: () => api.get("/courses/admin/list/"),
   adminDetail: (id: number) => api.get(`/courses/admin/${id}/`),
   adminUpdate: (id: number, data: any) => api.patch(`/courses/admin/${id}/`, data),
-  confirmFromPost: (postId: number, teacherId?: number) =>
-    api.post(`/courses/admin/confirm-from-post/${postId}/`, teacherId ? { teacher_id: teacherId } : {}),
+  confirmFromDispatch: (dispatchId: number, teacherId?: number) =>
+    api.post(
+      `/courses/admin/confirm-from-dispatch/${dispatchId}/`,
+      teacherId ? { teacher_id: teacherId } : {}
+    ),
 };
